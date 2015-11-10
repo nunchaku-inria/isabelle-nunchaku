@@ -17,9 +17,42 @@ open Nunchaku;
 
 type raw_param = string * string list;
 
-val default_default_params = [];
+val default_default_params =
+  [("assms", "true"),
+   ("card", "1-10"),
+   ("debug", "false"),
+   ("falsify", "true"),
+   ("finitize", "smart"),
+   ("format", "1"),
+   ("iter", "0,1,2,4,8,12,16,20,24,28"),
+   ("max_genuine", "1"),
+   ("max_potential", "1"),
+   ("merge_type_vars", "false"),
+   ("mono", "smart"),
+   ("overlord", "false"),
+   ("show_consts", "false"),
+   ("show_skolems", "true"),
+   ("specialize", "true"),
+   ("spy", "false"),
+   ("timeout", "30"),
+   ("verbose", "false"),
+   ("wf", "smart"),
+   ("wf_timeout", "0.5")]
 
-val negated_params = [];
+val negated_params =
+  [("dont_finitize", "finitize"),
+   ("dont_merge_type_vars", "merge_type_vars"),
+   ("dont_specialize", "specialize"),
+   ("dont_spy", "spy"),
+   ("hide_consts", "show_consts"),
+   ("hide_skolems", "show_skolems"),
+   ("no_assms", "assms"),
+   ("no_debug", "debug"),
+   ("no_overlord", "overlord"),
+   ("non_mono", "mono"),
+   ("non_wf", "wf"),
+   ("quiet", "verbose"),
+   ("satisfy", "falsify")]
 
 fun is_known_raw_param s =
   AList.defined (op =) default_default_params s orelse
@@ -50,10 +83,8 @@ fun normalize_raw_param (name, value) =
       | [] => ["false"]
       | _ => value))]
   | NONE =>
-    if name = "show_all" then
-      [("show_types", value), ("show_skolems", value), ("show_consts", value)]
-    else
-      [(name, value)]);
+    if name = "show_all" then [("show_skolems", value), ("show_consts", value)]
+    else [(name, value)]);
 
 structure Data = Theory_Data
 (
@@ -89,7 +120,6 @@ fun extract_params ctxt mode default_params override_params =
         SOME s => parse_bool_option option name s
       | NONE => default_value);
     val lookup_bool = the o general_lookup_bool false (SOME false);
-    val lookup_bool_option = general_lookup_bool true NONE;
 
     fun do_int name value =
       (case value of
@@ -100,11 +130,6 @@ fun extract_params ctxt mode default_params override_params =
       | NONE => 0);
 
     fun lookup_int name = do_int name (lookup name);
-
-    fun lookup_int_option name =
-      (case lookup name of
-        SOME "smart" => NONE
-      | value => SOME (do_int name value));
 
     fun int_range_from_string name min_int s =
       let
@@ -123,13 +148,6 @@ fun extract_params ctxt mode default_params override_params =
 
     fun int_seq_from_string name min_int s =
       maps (int_range_from_string name min_int) (space_explode "," s);
-
-    fun lookup_int_seq name min_int =
-      (case lookup name of
-        SOME s => (case int_seq_from_string name min_int s of
-                     [] => [min_int]
-                   | value => value)
-      | NONE => [min_int]);
 
     fun lookup_assigns read prefix default convert =
       (NONE, convert (the_default default (lookup prefix))) ::
@@ -164,9 +182,6 @@ fun extract_params ctxt mode default_params override_params =
     val cards_assigns = lookup_ints_assigns read_type_polymorphic "card" 1;
     val maxes_assigns = lookup_ints_assigns read_const_polymorphic "max" ~1;
     val iters_assigns = lookup_ints_assigns read_const_polymorphic "iter" 0;
-    val bitss = lookup_int_seq "bits" 1;
-    val bisim_depths = lookup_int_seq "bisim_depth" ~1;
-    val boxes = lookup_bool_option_assigns read_type_polymorphic "box";
     val finitizes = lookup_bool_option_assigns read_type_polymorphic "finitize";
     val monos =
       if mode = Auto_Try then [(NONE, SOME true)]
@@ -181,11 +196,9 @@ fun extract_params ctxt mode default_params override_params =
     val whacks = lookup_term_list_option_polymorphic "whack" |> these;
     val merge_type_vars = lookup_bool "merge_type_vars";
     val specialize = lookup_bool "specialize";
-    val total_consts = lookup_bool_option "total_consts";
     val timeout = lookup_time "timeout";
     val wf_timeout = lookup_time "wf_timeout";
     val multithread = mode = Normal andalso lookup_bool "multithread";
-    val show_types = debug orelse lookup_bool "show_types";
     val show_skolems = debug orelse lookup_bool "show_skolems";
     val show_consts = debug orelse lookup_bool "show_consts";
     val evals = these (lookup_term_list_option_polymorphic "eval");

@@ -124,7 +124,7 @@ val timeout_bonus = seconds 1.0;
 fun plazy f = Pretty.para (f ());
 
 fun run_chaku_on_prop state (params as {mode_of_operation_params = {expect, ...},
-    timeout_params = {timeout, ...}, ...}) mode i n step subst def_assm_ts nondef_assm_ts orig_t =
+    timeout_params = {timeout, ...}, ...}) mode i n step subst def_assm_ts nondef_assm_ts goal =
   let
     val print_n = if mode = Normal then writeln else K ();
   in
@@ -138,11 +138,11 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {expect, ...}
         val unknown_outcome = (unknownN, []);
         val deadline = Time.+ (Time.now (), timeout);
 
-        fun run orig_t =
+        fun run goal =
           (unknownN, []);
 
         val outcome as (outcome_code, _) =
-          TimeLimit.timeLimit (Time.+ (timeout, timeout_bonus)) run orig_t
+          TimeLimit.timeLimit (Time.+ (timeout, timeout_bonus)) run goal
           handle
           (* TODO:
             TOO_LARGE (_, details) =>
