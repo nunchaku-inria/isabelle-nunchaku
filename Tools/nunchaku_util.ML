@@ -9,6 +9,7 @@ signature NUNCHAKU_UTIL =
 sig
   val parse_bool_option: bool -> string -> string -> bool option
   val parse_time: string -> string -> Time.time
+  val ascii_of: string -> string
 end;
 
 structure Nunchaku_Util : NUNCHAKU_UTIL =
@@ -16,5 +17,6 @@ struct
 
 val parse_bool_option = Sledgehammer_Util.parse_bool_option;
 val parse_time = Sledgehammer_Util.parse_time;
+val ascii_of = ATP_Problem_Generate.ascii_of;
 
 end;

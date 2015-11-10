@@ -7,7 +7,7 @@ Abstract syntax tree for Nunchaku problems.
 
 signature NUNCHAKU_PROBLEM =
 sig
-  type ident = string
+  type ident
 
   datatype ty =
     NType of ident * ty list
@@ -19,44 +19,50 @@ sig
   | NAbs of tm * tm
   | NApp of tm * tm
 
-  type ctr_spec =
+  type nun_ctr_spec =
     {ctr_id: ident,
      arg_tys: ty list}
 
-  type co_data_spec =
+  type nun_co_data_spec =
     {ty: ty,
-     ctrs: ctr_spec list}
+     ctrs: nun_ctr_spec list}
 
-  type rec_spec =
+  type nun_rec_spec =
     {func: tm,
      eqs: tm list}
 
-  type aliased_func =
+  type nun_aliased_func =
     {func: tm,
      alias_id: ident}
 
-  type spec_spec =
-    {funcs: aliased_func list,
+  type nun_spec_spec =
+    {funcs: nun_aliased_func list,
      props: tm list}
 
-  datatype command =
-    Val of tm * ty
-  | Data of co_data_spec list
-  | Codata of co_data_spec list
-  | Rec of rec_spec list
-  | Spec of spec_spec
-  | Axiom of tm
-  | Goal of tm
+  datatype nun_command =
+    NTVal of ty
+  | NData of nun_co_data_spec list
+  | NCodata of nun_co_data_spec list
+  | NVal of tm * ty
+  | NRec of nun_rec_spec list
+  | NSpec of nun_spec_spec
+  | NAxiom of tm
+  | NGoal of tm
 
-  type problem = command list
+  type nun_problem = nun_command list
 
-  val fun_ident: string
+  val nun_fun_ident: ident
 
-  val str_of_problem: problem -> string
+  val nun_const_of_str: string -> ident
+  val nun_var_of_str: string -> ident
+
+  val str_of_nun_problem: nun_problem -> string
 end;
 
 structure Nunchaku_Problem : NUNCHAKU_PROBLEM =
 struct
+
+open Nunchaku_Util;
 
 type ident = string;
 
@@ -70,46 +76,59 @@ datatype tm =
 | NAbs of tm * tm
 | NApp of tm * tm;
 
-type ctr_spec =
+type nun_ctr_spec =
   {ctr_id: ident,
    arg_tys: ty list};
 
-type co_data_spec =
+type nun_co_data_spec =
   {ty: ty,
-   ctrs: ctr_spec list};
+   ctrs: nun_ctr_spec list};
 
-type rec_spec =
+type nun_rec_spec =
   {func: tm,
    eqs: tm list};
 
-type aliased_func =
+type nun_aliased_func =
   {func: tm,
    alias_id: ident};
 
-type spec_spec =
-  {funcs: aliased_func list,
+type nun_spec_spec =
+  {funcs: nun_aliased_func list,
    props: tm list};
 
-datatype command =
-  Val of tm * ty
-| Data of co_data_spec list
-| Codata of co_data_spec list
-| Rec of rec_spec list
-| Spec of spec_spec
-| Axiom of tm
-| Goal of tm;
+datatype nun_command =
+  NTVal of ty
+| NData of nun_co_data_spec list
+| NCodata of nun_co_data_spec list
+| NVal of tm * ty
+| NRec of nun_rec_spec list
+| NSpec of nun_spec_spec
+| NAxiom of tm
+| NGoal of tm;
 
-type problem = command list;
+type nun_problem = nun_command list;
 
-val fun_ident = "->";
+val nun_fun_ident = "->";
 
-fun range_ty (NType (id, [_, ty])) = if id = fun_ident then ty else raise Fail "non-fun"
-  | range_ty _ = raise Fail "non-fun";
+fun nun_const_of_str s =
+  let val s' = ascii_of s ^ "_" in
+    if Char.isLower (String.sub (s', 0)) then s'
+    else "c" ^ s' ^ "_"
+  end;
 
-fun ty_of (NConst (_, _, ty)) = ty
-  | ty_of (NVar (_, ty)) = ty
-  | ty_of (NAbs (tm, tm')) = NType (fun_ident, [ty_of tm, ty_of tm'])
-  | ty_of (NApp (tm, _)) = range_ty (ty_of tm);
+fun nun_var_of_str s =
+  let val s' = ascii_of s in
+    if Char.isUpper (String.sub (s', 0)) then s'
+    else "V" ^ s' ^ "_"
+  end;
+
+fun nun_range_ty (NType (id, [_, ty])) = if id = nun_fun_ident then ty else raise Fail "non-fun"
+  | nun_range_ty _ = raise Fail "non-fun";
+
+fun nun_ty_of (NConst (_, _, ty)) = ty
+  | nun_ty_of (NVar (_, ty)) = ty
+  | nun_ty_of (NAbs (tm, tm')) = NType (nun_fun_ident, [nun_ty_of tm, nun_ty_of tm'])
+  | nun_ty_of (NApp (tm, _)) = nun_range_ty (nun_ty_of tm);
 
 val parens = enclose "(" ")";
 
@@ -122,66 +141,67 @@ fun str_of_arg_list str_of_arg =
 fun str_of_and_list str_of_elem =
   map str_of_elem #> space_implode "\nand ";
 
-fun str_of_ident id = id;
+fun str_of_nun_ident id = id;
 
-val str_of_ty =
+val str_of_nun_ty =
   let
     fun str_of maybe_parens (NType (id, tys)) =
-      if id = fun_ident then
+      if id = nun_fun_ident then
         (case tys of
           [ty, ty'] =>
-          str_of parens ty ^ " " ^ fun_ident ^ " " ^ str_of maybe_parens ty'
+          str_of parens ty ^ " " ^ nun_fun_ident ^ " " ^ str_of maybe_parens ty'
           |> maybe_parens)
       else
         id ^ str_of_arg_list (str_of I) tys
-    | str_of _ (NTVar id) = str_of_ident id
+    | str_of _ (NTVar id) = str_of_nun_ident id
   in
     str_of I
   end;
 
-fun str_of_at_const id tys =
-  "@" ^ str_of_ident id ^ str_of_arg_list str_of_ty tys;
-
-val str_of_tm =
+val str_of_nun_tm =
   let
-    fun str_of _ (NConst (id, [], _)) = str_of_ident id
+    fun str_of_at_const id tys =
+      "@" ^ str_of_nun_ident id ^ str_of_arg_list str_of_nun_ty tys;
+
+    fun str_of _ (NConst (id, [], _)) = str_of_nun_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
-        if ty = ty0 then str_of_ident id else str_of_at_const id tys
+        if ty = ty0 then str_of_nun_ident id else str_of_at_const id tys
       | str_of _ (NConst (id, tys, _)) = str_of_at_const id tys
-      | str_of _ (NVar (id, _)) = str_of_ident id
+      | str_of _ (NVar (id, _)) = str_of_nun_ident id
       | str_of ty_opt (NAbs (tm, tm')) =
-        "fn " ^ str_of NONE tm ^ " => " ^ str_of (Option.map range_ty ty_opt) tm'
+        "fn " ^ str_of NONE tm ^ " => " ^ str_of (Option.map nun_range_ty ty_opt) tm'
       | str_of ty_opt (NApp (tm, tm')) =
-        str_of (Option.map (fn ty => NType (fun_ident, [ty_of tm', ty])) ty_opt) tm ^
+        str_of (Option.map (fn ty => NType (nun_fun_ident, [nun_ty_of tm', ty])) ty_opt) tm ^
         str_of_arg_list (str_of NONE) [tm']
   in
     str_of NONE
   end;
 
-fun str_of_ctr_spec {ctr_id, arg_tys} =
-  str_of_ident ctr_id ^ str_of_arg_list str_of_ty arg_tys;
+fun str_of_nun_ctr_spec {ctr_id, arg_tys} =
+  str_of_nun_ident ctr_id ^ str_of_arg_list str_of_nun_ty arg_tys;
 
-fun str_of_co_data_spec {ty, ctrs} =
-  str_of_ty ty ^ " =\n  " ^ space_implode "\n| " (map str_of_ctr_spec ctrs);
+fun str_of_nun_co_data_spec {ty, ctrs} =
+  str_of_nun_ty ty ^ " =\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
 
-fun str_of_rec_spec {func, eqs} =
-  str_of_tm func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm eqs);
+fun str_of_nun_rec_spec {func, eqs} =
+  str_of_nun_tm func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_nun_tm eqs);
 
-fun str_of_aliased_func {func, alias_id} =
-  str_of_tm func ^ " as " ^ str_of_ident alias_id;
+fun str_of_nun_aliased_func {func, alias_id} =
+  str_of_nun_tm func ^ " as " ^ str_of_nun_ident alias_id;
 
-fun str_of_spec_spec {funcs, props} =
-  space_implode " and " (map str_of_aliased_func funcs) ^ " :=\n" ^
-  space_implode ";\n  " (map str_of_tm props);
+fun str_of_nun_spec_spec {funcs, props} =
+  space_implode " and " (map str_of_nun_aliased_func funcs) ^ " :=\n" ^
+  space_implode ";\n  " (map str_of_nun_tm props);
 
-fun str_of_command (Val (tm, ty)) = "val " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
-  | str_of_command (Data specs) = "data " ^ str_of_and_list str_of_co_data_spec specs
-  | str_of_command (Codata specs) = "codata " ^ str_of_and_list str_of_co_data_spec specs
-  | str_of_command (Rec specs) = "rec " ^ str_of_and_list str_of_rec_spec specs
-  | str_of_command (Spec spec) = "spec " ^ str_of_spec_spec spec
-  | str_of_command (Axiom tm) = "axiom " ^ str_of_tm tm
-  | str_of_command (Goal tm) = "goal " ^ str_of_tm tm
+fun str_of_nun_command (NTVal ty) = "val " ^ str_of_nun_ty ty ^ " : type"
+  | str_of_nun_command (NData specs) = "data " ^ str_of_and_list str_of_nun_co_data_spec specs
+  | str_of_nun_command (NCodata specs) = "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
+  | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_nun_tm tm ^ " : " ^ str_of_nun_ty ty
+  | str_of_nun_command (NRec specs) = "rec " ^ str_of_and_list str_of_nun_rec_spec specs
+  | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_spec_spec spec
+  | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_nun_tm tm
+  | str_of_nun_command (NGoal tm) = "goal " ^ str_of_nun_tm tm
 
-val str_of_problem = map str_of_command #> cat_lines;
+val str_of_nun_problem = map str_of_nun_command #> cat_lines;
 
 end;
