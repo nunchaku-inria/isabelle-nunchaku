@@ -7,7 +7,6 @@ Adds the "nunchaku" and "nunchaku_params" commands to Isabelle/Isar's outer synt
 
 signature NUNCHAKU_COMMANDS =
 sig
-  
 end;
 
 structure Nunchaku_Commands : NUNCHAKU_COMMANDS =
@@ -161,10 +160,6 @@ fun extract_params ctxt mode default_params override_params =
     val lookup_term_list_option_polymorphic =
       AList.lookup (op =) raw_params #> Option.map (map read_term_polymorphic);
     val read_const_polymorphic = read_term_polymorphic #> dest_Const;
-
-
-
-
 
     val cards_assigns = lookup_ints_assigns read_type_polymorphic "card" 1;
     val maxes_assigns = lookup_ints_assigns read_const_polymorphic "max" ~1;
