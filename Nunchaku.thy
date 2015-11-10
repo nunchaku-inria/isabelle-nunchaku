@@ -14,5 +14,6 @@ ML_file "Tools/nunchaku_commands.ML"
 
 lemma "a = b"
 nunchaku
+oops
 
 end
