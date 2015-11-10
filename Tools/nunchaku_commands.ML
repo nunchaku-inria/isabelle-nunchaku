@@ -67,7 +67,7 @@ structure Data = Theory_Data
 val set_default_raw_param = Data.map o fold (AList.update (op =)) o normalize_raw_param;
 val default_raw_params = Data.get;
 
-fun is_punctuation s = (s = "," orelse s = "-" orelse s = "\<emdash>");
+fun is_punctuation s = (s = "," orelse s = "-");
 
 fun stringify_raw_param_value [] = ""
   | stringify_raw_param_value [s] = s
@@ -111,7 +111,7 @@ fun extract_params ctxt mode default_params override_params =
       let
         val (k1, k2) =
           (case space_explode "-" s of
-             [s] => the_default (s, s) (first_field "\<emdash>" s)
+             [s] => (s, s)
            | ["", s2] => ("-" ^ s2, "-" ^ s2)
            | [s1, s2] => (s1, s2)
            | _ => raise Option.Option)
