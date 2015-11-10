@@ -8,7 +8,7 @@ Collection of Isabelle/HOL definitions etc. for Nunchaku.
 signature NUNCHAKU_COLLECT =
 sig
   type isa_co_data_spec =
-    {ty: term,
+    {typ: typ,
      ctrs: term list}
 
   type isa_rec_spec =
@@ -38,7 +38,7 @@ structure Nunchaku_Collect : NUNCHAKU_COLLECT =
 struct
 
 type isa_co_data_spec =
-  {ty: term,
+  {typ: typ,
    ctrs: term list};
 
 type isa_rec_spec =

@@ -33,7 +33,7 @@ sig
 
   type nun_aliased_func =
     {func: tm,
-     alias_id: ident}
+     alias: tm}
 
   type nun_spec_spec =
     {funcs: nun_aliased_func list,
@@ -90,7 +90,7 @@ type nun_rec_spec =
 
 type nun_aliased_func =
   {func: tm,
-   alias_id: ident};
+   alias: tm};
 
 type nun_spec_spec =
   {funcs: nun_aliased_func list,
@@ -186,8 +186,8 @@ fun str_of_nun_co_data_spec {ty, ctrs} =
 fun str_of_nun_rec_spec {func, eqs} =
   str_of_nun_tm func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_nun_tm eqs);
 
-fun str_of_nun_aliased_func {func, alias_id} =
-  str_of_nun_tm func ^ " as " ^ str_of_nun_ident alias_id;
+fun str_of_nun_aliased_func {func, alias} =
+  str_of_nun_tm func ^ " as " ^ str_of_nun_tm alias;
 
 fun str_of_nun_spec_spec {funcs, props} =
   space_implode " and " (map str_of_nun_aliased_func funcs) ^ " :=\n" ^

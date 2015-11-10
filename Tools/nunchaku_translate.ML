@@ -48,6 +48,30 @@ fun nun_tm_of_isa thy t =
     tm_of t
   end;
 
+fun nun_ctr_of_isa (Const (s, T)) =
+    {ctr_id = nun_const_of_str s, arg_tys = map nun_ty_of_isa (binder_types T)}
+  | nun_ctr_of_isa _ = raise Fail "expected Const";
+
+fun nun_co_data_spec_of_isa {typ, ctrs} =
+  {ty = nun_ty_of_isa typ, ctrs = map nun_ctr_of_isa ctrs};
+
+fun nun_rec_spec_of_isa thy {func, eqs} =
+  {func = nun_tm_of_isa thy func, eqs = map (nun_tm_of_isa thy) eqs};
+
+fun nun_spec_spec_of_isa thy {funcs, props} =
+  let
+    fun func_of func alias =
+      {func = nun_tm_of_isa thy func, alias = nun_tm_of_isa thy alias};
+
+    val j = fold (Integer.max o maxidx_of_term) props ~1 + 1;
+
+    val aliases =
+      map_index (fn (i, func) => Var ((("F" ^ string_of_int i), j), fastype_of func)) funcs;
+    val props' = map (subst_atomic (funcs ~~ aliases)) props;
+  in
+    {funcs = map2 func_of funcs aliases, props = map (nun_tm_of_isa thy) props'}
+  end;
+
 fun nun_problem_of_isa ctxt =
   let
     val thy = Proof_Context.theory_of ctxt;
@@ -58,18 +82,13 @@ fun nun_problem_of_isa ctxt =
           val cmds' =
             (case cmd of
               ITypedecl T => [NTVal (nun_ty_of_isa T)]
-(*
-            | IData specs =>
-            | ICodata specs =>
-*)
+            | IData specs => [NData (map nun_co_data_spec_of_isa specs)]
+            | ICodata specs => [NCodata (map nun_co_data_spec_of_isa specs)]
             | IConst t => [NVal (nun_tm_of_isa thy t, nun_ty_of_isa (fastype_of t))]
-(*
-            | IRec specs =>
-            | ISpec spec =>
-            | IAxiom prop =>
-            | IGoal prop => 
-*)
-            )
+            | IRec specs => [NRec (map (nun_rec_spec_of_isa thy) specs)]
+            | ISpec spec => [NSpec (nun_spec_spec_of_isa thy spec)]
+            | IAxiom prop => [NAxiom (nun_tm_of_isa thy prop)]
+            | IGoal prop => [NGoal (nun_tm_of_isa thy prop)]);
         in
           cmds' @ prob_of prob
         end;
