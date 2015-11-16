@@ -14,7 +14,7 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-lemma "a = b"
+lemma "x = y"
 nunchaku[satisfy]
 oops
 

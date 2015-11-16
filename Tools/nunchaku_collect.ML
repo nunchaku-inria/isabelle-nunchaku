@@ -61,39 +61,65 @@ datatype isa_command =
 
 type isa_problem = isa_command list;
 
-fun isa_co_data_spec_fold_terms f ({ctrs, ...} : isa_co_data_spec) = fold f ctrs;
-fun isa_rec_spec_fold_terms f ({eqs, ...} : isa_rec_spec) = fold f eqs;
-fun isa_spec_spec_fold_terms f ({props, ...} : isa_spec_spec) = fold f props;
+fun isa_cmd_fold_terms_types f_ty f_tm0 =
+  let
+    fun f_tm t = f_tm0 t #> fold_types f_ty t;
 
-fun isa_cmd_fold_terms _ (ITypedecl _) = I
-  | isa_cmd_fold_terms f (IData specs) = fold (isa_co_data_spec_fold_terms f) specs
-  | isa_cmd_fold_terms f (ICodata specs) = fold (isa_co_data_spec_fold_terms f) specs
-  | isa_cmd_fold_terms f (IConst t) = f t
-  | isa_cmd_fold_terms f (IRec specs) = fold (isa_rec_spec_fold_terms f) specs
-  | isa_cmd_fold_terms f (ISpec spec) = isa_spec_spec_fold_terms f spec
-  | isa_cmd_fold_terms f (IAxiom t) = f t
-  | isa_cmd_fold_terms f (IGoal t) = f t;
+    fun co_data_spec_fold {typ, ctrs} = f_ty typ #> fold f_tm ctrs;
+    fun rec_spec_fold {func, eqs} = f_tm func #> fold f_tm eqs;
+    fun spec_spec_fold {funcs, props} = fold f_tm funcs #> fold f_tm props;
+
+    fun cmd_fold (ITypedecl T) = f_ty T
+      | cmd_fold (IData specs) = fold co_data_spec_fold specs
+      | cmd_fold (ICodata specs) = fold co_data_spec_fold specs
+      | cmd_fold (IConst t) = f_tm t
+      | cmd_fold (IRec specs) = fold rec_spec_fold specs
+      | cmd_fold (ISpec spec) = spec_spec_fold spec
+      | cmd_fold (IAxiom t) = f_tm t
+      | cmd_fold (IGoal t) = f_tm t;
+  in
+    cmd_fold
+  end;
 
 fun atomize_toward_False ctxt t =
   let val t' = Object_Logic.atomize_term ctxt t in
     if fastype_of t' = HOLogic.boolT then t' else @{const False}
   end;
 
+fun eq_Type_root (Type (s, _), Type (s', _)) = (s = s')
+  | eq_Type_root (T, T') = (T = T');
+
+fun tyvars_of_arity n =
+  map (fn i => TVar (("'a", i), @{sort type})) (1 upto n);
+
+fun varify_Type_leaves (Type (s, Ts)) = Type (s, tyvars_of_arity (length Ts))
+  | varify_Type_leaves T = T;
+
+fun is_typ_builtin s = member (op =) [@{type_name bool}, @{type_name fun}] s;
+fun is_const_builtin s = (s = @{const_name HOL.eq});
+
 fun isa_problem_of_goal ctxt goal0 =
   let
     val goal = atomize_toward_False ctxt goal0;
     val isa_prob0 = [IGoal goal];
 
-    fun add_consts (t as Const _) = insert (op aconv) t
+    fun add_types (T as Type (s, Ts)) =
+        (not (is_typ_builtin s) ? insert eq_Type_root T) #> fold add_types Ts
+      | add_types (T as TFree _) = insert (op =) T;
+
+    fun add_consts (t as Const (s, _)) = not (is_const_builtin s) ? insert (op aconv) t
       | add_consts (t as Free _) = insert (op aconv) t
       | add_consts (t $ u) = add_consts t #> add_consts u
       | add_consts (Abs (_, _, t)) = add_consts t
       | add_consts _ = I;
 
-    val isa_consts = fold (isa_cmd_fold_terms add_consts) isa_prob0 []
-      |> map IConst;
+    val (types, consts) =
+      fold (isa_cmd_fold_terms_types (apfst o add_types) (apsnd o add_consts)) isa_prob0 ([], []);
+
+    val isa_typedecls = map (ITypedecl o varify_Type_leaves) types;
+    val isa_consts = map IConst consts;
   in
-    isa_consts @ isa_prob0
+    isa_typedecls @ isa_consts @ isa_prob0
   end;
 
 end;
