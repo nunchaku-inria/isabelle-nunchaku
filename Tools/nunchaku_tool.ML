@@ -7,8 +7,85 @@ Interface to the external "nunchaku" tool.
 
 signature NUNCHAKU_TOOL =
 sig
+  type ty = Nunchaku_Problem.ty
+  type tm = Nunchaku_Problem.tm
+  type nun_problem = Nunchaku_Problem.nun_problem
+
+  type tool_params =
+    {overlord: bool,
+     debug: bool}
+
+  type nun_solution =
+    {tys: (ty * tm list) list,
+     tms: (tm * tm) list}
+
+  datatype nun_outcome =
+    Unsat
+  | Sat of nun_solution
+  | Timed_Out
+  | Nunchaku_Not_Found
+  | CVC4_Not_Found
+
+  val nunchaku_env_var: string
+
+  val solve_nun_problem: tool_params -> nun_problem -> nun_outcome
 end;
 
 structure Nunchaku_Tool : NUNCHAKU_TOOL =
 struct
+
+open Nunchaku_Problem;
+
+type tool_params =
+  {overlord: bool,
+   debug: bool};
+
+type nun_solution =
+  {tys: (ty * tm list) list,
+   tms: (tm * tm) list};
+
+datatype nun_outcome =
+  Unsat
+| Sat of nun_solution
+| Timed_Out
+| Nunchaku_Not_Found
+| CVC4_Not_Found;
+
+val nunchaku_env_var = "NUNCHAKU";
+
+val cached_outcome =
+  Synchronized.var "Nunchaku_Tool.cached_outcome" (NONE : (nun_problem * nun_outcome) option);
+
+fun uncached_solve_nun_problem prob =
+  let
+    val s = str_of_nun_problem prob;
+  in
+    Unsat
+  end;
+
+fun solve_nun_problem {overlord, debug} prob =
+  let
+    fun solve_now () =
+      uncached_solve_nun_problem prob;
+  in
+    if overlord orelse debug then
+      solve_now ()
+    else
+      (case AList.lookup (op =) (the_list (Synchronized.value cached_outcome)) prob of
+        SOME outcome => outcome
+      | NONE =>
+        let
+          val outcome = solve_now ();
+
+          fun update_cache () =
+            Synchronized.change cached_outcome (K (SOME (prob, outcome)));
+        in
+          (case outcome of
+            Unsat => update_cache ()
+          | Sat _ => update_cache ()
+          | _ => ());
+          outcome
+        end)
+  end;
+
 end;

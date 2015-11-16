@@ -124,8 +124,8 @@ fun gen_nun_var_of_str pre suf s =
     if Char.isUpper (String.sub (s', 0)) then s' else pre ^ s' ^ suf
   end;
 
-val nun_tconst_of_str = gen_nun_const_of_str "y" "$";
-val nun_tvar_of_str = gen_nun_var_of_str "A" "$";
+val nun_tconst_of_str = gen_nun_const_of_str "y" "__";
+val nun_tvar_of_str = gen_nun_var_of_str "A" "__";
 val nun_const_of_str = gen_nun_const_of_str "c" "_";
 val nun_var_of_str = gen_nun_var_of_str "V" "_";
 
@@ -216,6 +216,6 @@ fun str_of_nun_command (NTVal ty) = "val " ^ str_of_nun_ty ty ^ " : type"
   | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_nun_tm tm
   | str_of_nun_command (NGoal tm) = "goal " ^ str_of_nun_tm tm
 
-val str_of_nun_problem = map str_of_nun_command #> cat_lines;
+val str_of_nun_problem = map (suffix "." o str_of_nun_command) #> cat_lines;
 
 end;

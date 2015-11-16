@@ -7,7 +7,7 @@ The core of the Nunchaku integration in Isabelle.
 
 signature NUNCHAKU =
 sig
-  datatype mode = Auto_Try | Try | Normal
+  datatype mode = Auto_Try | Try | Normal | TPTP
 
   type mode_of_operation_params =
     {falsify: bool,
@@ -57,7 +57,7 @@ sig
   val potentialN: string
   val noneN: string
   val unknownN: string
-  val where_is_nunchakuN: string
+  val no_nunchakuN: string
 
   val run_chaku_on_subgoal: Proof.state -> params -> mode -> int -> int -> string * string list
 end;
@@ -68,8 +68,9 @@ struct
 open Nunchaku_Collect;
 open Nunchaku_Problem;
 open Nunchaku_Translate;
+open Nunchaku_Tool;
 
-datatype mode = Auto_Try | Try | Normal;
+datatype mode = Auto_Try | Try | Normal | TPTP;
 
 type mode_of_operation_params =
   {falsify: bool,
@@ -120,30 +121,31 @@ val potentialN = "potential";
 val noneN = "none";
 val unknownN = "unknown";
 
-val where_is_nunchakuN = "where_is_nunchaku";
+val no_nunchakuN = "no_nunchaku";
 
 (* Give the inner timeout a chance. *)
 val timeout_bonus = seconds 1.0;
 
 fun plazy f = Pretty.para (f ());
 
-fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, expect, ...},
-    timeout_params = {timeout, ...}, ...}) mode i n step subst def_assm_ts nondef_assm_ts
-    original_goal =
+fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, overlord, expect, ...},
+    output_format_params = {debug, ...}, timeout_params = {timeout, ...}, ...}) mode i n step subst
+    def_assm_ts nondef_assm_ts original_goal =
   let
     val ctxt = Proof.context_of state;
 
     val print_n = if mode = Normal then writeln else K ();
   in
-    if getenv "NUNCHAKU" = "" then
+    if getenv nunchaku_env_var = "" then
       (* The "expect" argument is deliberately ignored if the "nunchaku" command-line tool is
          missing is missing so that "Nunchaku_Examples" can be processed on any machine. *)
       (print_n (Pretty.string_of (plazy (K "External tool \"nunchaku\" not installed")));
-       (where_is_nunchakuN, []))
+       (no_nunchakuN, []))
     else
       let
-        val unknown_outcome = (unknownN, []);
         val deadline = Time.+ (Time.now (), timeout);
+
+        val tool_params = {overlord = overlord, debug = debug};
 
         fun run () =
           let
@@ -153,10 +155,18 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, exp
 val _ = tracing ("isa_prob = " ^ @{make_string} isa_prob);
             val nun_prob = nun_problem_of_isa ctxt isa_prob;
 val _ = tracing ("nun_prob = " ^ @{make_string} nun_prob);
-            val nun_prob_str = str_of_nun_problem nun_prob;
-val _ = tracing ("nun_prob_str = " ^ nun_prob_str);
+            val nun_outcome = solve_nun_problem tool_params nun_prob;
+
+            val outcome as (outcome_code, _) =
+              (case nun_outcome of
+                Unsat => (noneN, [])
+              | Sat _ => (genuineN, [])
+              | Timed_Out => (unknownN, [])
+              | Nunchaku_Not_Found => (unknownN, [])
+              | CVC4_Not_Found => (unknownN, []));
           in
-            (unknownN, [])
+            if expect = "" orelse outcome_code = expect then outcome
+            else error ("Unexpected outcome: " ^ quote outcome_code)
           end;
 
         val outcome as (outcome_code, _) =
@@ -170,7 +180,7 @@ val _ = tracing ("nun_prob_str = " ^ nun_prob_str);
           | Nunchaku_Tool.SYNTAX (_, details) =>
             (print_n ("Malformed Kodkodi output: " ^ details ^ "."); unknown_outcome)
           | *)
-            TimeLimit.TimeOut => (print_n "Nitpick ran out of time."; unknown_outcome);
+            TimeLimit.TimeOut => (print_n "Nitpick ran out of time."; (unknownN, []));
       in
         if expect = "" orelse outcome_code = expect then outcome
         else error ("Unexpected outcome: " ^ quote outcome_code)
