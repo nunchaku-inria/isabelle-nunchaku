@@ -216,6 +216,6 @@ fun str_of_nun_command (NTVal ty) = "val " ^ str_of_nun_ty ty ^ " : type"
   | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_nun_tm tm
   | str_of_nun_command (NGoal tm) = "goal " ^ str_of_nun_tm tm
 
-val str_of_nun_problem = map (suffix "." o str_of_nun_command) #> cat_lines;
+val str_of_nun_problem = map (suffix "." o str_of_nun_command) #> cat_lines #> suffix "\n";
 
 end;

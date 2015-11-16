@@ -25,6 +25,7 @@ sig
   | Timed_Out
   | Nunchaku_Not_Found
   | CVC4_Not_Found
+  | Unknown_Error
 
   val nunchaku_env_var: string
 
@@ -34,6 +35,7 @@ end;
 structure Nunchaku_Tool : NUNCHAKU_TOOL =
 struct
 
+open Nunchaku_Util;
 open Nunchaku_Problem;
 
 type tool_params =
@@ -49,24 +51,34 @@ datatype nun_outcome =
 | Sat of nun_solution
 | Timed_Out
 | Nunchaku_Not_Found
-| CVC4_Not_Found;
+| CVC4_Not_Found
+| Unknown_Error;
 
 val nunchaku_env_var = "NUNCHAKU";
 
 val cached_outcome =
   Synchronized.var "Nunchaku_Tool.cached_outcome" (NONE : (nun_problem * nun_outcome) option);
 
-fun uncached_solve_nun_problem prob =
+fun uncached_solve_nun_problem overlord prob =
   let
-    val s = str_of_nun_problem prob;
+    val prob_str = str_of_nun_problem prob;
   in
-    Unsat
+    with_tmp_or_overlord_file overlord "nunchaku" "nun" (fn prob_path =>
+      let
+        val _ = File.write prob_path prob_str;
+        val bash_cmd = "$" ^ nunchaku_env_var ^ " " ^ File.shell_path prob_path;
+        val (output, code) = Isabelle_System.bash_output bash_cmd;
+      in
+        if String.isPrefix "SAT" output then Sat {tys = [], tms = []}
+        else if String.isPrefix "UNSAT" output then Unsat
+        else Unknown_Error
+      end)
   end;
 
 fun solve_nun_problem {overlord, debug} prob =
   let
     fun solve_now () =
-      uncached_solve_nun_problem prob;
+      uncached_solve_nun_problem overlord prob;
   in
     if overlord orelse debug then
       solve_now ()

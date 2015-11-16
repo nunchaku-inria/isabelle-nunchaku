@@ -123,10 +123,8 @@ val unknownN = "unknown";
 
 val no_nunchakuN = "no_nunchaku";
 
-(* Give the inner timeout a chance. *)
-val timeout_bonus = seconds 1.0;
-
-fun plazy f = Pretty.para (f ());
+(* Give the soft timeout a chance. *)
+val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, overlord, expect, ...},
     output_format_params = {debug, ...}, timeout_params = {timeout, ...}, ...}) mode i n step subst
@@ -134,13 +132,19 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, ove
   let
     val ctxt = Proof.context_of state;
 
-    val print_n = if mode = Normal then writeln else K ();
+    val print = writeln;
+    val print_nt =
+      (case mode of
+        Normal => writeln
+      | TPTP => writeln o prefix "%%% "
+      | _ => K ());
+
+    val das_wort_model = if falsify then "countermodel" else "model";
   in
     if getenv nunchaku_env_var = "" then
       (* The "expect" argument is deliberately ignored if the "nunchaku" command-line tool is
-         missing is missing so that "Nunchaku_Examples" can be processed on any machine. *)
-      (print_n (Pretty.string_of (plazy (K "External tool \"nunchaku\" not installed")));
-       (no_nunchakuN, []))
+         missing so that "Nunchaku_Examples" can be processed on any machine. *)
+      (print_nt ("$" ^ nunchaku_env_var ^ " not set"); (no_nunchakuN, []))
     else
       let
         val deadline = Time.+ (Time.now (), timeout);
@@ -159,28 +163,21 @@ val _ = tracing ("nun_prob = " ^ @{make_string} nun_prob);
 
             val outcome as (outcome_code, _) =
               (case nun_outcome of
-                Unsat => (noneN, [])
-              | Sat _ => (genuineN, [])
-              | Timed_Out => (unknownN, [])
-              | Nunchaku_Not_Found => (unknownN, [])
-              | CVC4_Not_Found => (unknownN, []));
+                Unsat => (print_nt ("Nunchaku found no " ^ das_wort_model); (noneN, []))
+              | Sat _ => (print ("Nunchaku found a " ^ das_wort_model); (genuineN, []))
+              | Timed_Out => (print_nt "Nunchaku ran out of time"; (unknownN, []))
+              | Nunchaku_Not_Found =>
+                (print_nt "External tool \"nunchaku\" not installed"; (unknownN, []))
+              | CVC4_Not_Found => (unknownN, [])
+              | Unknown_Error => (unknownN, []));
           in
             if expect = "" orelse outcome_code = expect then outcome
             else error ("Unexpected outcome: " ^ quote outcome_code)
           end;
 
         val outcome as (outcome_code, _) =
-          TimeLimit.timeLimit (Time.+ (timeout, timeout_bonus)) run ()
-          handle
-          (* TODO:
-            TOO_LARGE (_, details) =>
-            (print_n ("Limit reached: " ^ details ^ "."); unknown_outcome)
-          | TOO_SMALL (_, details) =>
-            (print_n ("Limit reached: " ^ details ^ "."); unknown_outcome)
-          | Nunchaku_Tool.SYNTAX (_, details) =>
-            (print_n ("Malformed Kodkodi output: " ^ details ^ "."); unknown_outcome)
-          | *)
-            TimeLimit.TimeOut => (print_n "Nitpick ran out of time."; (unknownN, []));
+          TimeLimit.timeLimit (Time.+ (timeout, timeout_slack)) run ()
+          handle TimeLimit.TimeOut => (print_nt "Nunchaku ran out of time"; (unknownN, []));
       in
         if expect = "" orelse outcome_code = expect then outcome
         else error ("Unexpected outcome: " ^ quote outcome_code)
