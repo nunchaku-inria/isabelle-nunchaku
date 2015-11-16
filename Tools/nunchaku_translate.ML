@@ -53,11 +53,6 @@ fun nun_tm_of_isa ctxt t =
     tm_of t
   end;
 
-fun nun_tm_of_isa_prop ctxt t =
-  let val t' = Object_Logic.atomize_term ctxt t in
-    nun_tm_of_isa ctxt (if fastype_of t' = Term.propT then @{const False} else t')
-  end;
-
 fun nun_ctr_of_isa (Const (s, T)) =
     {ctr_id = nun_const_of_str s, arg_tys = map nun_ty_of_isa (binder_types T)}
   | nun_ctr_of_isa _ = raise Fail "expected Const";
@@ -66,7 +61,7 @@ fun nun_co_data_spec_of_isa {typ, ctrs} =
   {ty = nun_ty_of_isa typ, ctrs = map nun_ctr_of_isa ctrs};
 
 fun nun_rec_spec_of_isa ctxt {func, eqs} =
-  {func = nun_tm_of_isa ctxt func, eqs = map (nun_tm_of_isa_prop ctxt) eqs};
+  {func = nun_tm_of_isa ctxt func, eqs = map (nun_tm_of_isa ctxt) eqs};
 
 fun nun_spec_spec_of_isa ctxt {funcs, props} =
   let
@@ -79,7 +74,7 @@ fun nun_spec_spec_of_isa ctxt {funcs, props} =
       map_index (fn (i, func) => Var ((("F" ^ string_of_int i), j), fastype_of func)) funcs;
     val props' = map (subst_atomic (funcs ~~ aliases)) props;
   in
-    {funcs = map2 func_of funcs aliases, props = map (nun_tm_of_isa_prop ctxt) props'}
+    {funcs = map2 func_of funcs aliases, props = map (nun_tm_of_isa ctxt) props'}
   end;
 
 fun nun_problem_of_isa ctxt =
@@ -95,8 +90,8 @@ fun nun_problem_of_isa ctxt =
             | IConst t => [NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))]
             | IRec specs => [NRec (map (nun_rec_spec_of_isa ctxt) specs)]
             | ISpec spec => [NSpec (nun_spec_spec_of_isa ctxt spec)]
-            | IAxiom prop => [NAxiom (nun_tm_of_isa_prop ctxt prop)]
-            | IGoal prop => [NGoal (nun_tm_of_isa_prop ctxt prop)]);
+            | IAxiom prop => [NAxiom (nun_tm_of_isa ctxt prop)]
+            | IGoal prop => [NGoal (nun_tm_of_isa ctxt prop)]);
         in
           cmds' @ prob_of prob
         end;

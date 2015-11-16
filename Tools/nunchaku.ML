@@ -146,7 +146,7 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {expect, ...}
 
         fun run goal =
           let
-            val isa_prob = isa_problem_of_goal goal;
+            val isa_prob = isa_problem_of_goal ctxt goal;
 val _ = tracing ("isa_prob = " ^ @{make_string} isa_prob);
             val nun_prob = nun_problem_of_isa ctxt isa_prob;
 val _ = tracing ("nun_prob = " ^ @{make_string} nun_prob);
