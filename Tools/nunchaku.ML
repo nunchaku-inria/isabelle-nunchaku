@@ -127,8 +127,9 @@ val timeout_bonus = seconds 1.0;
 
 fun plazy f = Pretty.para (f ());
 
-fun run_chaku_on_prop state (params as {mode_of_operation_params = {expect, ...},
-    timeout_params = {timeout, ...}, ...}) mode i n step subst def_assm_ts nondef_assm_ts goal =
+fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, expect, ...},
+    timeout_params = {timeout, ...}, ...}) mode i n step subst def_assm_ts nondef_assm_ts
+    original_goal =
   let
     val ctxt = Proof.context_of state;
 
@@ -144,8 +145,10 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {expect, ...}
         val unknown_outcome = (unknownN, []);
         val deadline = Time.+ (Time.now (), timeout);
 
-        fun run goal =
+        fun run () =
           let
+            val goal =
+              if falsify then Logic.mk_implies (original_goal, @{prop False}) else original_goal;
             val isa_prob = isa_problem_of_goal ctxt goal;
 val _ = tracing ("isa_prob = " ^ @{make_string} isa_prob);
             val nun_prob = nun_problem_of_isa ctxt isa_prob;
@@ -157,7 +160,7 @@ val _ = tracing ("nun_prob_str = " ^ nun_prob_str);
           end;
 
         val outcome as (outcome_code, _) =
-          TimeLimit.timeLimit (Time.+ (timeout, timeout_bonus)) run goal
+          TimeLimit.timeLimit (Time.+ (timeout, timeout_bonus)) run ()
           handle
           (* TODO:
             TOO_LARGE (_, details) =>

@@ -15,7 +15,7 @@ ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
 lemma "a = b"
-nunchaku
+nunchaku[satisfy]
 oops
 
 end
