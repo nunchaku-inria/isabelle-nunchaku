@@ -65,6 +65,10 @@ end;
 structure Nunchaku : NUNCHAKU =
 struct
 
+open Nunchaku_Collect;
+open Nunchaku_Problem;
+open Nunchaku_Translate;
+
 datatype mode = Auto_Try | Try | Normal;
 
 type mode_of_operation_params =
@@ -126,6 +130,8 @@ fun plazy f = Pretty.para (f ());
 fun run_chaku_on_prop state (params as {mode_of_operation_params = {expect, ...},
     timeout_params = {timeout, ...}, ...}) mode i n step subst def_assm_ts nondef_assm_ts goal =
   let
+    val ctxt = Proof.context_of state;
+
     val print_n = if mode = Normal then writeln else K ();
   in
     if getenv "NUNCHAKU" = "" then
@@ -139,7 +145,16 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {expect, ...}
         val deadline = Time.+ (Time.now (), timeout);
 
         fun run goal =
-          (unknownN, []);
+          let
+            val isa_prob = isa_problem_of_goal goal;
+val _ = tracing ("isa_prob = " ^ @{make_string} isa_prob);
+            val nun_prob = nun_problem_of_isa ctxt isa_prob;
+val _ = tracing ("nun_prob = " ^ @{make_string} nun_prob);
+            val nun_prob_str = str_of_nun_problem nun_prob;
+val _ = tracing ("nun_prob_str = " ^ nun_prob_str);
+          in
+            (unknownN, [])
+          end;
 
         val outcome as (outcome_code, _) =
           TimeLimit.timeLimit (Time.+ (timeout, timeout_bonus)) run goal

@@ -52,6 +52,7 @@ sig
   type nun_problem = nun_command list
 
   val nun_fun_ident: ident
+  val nun_equals: ident
 
   val nun_const_of_str: string -> ident
   val nun_var_of_str: string -> ident
@@ -109,6 +110,7 @@ datatype nun_command =
 type nun_problem = nun_command list;
 
 val nun_fun_ident = "->";
+val nun_equals = "=";
 
 fun nun_const_of_str s =
   let val s' = ascii_of s ^ "_" in
@@ -163,16 +165,23 @@ val str_of_nun_tm =
     fun str_of_at_const id tys =
       "@" ^ str_of_nun_ident id ^ str_of_arg_list str_of_nun_ty tys;
 
-    fun str_of _ (NConst (id, [], _)) = str_of_nun_ident id
+    fun str_of_app ty_opt tm tm' =
+      str_of (Option.map (fn ty => NType (nun_fun_ident, [nun_ty_of tm', ty])) ty_opt) tm ^
+      str_of_arg_list (str_of NONE) [tm']
+    and str_of _ (NConst (id, [], _)) = str_of_nun_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
         if ty = ty0 then str_of_nun_ident id else str_of_at_const id tys
-      | str_of _ (NConst (id, tys, _)) = str_of_at_const id tys
+      | str_of _ (NConst (id, tys, _)) =
+        str_of_at_const id tys
       | str_of _ (NVar (id, _)) = str_of_nun_ident id
       | str_of ty_opt (NAbs (tm, tm')) =
         "fn " ^ str_of NONE tm ^ " => " ^ str_of (Option.map nun_range_ty ty_opt) tm'
       | str_of ty_opt (NApp (tm, tm')) =
-        str_of (Option.map (fn ty => NType (nun_fun_ident, [nun_ty_of tm', ty])) ty_opt) tm ^
-        str_of_arg_list (str_of NONE) [tm']
+        (case tm of
+          NApp (NConst (id, _, _), tm1) =>
+          if id = nun_equals then str_of NONE tm1 ^ " = " ^ str_of (SOME (nun_ty_of tm')) tm'
+          else str_of_app ty_opt tm tm'
+        | _ => str_of_app ty_opt tm tm');
   in
     str_of NONE
   end;
