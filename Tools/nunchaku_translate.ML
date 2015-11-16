@@ -24,9 +24,9 @@ fun flip_quote s =
     SOME s' => s'
   | NONE => prefix "'" s);
 
-fun nun_ty_of_isa (Type (s, Ts)) = NType (nun_const_of_str s, map nun_ty_of_isa Ts)
-  | nun_ty_of_isa (TFree (s, _)) = NType (nun_const_of_str (flip_quote s), [])
-  | nun_ty_of_isa (TVar (x, _)) = NTVar (nun_var_of_str (flip_quote (string_of_indexname x)));
+fun nun_ty_of_isa (Type (s, Ts)) = NType (nun_tconst_of_str s, map nun_ty_of_isa Ts)
+  | nun_ty_of_isa (TFree (s, _)) = NType (nun_tconst_of_str (flip_quote s), [])
+  | nun_ty_of_isa (TVar (x, _)) = NTVar (nun_tvar_of_str (flip_quote (string_of_indexname x)));
 
 fun nun_tm_of_isa ctxt t =
   let

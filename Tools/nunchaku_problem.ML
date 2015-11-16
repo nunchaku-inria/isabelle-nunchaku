@@ -54,6 +54,8 @@ sig
   val nun_fun_ident: ident
   val nun_equals: ident
 
+  val nun_tconst_of_str: string -> ident
+  val nun_tvar_of_str: string -> ident
   val nun_const_of_str: string -> ident
   val nun_var_of_str: string -> ident
 
@@ -112,17 +114,20 @@ type nun_problem = nun_command list;
 val nun_fun_ident = "->";
 val nun_equals = "=";
 
-fun nun_const_of_str s =
-  let val s' = ascii_of s ^ "_" in
-    if Char.isLower (String.sub (s', 0)) then s'
-    else "c" ^ s' ^ "_"
+fun gen_nun_const_of_str pre suf s =
+  let val s' = ascii_of s ^ suf in
+    if Char.isLower (String.sub (s', 0)) then s' else pre ^ s' ^ suf
   end;
 
-fun nun_var_of_str s =
-  let val s' = ascii_of s in
-    if Char.isUpper (String.sub (s', 0)) then s'
-    else "V" ^ s' ^ "_"
+fun gen_nun_var_of_str pre suf s =
+  let val s' = ascii_of s ^ suf in
+    if Char.isUpper (String.sub (s', 0)) then s' else pre ^ s' ^ suf
   end;
+
+val nun_tconst_of_str = gen_nun_const_of_str "y" "$";
+val nun_tvar_of_str = gen_nun_var_of_str "A" "$";
+val nun_const_of_str = gen_nun_const_of_str "c" "_";
+val nun_var_of_str = gen_nun_var_of_str "V" "_";
 
 fun nun_range_ty (NType (id, [_, ty])) = if id = nun_fun_ident then ty else raise Fail "non-fun"
   | nun_range_ty _ = raise Fail "non-fun";
