@@ -89,12 +89,6 @@ fun atomize_toward_False ctxt t =
     if fastype_of t' = HOLogic.boolT then t' else @{const False}
   end;
 
-fun eq_Type_root (Type (s, _), Type (s', _)) = (s = s')
-  | eq_Type_root (T, T') = (T = T');
-
-fun tyvars_of_arity n =
-  map (fn i => TVar (("'a", i), @{sort type})) (1 upto n);
-
 val is_typ_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 val is_const_builtin =
   member (op =) [@{const_name conj}, @{const_name disj}, @{const_name HOL.eq}, @{const_name False},
