@@ -51,7 +51,8 @@ sig
 
   type nun_problem = nun_command list
 
-  val nun_fun_ident: ident
+  val nun_fun: ident
+  val nun_prop: ident
 
   val nun_conj: ident
   val nun_disj: ident
@@ -118,7 +119,8 @@ datatype nun_command =
 
 type nun_problem = nun_command list;
 
-val nun_fun_ident = "->";
+val nun_fun = "->";
+val nun_prop = "prop";
 
 val nun_conj = "&&";
 val nun_disj = "||";
@@ -145,12 +147,12 @@ val nun_tvar_of_str = gen_nun_var_of_str "A" "__";
 val nun_const_of_str = gen_nun_const_of_str "c" "_";
 val nun_var_of_str = gen_nun_var_of_str "V" "_";
 
-fun nun_range_ty (NType (id, [_, ty])) = if id = nun_fun_ident then ty else raise Fail "non-fun"
+fun nun_range_ty (NType (id, [_, ty])) = if id = nun_fun then ty else raise Fail "non-fun"
   | nun_range_ty _ = raise Fail "non-fun";
 
 fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NVar (_, ty)) = ty
-  | nun_ty_of (NAbs (tm, tm')) = NType (nun_fun_ident, [nun_ty_of tm, nun_ty_of tm'])
+  | nun_ty_of (NAbs (tm, tm')) = NType (nun_fun, [nun_ty_of tm, nun_ty_of tm'])
   | nun_ty_of (NApp (tm, _)) = nun_range_ty (nun_ty_of tm);
 
 fun str_of_nun_ident id = id;
@@ -158,11 +160,10 @@ fun str_of_nun_ident id = id;
 val str_of_nun_ty =
   let
     fun str_of maybe_parens (NType (id, tys)) =
-      if id = nun_fun_ident then
+      if id = nun_fun then
         (case tys of
           [ty, ty'] =>
-          str_of parens ty ^ " " ^ nun_fun_ident ^ " " ^ str_of maybe_parens ty'
-          |> maybe_parens)
+          maybe_parens (str_of parens ty ^ " " ^ nun_fun ^ " " ^ str_of maybe_parens ty'))
       else
         id ^ str_of_arg_list (str_of I) tys
     | str_of _ (NTVar id) = str_of_nun_ident id
@@ -178,7 +179,7 @@ val str_of_nun_tm =
     fun str_of_app ty_opt tm tm' =
       let
         val ty_opt' =
-          try (Option.map (fn ty => NType (nun_fun_ident, [nun_ty_of tm', ty]))) ty_opt
+          try (Option.map (fn ty => NType (nun_fun, [nun_ty_of tm', ty]))) ty_opt
           |> the_default NONE;
       in
         str_of ty_opt' tm ^ str_of_arg_list (str_of NONE) [tm']
