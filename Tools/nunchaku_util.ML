@@ -13,6 +13,7 @@ sig
   val parse_bool_option: bool -> string -> string -> bool option
   val parse_time: string -> string -> Time.time
   val ascii_of: string -> string
+  val unascii_of: string -> string
   val with_overlord_file: string -> string -> (Path.T -> 'a) -> 'a
   val with_tmp_or_overlord_file: bool -> string -> string -> (Path.T -> 'a) -> 'a
 end;
@@ -33,6 +34,7 @@ fun str_of_and_list str_of_elem =
 val parse_bool_option = Sledgehammer_Util.parse_bool_option;
 val parse_time = Sledgehammer_Util.parse_time;
 val ascii_of = ATP_Problem_Generate.ascii_of;
+val unascii_of = ATP_Problem_Generate.unascii_of;
 
 fun with_overlord_file name ext f =
   let val path = Path.explode ("$ISABELLE_HOME_USER/" ^ name ^ "." ^ ext) in

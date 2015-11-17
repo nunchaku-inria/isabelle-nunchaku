@@ -156,10 +156,11 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, ove
             val goal =
               if falsify then Logic.mk_implies (original_goal, @{prop False}) else original_goal;
             val isa_prob = isa_problem_of_goal ctxt goal;
-val _ = tracing ("isa_prob:\n" ^ str_of_isa_problem ctxt isa_prob);
-            val nun_prob = nun_problem_of_isa ctxt isa_prob;
-val _ = tracing ("nun_prob = " ^ str_of_nun_problem nun_prob);
-            val nun_outcome = solve_nun_problem tool_params nun_prob;
+val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
+            val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
+            val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
+val _ = tracing ("*** NICE NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
+            val nun_outcome = solve_nun_problem tool_params nice_nun_prob;
 
             val outcome as (outcome_code, _) =
               (case nun_outcome of

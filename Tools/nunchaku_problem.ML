@@ -51,6 +51,10 @@ sig
 
   type nun_problem = nun_command list
 
+  type name_pool =
+    {nice_of_ugly: string Symtab.table,
+     nice_but_taken: unit Symtab.table}
+
   val nun_fun: ident
   val nun_prop: ident
 
@@ -67,6 +71,10 @@ sig
   val nun_const_of_str: string -> ident
   val nun_var_of_str: string -> ident
 
+  val fold_map_nun_problem_idents: (string -> 'a -> string * 'a) -> nun_problem -> 'a ->
+    nun_problem * 'a
+
+  val nice_nun_problem: nun_problem -> nun_problem * name_pool
   val str_of_nun_problem: nun_problem -> string
 end;
 
@@ -119,6 +127,10 @@ datatype nun_command =
 
 type nun_problem = nun_command list;
 
+type name_pool =
+  {nice_of_ugly: string Symtab.table,
+   nice_but_taken: unit Symtab.table};
+
 val nun_type = "type";
 
 val nun_fun = "->";
@@ -144,6 +156,8 @@ fun gen_nun_var_of_str pre suf s =
     if Char.isUpper (String.sub (s', 0)) then s' else pre ^ s'
   end;
 
+fun is_user_ident s = String.isSuffix "_" s;
+
 val nun_tconst_of_str = gen_nun_const_of_str "y" "__";
 val nun_tvar_of_str = gen_nun_var_of_str "A" "__";
 val nun_const_of_str = gen_nun_const_of_str "c" "_";
@@ -157,9 +171,120 @@ fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NAbs (tm, tm')) = NType (nun_fun, [nun_ty_of tm, nun_ty_of tm'])
   | nun_ty_of (NApp (tm, _)) = nun_range_ty (nun_ty_of tm);
 
+fun fold_map_ty_idents f (NType (id, tys)) =
+    f id
+    ##>> fold_map (fold_map_ty_idents f) tys
+    #>> NType
+  | fold_map_ty_idents f (NTVar id) =
+    f id
+    #>> NTVar;
+
+fun fold_map_tm_idents f (NConst (id, tys, ty)) =
+    f id
+    ##>> fold_map (fold_map_ty_idents f) tys
+    ##>> fold_map_ty_idents f ty
+    #>> (Scan.triple1 #> NConst)
+  | fold_map_tm_idents f (NVar (id, ty)) =
+    f id
+    ##>> fold_map_ty_idents f ty
+    #>> NVar
+  | fold_map_tm_idents f (NAbs (tm, tm')) =
+    fold_map_tm_idents f tm
+    ##>> fold_map_tm_idents f tm'
+    #>> NAbs
+  | fold_map_tm_idents f (NApp (tm, tm')) =
+    fold_map_tm_idents f tm
+    ##>> fold_map_tm_idents f tm'
+    #>> NApp;
+
+fun fold_map_nun_ctr_spec_idents f {ctr_id, arg_tys} =
+  f ctr_id
+  ##>> fold_map (fold_map_ty_idents f) arg_tys
+  #>> (fn (ctr_id, arg_tys) => {ctr_id = ctr_id, arg_tys = arg_tys});
+
+fun fold_map_nun_co_data_spec_idents f {ty, ctrs} =
+  fold_map_ty_idents f ty
+  ##>> fold_map (fold_map_nun_ctr_spec_idents f) ctrs
+  #>> (fn (ty, ctrs) => {ty = ty, ctrs = ctrs});
+
+fun fold_map_nun_rec_spec_idents f {func, eqs} =
+  fold_map_tm_idents f func
+  ##>> fold_map (fold_map_tm_idents f) eqs
+  #>> (fn (func, eqs) => {func = func, eqs = eqs});
+
+fun fold_map_nun_aliased_func_idents f {func, alias} =
+  fold_map_tm_idents f func
+  ##>> fold_map_tm_idents f alias
+  #>> (fn (func, alias) => {func = func, alias = alias});
+
+fun fold_map_nun_spec_spec_idents f {funcs, props} =
+  fold_map (fold_map_nun_aliased_func_idents f) funcs
+  ##>> fold_map (fold_map_tm_idents f) props
+  #>> (fn (funcs, props) => {funcs = funcs, props = props});
+
+fun fold_map_nun_command_idents f (NTVal ty) =
+    fold_map_ty_idents f ty
+    #>> NTVal
+  | fold_map_nun_command_idents f (NData specs) =
+    fold_map (fold_map_nun_co_data_spec_idents f) specs
+    #>> NData
+  | fold_map_nun_command_idents f (NCodata specs) =
+    fold_map (fold_map_nun_co_data_spec_idents f) specs
+    #>> NCodata
+  | fold_map_nun_command_idents f (NVal (tm, ty)) =
+    fold_map_tm_idents f tm
+    ##>> fold_map_ty_idents f ty
+    #>> NVal
+  | fold_map_nun_command_idents f (NRec specs) =
+    fold_map (fold_map_nun_rec_spec_idents f) specs
+    #>> NRec
+  | fold_map_nun_command_idents f (NSpec spec) =
+    fold_map_nun_spec_spec_idents f spec
+    #>> NSpec
+  | fold_map_nun_command_idents f (NAxiom tm) =
+    fold_map_tm_idents f tm
+    #>> NAxiom
+  | fold_map_nun_command_idents f (NGoal tm) =
+    fold_map_tm_idents f tm
+    #>> NGoal;
+
+fun fold_map_nun_problem_idents f =
+  fold_map (fold_map_nun_command_idents f);
+
+val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
+
+val nice_of_ugly_suggestion = unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
+
+fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
+  let
+    fun alloc nice_sugg =
+      (case Symtab.lookup nice_but_taken nice_sugg of
+        NONE =>
+        (nice_sugg,
+         {nice_of_ugly = Symtab.update_new (ugly, nice_sugg) nice_of_ugly,
+          nice_but_taken = Symtab.update_new (nice_sugg, ()) nice_but_taken})
+      | SOME () => alloc (nice_sugg ^ nice_sugg0));
+  in
+    alloc nice_sugg0
+  end;
+
+fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
+  if is_user_ident ugly then
+    (case Symtab.lookup nice_of_ugly ugly of
+      NONE =>
+      let val nice_sugg = nice_of_ugly_suggestion ugly in
+        allocate_nice ugly pool nice_sugg
+      end
+    | SOME nice => (nice, pool))
+  else
+    (ugly, pool);
+
+fun nice_nun_problem prob =
+  fold_map_nun_problem_idents nice_ident prob empty_name_pool;
+
 fun str_of_ident id = id;
 
-val str_of_nun_ty =
+val str_of_ty =
   let
     fun str_of maybe_parens (NType (id, tys)) =
       if id = nun_fun then
@@ -173,10 +298,10 @@ val str_of_nun_ty =
     str_of I
   end;
 
-val str_of_nun_tm =
+val str_of_tm =
   let
     fun str_of_at_const id tys =
-      "@" ^ str_of_ident id ^ str_of_arg_list str_of_nun_ty tys;
+      "@" ^ str_of_ident id ^ str_of_arg_list str_of_ty tys;
 
     fun str_of_app ty_opt tm tm' =
       let
@@ -209,20 +334,20 @@ val str_of_nun_tm =
   end;
 
 fun str_of_nun_ctr_spec {ctr_id, arg_tys} =
-  str_of_ident ctr_id ^ str_of_arg_list str_of_nun_ty arg_tys;
+  str_of_ident ctr_id ^ str_of_arg_list str_of_ty arg_tys;
 
 fun str_of_nun_co_data_spec {ty, ctrs} =
-  str_of_nun_ty ty ^ " =\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
+  str_of_ty ty ^ " =\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
 
 fun str_of_nun_rec_spec {func, eqs} =
-  str_of_nun_tm func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_nun_tm eqs);
+  str_of_tm func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm eqs);
 
 fun str_of_nun_aliased_func {func, alias} =
-  str_of_nun_tm func ^ " as " ^ str_of_nun_tm alias;
+  str_of_tm func ^ " as " ^ str_of_tm alias;
 
 fun str_of_nun_spec_spec {funcs, props} =
   space_implode " and " (map str_of_nun_aliased_func funcs) ^ " :=\n" ^
-  space_implode ";\n  " (map str_of_nun_tm props);
+  space_implode ";\n  " (map str_of_tm props);
 
 fun str_of_nun_command (NTVal ty) =
     (case ty of
@@ -232,11 +357,11 @@ fun str_of_nun_command (NTVal ty) =
     | _ => raise Fail "non-NType")
   | str_of_nun_command (NData specs) = "data " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NCodata specs) = "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
-  | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_nun_tm tm ^ " : " ^ str_of_nun_ty ty
+  | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
   | str_of_nun_command (NRec specs) = "rec " ^ str_of_and_list str_of_nun_rec_spec specs
   | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_spec_spec spec
-  | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_nun_tm tm
-  | str_of_nun_command (NGoal tm) = "goal " ^ str_of_nun_tm tm
+  | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_tm tm
+  | str_of_nun_command (NGoal tm) = "goal " ^ str_of_tm tm
 
 val str_of_nun_problem = map (suffix "." o str_of_nun_command) #> cat_lines #> suffix "\n";
 
