@@ -119,6 +119,8 @@ datatype nun_command =
 
 type nun_problem = nun_command list;
 
+val nun_type = "type";
+
 val nun_fun = "->";
 val nun_prop = "prop";
 
@@ -155,7 +157,7 @@ fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NAbs (tm, tm')) = NType (nun_fun, [nun_ty_of tm, nun_ty_of tm'])
   | nun_ty_of (NApp (tm, _)) = nun_range_ty (nun_ty_of tm);
 
-fun str_of_nun_ident id = id;
+fun str_of_ident id = id;
 
 val str_of_nun_ty =
   let
@@ -166,7 +168,7 @@ val str_of_nun_ty =
           maybe_parens (str_of parens ty ^ " " ^ nun_fun ^ " " ^ str_of maybe_parens ty'))
       else
         id ^ str_of_arg_list (str_of I) tys
-    | str_of _ (NTVar id) = str_of_nun_ident id
+    | str_of _ (NTVar id) = str_of_ident id
   in
     str_of I
   end;
@@ -174,7 +176,7 @@ val str_of_nun_ty =
 val str_of_nun_tm =
   let
     fun str_of_at_const id tys =
-      "@" ^ str_of_nun_ident id ^ str_of_arg_list str_of_nun_ty tys;
+      "@" ^ str_of_ident id ^ str_of_arg_list str_of_nun_ty tys;
 
     fun str_of_app ty_opt tm tm' =
       let
@@ -184,12 +186,12 @@ val str_of_nun_tm =
       in
         str_of ty_opt' tm ^ str_of_arg_list (str_of NONE) [tm']
       end
-    and str_of _ (NConst (id, [], _)) = str_of_nun_ident id
+    and str_of _ (NConst (id, [], _)) = str_of_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
-        if ty = ty0 then str_of_nun_ident id else str_of_at_const id tys
+        if ty = ty0 then str_of_ident id else str_of_at_const id tys
       | str_of _ (NConst (id, tys, _)) =
         str_of_at_const id tys
-      | str_of _ (NVar (id, _)) = str_of_nun_ident id
+      | str_of _ (NVar (id, _)) = str_of_ident id
       | str_of ty_opt (NAbs (tm, tm')) =
         "fn " ^ str_of NONE tm ^ " => " ^ str_of (Option.map nun_range_ty ty_opt) tm'
       | str_of ty_opt (NApp (tm, tm')) =
@@ -207,7 +209,7 @@ val str_of_nun_tm =
   end;
 
 fun str_of_nun_ctr_spec {ctr_id, arg_tys} =
-  str_of_nun_ident ctr_id ^ str_of_arg_list str_of_nun_ty arg_tys;
+  str_of_ident ctr_id ^ str_of_arg_list str_of_nun_ty arg_tys;
 
 fun str_of_nun_co_data_spec {ty, ctrs} =
   str_of_nun_ty ty ^ " =\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
@@ -222,7 +224,12 @@ fun str_of_nun_spec_spec {funcs, props} =
   space_implode " and " (map str_of_nun_aliased_func funcs) ^ " :=\n" ^
   space_implode ";\n  " (map str_of_nun_tm props);
 
-fun str_of_nun_command (NTVal ty) = "val " ^ str_of_nun_ty ty ^ " : type"
+fun str_of_nun_command (NTVal ty) =
+    (case ty of
+      NType (id, tys) =>
+      "val " ^ str_of_ident id ^ " : " ^
+      fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
+    | _ => raise Fail "non-NType")
   | str_of_nun_command (NData specs) = "data " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NCodata specs) = "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_nun_tm tm ^ " : " ^ str_of_nun_ty ty
