@@ -37,7 +37,16 @@ fun nun_tm_of_isa ctxt t =
     fun tm_of (Const (s, T)) =
         let
           val Ts = Sign.const_typargs thy (s, T);
-          val id = if s = @{const_name HOL.eq} then nun_equals else nun_const_of_str s;
+          val id =
+            (case s of
+              @{const_name conj} => nun_conj
+            | @{const_name disj} => nun_disj
+            | @{const_name HOL.eq} => nun_equals
+            | @{const_name False} => nun_false
+            | @{const_name implies} => nun_implies
+            | @{const_name Not} => nun_not
+            | @{const_name True} => nun_true
+            | _ => nun_const_of_str s);
         in
           NConst (id, map nun_ty_of_isa Ts, nun_ty_of_isa T)
         end

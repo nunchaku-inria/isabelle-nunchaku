@@ -52,7 +52,14 @@ sig
   type nun_problem = nun_command list
 
   val nun_fun_ident: ident
+
+  val nun_conj: ident
+  val nun_disj: ident
   val nun_equals: ident
+  val nun_false: ident
+  val nun_implies: ident
+  val nun_not: ident
+  val nun_true: ident
 
   val nun_tconst_of_str: string -> ident
   val nun_tvar_of_str: string -> ident
@@ -112,7 +119,16 @@ datatype nun_command =
 type nun_problem = nun_command list;
 
 val nun_fun_ident = "->";
+
+val nun_conj = "&&";
+val nun_disj = "||";
 val nun_equals = "=";
+val nun_false = "false";
+val nun_implies = "=>";
+val nun_not = "~";
+val nun_true = "true";
+
+val is_nun_const_infix = member (op =) [nun_conj, nun_disj, nun_equals, nun_implies];
 
 fun gen_nun_const_of_str pre suf s =
   let val s' = ascii_of s ^ suf in
@@ -137,17 +153,6 @@ fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NAbs (tm, tm')) = NType (nun_fun_ident, [nun_ty_of tm, nun_ty_of tm'])
   | nun_ty_of (NApp (tm, _)) = nun_range_ty (nun_ty_of tm);
 
-val parens = enclose "(" ")";
-
-fun maybe_parens s =
-  s |> String.isSubstring " " s ? parens;
-
-fun str_of_arg_list str_of_arg =
-  map (prefix " " o maybe_parens o str_of_arg) #> space_implode "";
-
-fun str_of_and_list str_of_elem =
-  map str_of_elem #> space_implode "\nand ";
-
 fun str_of_nun_ident id = id;
 
 val str_of_nun_ty =
@@ -171,8 +176,13 @@ val str_of_nun_tm =
       "@" ^ str_of_nun_ident id ^ str_of_arg_list str_of_nun_ty tys;
 
     fun str_of_app ty_opt tm tm' =
-      str_of (Option.map (fn ty => NType (nun_fun_ident, [nun_ty_of tm', ty])) ty_opt) tm ^
-      str_of_arg_list (str_of NONE) [tm']
+      let
+        val ty_opt' =
+          try (Option.map (fn ty => NType (nun_fun_ident, [nun_ty_of tm', ty]))) ty_opt
+          |> the_default NONE;
+      in
+        str_of ty_opt' tm ^ str_of_arg_list (str_of NONE) [tm']
+      end
     and str_of _ (NConst (id, [], _)) = str_of_nun_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
         if ty = ty0 then str_of_nun_ident id else str_of_at_const id tys
@@ -184,8 +194,12 @@ val str_of_nun_tm =
       | str_of ty_opt (NApp (tm, tm')) =
         (case tm of
           NApp (NConst (id, _, _), tm1) =>
-          if id = nun_equals then str_of NONE tm1 ^ " = " ^ str_of (SOME (nun_ty_of tm')) tm'
-          else str_of_app ty_opt tm tm'
+          if is_nun_const_infix id then
+            let val ty_opt' = try nun_ty_of tm' in
+              str_of NONE tm1 ^ " " ^ id ^ " " ^ str_of ty_opt' tm'
+            end
+          else
+            str_of_app ty_opt tm tm'
         | _ => str_of_app ty_opt tm tm');
   in
     str_of NONE

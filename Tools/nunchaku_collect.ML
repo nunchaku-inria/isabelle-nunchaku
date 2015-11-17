@@ -32,10 +32,13 @@ sig
   type isa_problem = isa_command list
 
   val isa_problem_of_goal: Proof.context -> term -> isa_problem
+  val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
 structure Nunchaku_Collect : NUNCHAKU_COLLECT =
 struct
+
+open Nunchaku_Util;
 
 type isa_co_data_spec =
   {typ: typ,
@@ -95,8 +98,10 @@ fun tyvars_of_arity n =
 fun varify_Type_leaves (Type (s, Ts)) = Type (s, tyvars_of_arity (length Ts))
   | varify_Type_leaves T = T;
 
-fun is_typ_builtin s = member (op =) [@{type_name bool}, @{type_name fun}] s;
-fun is_const_builtin s = (s = @{const_name HOL.eq});
+val is_typ_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
+val is_const_builtin =
+  member (op =) [@{const_name HOL.eq}, @{const_name False}, @{const_name implies},
+    @{const_name True}];
 
 fun isa_problem_of_goal ctxt goal0 =
   let
@@ -121,5 +126,34 @@ fun isa_problem_of_goal ctxt goal0 =
   in
     isa_typedecls @ isa_consts @ isa_prob0
   end;
+
+fun str_of_isa_term_with_type ctxt t =
+  Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);
+
+fun str_of_isa_co_data_spec ctxt {typ, ctrs} =
+  Syntax.string_of_typ ctxt typ ^ " =\n  " ^
+  space_implode "\n| " (map (str_of_isa_term_with_type ctxt) ctrs);
+
+fun str_of_isa_rec_spec ctxt {func, eqs} =
+  str_of_isa_term_with_type ctxt func ^ " :=\n  " ^
+  space_implode ";\n  " (map (Syntax.string_of_term ctxt) eqs);
+
+fun str_of_isa_spec_spec ctxt {funcs, props} =
+  space_implode " and " (map (str_of_isa_term_with_type ctxt) funcs) ^ " :=\n" ^
+  space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
+
+fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ ctxt T
+  | str_of_isa_command ctxt (IData specs) =
+    "data " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
+  | str_of_isa_command ctxt (ICodata specs) = 
+    "data " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
+  | str_of_isa_command ctxt (IConst t) = "const " ^ str_of_isa_term_with_type ctxt t
+  | str_of_isa_command ctxt (IRec specs) = "rec " ^ str_of_and_list (str_of_isa_rec_spec ctxt) specs
+  | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_spec_spec ctxt spec
+  | str_of_isa_command ctxt (IAxiom t) = "axiom " ^ Syntax.string_of_term ctxt t
+  | str_of_isa_command ctxt (IGoal t) = "goal " ^ Syntax.string_of_term ctxt t;
+
+fun str_of_isa_problem ctxt =
+  map (suffix "." o str_of_isa_command ctxt) #> cat_lines #> suffix "\n";
 
 end;

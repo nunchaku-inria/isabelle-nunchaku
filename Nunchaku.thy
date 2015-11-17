@@ -14,7 +14,7 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-lemma "x = (x::'x)"
+lemma "x = (x::'x) \<and> y = (y::'y)"
 nunchaku[overlord]
 oops
 
