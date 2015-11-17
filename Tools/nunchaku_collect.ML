@@ -100,8 +100,8 @@ fun varify_Type_leaves (Type (s, Ts)) = Type (s, tyvars_of_arity (length Ts))
 
 val is_typ_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 val is_const_builtin =
-  member (op =) [@{const_name HOL.eq}, @{const_name False}, @{const_name implies},
-    @{const_name True}];
+  member (op =) [@{const_name conj}, @{const_name disj}, @{const_name HOL.eq}, @{const_name False},
+    @{const_name implies}, @{const_name True}];
 
 fun isa_problem_of_goal ctxt goal0 =
   let
