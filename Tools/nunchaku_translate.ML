@@ -40,7 +40,7 @@ fun nun_ty_of_isa enc (Type (s, Ts)) =
         Mono =>
         let
           val args' = space_implode (ascii_of ",") (map str_of_ty tys);
-          val id' = id ^ ascii_of "(" ^ args' ^ ascii_of ")";
+          val id' = ascii_of "(" ^ args' ^ ascii_of ")." ^ id;
         in
           NType (id', [])
         end
