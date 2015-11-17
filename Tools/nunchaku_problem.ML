@@ -74,6 +74,10 @@ sig
   val fold_map_nun_problem_idents: (string -> 'a -> string * 'a) -> nun_problem -> 'a ->
     nun_problem * 'a
 
+  val str_of_ident: ident -> string
+  val str_of_ty: ty -> string
+  val str_of_tm: tm -> string
+
   val nice_nun_problem: nun_problem -> nun_problem * name_pool
   val str_of_nun_problem: nun_problem -> string
 end;
@@ -253,35 +257,6 @@ fun fold_map_nun_problem_idents f =
 
 val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
 
-val nice_of_ugly_suggestion = unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
-
-fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
-  let
-    fun alloc nice_sugg =
-      (case Symtab.lookup nice_but_taken nice_sugg of
-        NONE =>
-        (nice_sugg,
-         {nice_of_ugly = Symtab.update_new (ugly, nice_sugg) nice_of_ugly,
-          nice_but_taken = Symtab.update_new (nice_sugg, ()) nice_but_taken})
-      | SOME () => alloc (nice_sugg ^ nice_sugg0));
-  in
-    alloc nice_sugg0
-  end;
-
-fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
-  if is_user_ident ugly then
-    (case Symtab.lookup nice_of_ugly ugly of
-      NONE =>
-      let val nice_sugg = nice_of_ugly_suggestion ugly in
-        allocate_nice ugly pool nice_sugg
-      end
-    | SOME nice => (nice, pool))
-  else
-    (ugly, pool);
-
-fun nice_nun_problem prob =
-  fold_map_nun_problem_idents nice_ident prob empty_name_pool;
-
 fun str_of_ident id = id;
 
 val str_of_ty =
@@ -332,6 +307,35 @@ val str_of_tm =
   in
     str_of NONE
   end;
+
+val nice_of_ugly_suggestion = unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
+
+fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
+  let
+    fun alloc nice_sugg =
+      (case Symtab.lookup nice_but_taken nice_sugg of
+        NONE =>
+        (nice_sugg,
+         {nice_of_ugly = Symtab.update_new (ugly, nice_sugg) nice_of_ugly,
+          nice_but_taken = Symtab.update_new (nice_sugg, ()) nice_but_taken})
+      | SOME () => alloc (nice_sugg ^ nice_sugg0));
+  in
+    alloc nice_sugg0
+  end;
+
+fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
+  if is_user_ident ugly then
+    (case Symtab.lookup nice_of_ugly ugly of
+      NONE =>
+      let val nice_sugg = nice_of_ugly_suggestion ugly in
+        allocate_nice ugly pool nice_sugg
+      end
+    | SOME nice => (nice, pool))
+  else
+    (ugly, pool);
+
+fun nice_nun_problem prob =
+  fold_map_nun_problem_idents nice_ident prob empty_name_pool;
 
 fun str_of_nun_ctr_spec {ctr_id, arg_tys} =
   str_of_ident ctr_id ^ str_of_arg_list str_of_ty arg_tys;
