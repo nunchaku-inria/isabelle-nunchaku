@@ -134,12 +134,12 @@ val is_nun_const_infix = member (op =) [nun_conj, nun_disj, nun_equals, nun_impl
 
 fun gen_nun_const_of_str pre suf s =
   let val s' = ascii_of s ^ suf in
-    if Char.isLower (String.sub (s', 0)) then s' else pre ^ s' ^ suf
+    if Char.isLower (String.sub (s', 0)) then s' else pre ^ s'
   end;
 
 fun gen_nun_var_of_str pre suf s =
   let val s' = ascii_of s ^ suf in
-    if Char.isUpper (String.sub (s', 0)) then s' else pre ^ s' ^ suf
+    if Char.isUpper (String.sub (s', 0)) then s' else pre ^ s'
   end;
 
 val nun_tconst_of_str = gen_nun_const_of_str "y" "__";

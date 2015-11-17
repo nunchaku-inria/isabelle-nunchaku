@@ -14,7 +14,7 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-lemma "x = True | x = False"
+lemma "x = None"
 nunchaku[overlord]
 oops
 
