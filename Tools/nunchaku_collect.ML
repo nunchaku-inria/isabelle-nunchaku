@@ -95,9 +95,6 @@ fun eq_Type_root (Type (s, _), Type (s', _)) = (s = s')
 fun tyvars_of_arity n =
   map (fn i => TVar (("'a", i), @{sort type})) (1 upto n);
 
-fun varify_Type_leaves (Type (s, Ts)) = Type (s, tyvars_of_arity (length Ts))
-  | varify_Type_leaves T = T;
-
 val is_typ_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 val is_const_builtin =
   member (op =) [@{const_name conj}, @{const_name disj}, @{const_name HOL.eq}, @{const_name False},
@@ -108,23 +105,14 @@ fun isa_problem_of_goal ctxt goal0 =
     val goal = atomize_toward_False ctxt goal0;
     val isa_prob0 = [IGoal goal];
 
-    fun add_types (T as Type (s, Ts)) =
-        (not (is_typ_builtin s) ? insert eq_Type_root T) #> fold add_types Ts
-      | add_types (T as TFree _) = insert (op =) T;
+    val (tfrees, frees) =
+      fold (isa_cmd_fold_terms_types (apfst o Term.add_tfreesT) (apsnd o Term.add_frees)) isa_prob0
+        ([], []);
 
-    fun add_consts (t as Const (s, _)) = not (is_const_builtin s) ? insert (op aconv) t
-      | add_consts (t as Free _) = insert (op aconv) t
-      | add_consts (t $ u) = add_consts t #> add_consts u
-      | add_consts (Abs (_, _, t)) = add_consts t
-      | add_consts _ = I;
-
-    val (types, consts) =
-      fold (isa_cmd_fold_terms_types (apfst o add_types) (apsnd o add_consts)) isa_prob0 ([], []);
-
-    val isa_typedecls = map (ITypedecl o varify_Type_leaves) types;
-    val isa_consts = map IConst consts;
+    val isa_tfrees = map (ITypedecl o TFree) tfrees;
+    val isa_frees = map (IConst o Free) frees;
   in
-    isa_typedecls @ isa_consts @ isa_prob0
+    isa_tfrees @ isa_frees @ isa_prob0
   end;
 
 fun str_of_isa_term_with_type ctxt t =
