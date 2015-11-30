@@ -64,49 +64,130 @@ datatype isa_command =
 
 type isa_problem = isa_command list;
 
-fun isa_cmd_fold_terms_types f_ty f_tm0 =
-  let
-    fun f_tm t = f_tm0 t #> fold_types f_ty t;
-
-    fun co_data_spec_fold {typ, ctrs} = f_ty typ #> fold f_tm ctrs;
-    fun rec_spec_fold {func, eqs} = f_tm func #> fold f_tm eqs;
-    fun spec_spec_fold {funcs, props} = fold f_tm funcs #> fold f_tm props;
-
-    fun cmd_fold (ITypedecl T) = f_ty T
-      | cmd_fold (IData specs) = fold co_data_spec_fold specs
-      | cmd_fold (ICodata specs) = fold co_data_spec_fold specs
-      | cmd_fold (IConst t) = f_tm t
-      | cmd_fold (IRec specs) = fold rec_spec_fold specs
-      | cmd_fold (ISpec spec) = spec_spec_fold spec
-      | cmd_fold (IAxiom t) = f_tm t
-      | cmd_fold (IGoal t) = f_tm t;
-  in
-    cmd_fold
-  end;
-
 fun atomize_toward_False ctxt t =
   let val t' = Object_Logic.atomize_term ctxt t in
     if fastype_of t' = HOLogic.boolT then t' else @{const False}
   end;
+
+fun mutual_co_datatypes_of ctxt T_name =
+  (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
+    SOME (fp_sugar as {fp, fp_res = {Ts, ...}, ...}) =>
+    SOME (fp,
+      (case Ts of
+        [_] => [fp_sugar]
+      | _ => map (the o BNF_FP_Def_Sugar.fp_sugar_of ctxt o fst o dest_Type) Ts)
+      |> map (#ctr_sugar o #fp_ctr_sugar))
+  | NONE =>
+    (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
+      SOME (ctr_sugar as {kind, ...}) =>
+      (case kind of
+        Ctr_Sugar.Datatype => SOME (BNF_Util.Least_FP, [ctr_sugar])
+      | Ctr_Sugar.Codatatype => SOME (BNF_Util.Greatest_FP, [ctr_sugar])
+      | _ => NONE)
+    | NONE => NONE));
+
+fun is_co_data_ctr ctxt (s, T) =
+  (case body_type T of
+    dataT as Type (dataT_name, Ts) =>
+    let
+      fun is_right_ctr (t' as Const (s', T')) =
+        s = s' andalso fastype_of (Ctr_Sugar.mk_ctr Ts t') = T;
+
+      val ctrs =
+        (case Ctr_Sugar.ctr_sugar_of ctxt dataT_name of
+          SOME {ctrs, ...} => ctrs
+        | _ => []);
+    in
+      exists is_right_ctr ctrs
+    end
+  | _  => false);
 
 val is_typ_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 val is_const_builtin =
   member (op =) [@{const_name conj}, @{const_name disj}, @{const_name HOL.eq}, @{const_name False},
     @{const_name implies}, @{const_name True}];
 
+fun isa_cmd_of_ctr_sugars fp (ctr_sugars : Ctr_Sugar.ctr_sugar list) =
+  (case fp of
+    BNF_Util.Least_FP => IData
+  | BNF_Util.Greatest_FP => ICodata)
+    (map (fn {T, ctrs, ...} => {typ = T, ctrs = ctrs}) ctr_sugars);
+
+(* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
+val axioms_max_depth = 255
+
 fun isa_problem_of_goal ctxt goal0 =
   let
+    fun consider_sort depth T S = I;
+
+    fun consider_type depth T =
+      (case T of
+        Type (@{type_name fun}, Ts) => fold (consider_type depth) Ts
+      | @{typ prop} => I
+      | @{typ bool} => I
+      | _ => (fn (seens as (seenS, seenT, seen), prob_tuple) =>
+        if member (op =) seenT T then
+          (seens, prob_tuple)
+        else
+          let
+            val seenT = T :: seenT;
+            val seens = (seenS, seenT, seen);
+          in
+            (case T of
+              TFree (_, S) => consider_sort depth T S
+            | TVar (_, S) => consider_sort depth T S
+            | Type (s, Ts) =>
+              fold (consider_type depth) Ts
+              #> (case mutual_co_datatypes_of ctxt s of
+                   SOME (kind, ctr_sugars) =>
+                   (fn accum as (seens, (typedecls, co_datas, consts, recs_specs, axioms)) =>
+                       let
+                         val co_data = isa_cmd_of_ctr_sugars kind ctr_sugars;
+                         val prob_tuple =
+                           (typedecls, co_data :: co_datas, consts, recs_specs, axioms);
+                       in
+                         (seens, prob_tuple)
+                       end)
+                 | NONE => I))
+              (seens, prob_tuple)
+          end));
+
+    fun consider_term depth t =
+      (case t of
+        t1 $ t2 => fold (consider_term depth) [t1, t2]
+      | Var (_, T) => consider_type depth T
+      | Bound _ => I
+      | Abs (_, T, t') =>
+        consider_term depth t'
+        #> consider_type depth T
+      | _ => (fn (seens as (seenS, seenT, seen), prob_tuple) =>
+          if member (op aconv) seen t then
+            (seens, prob_tuple)
+          else if depth > axioms_max_depth then
+            raise Fail "too many nested axioms"
+          else
+            let
+              val seen = t :: seen;
+              val seens = (seenS, seenT, seen);
+            in
+              (case t of
+                Const (x as (s, T)) =>
+                (if is_const_builtin s orelse is_co_data_ctr ctxt x then
+                   (seens, prob_tuple)
+                 else
+                   (seens, prob_tuple))
+                |> consider_type depth T
+              | Free (_, T) =>
+                (seens, prob_tuple)
+                |> consider_type depth T)
+            end));
+
     val goal = atomize_toward_False ctxt goal0;
-    val isa_prob0 = [IGoal goal];
 
-    val (tfrees, frees) =
-      fold (isa_cmd_fold_terms_types (apfst o Term.add_tfreesT) (apsnd o Term.add_frees)) isa_prob0
-        ([], []);
-
-    val isa_tfrees = map (ITypedecl o TFree) tfrees;
-    val isa_frees = map (IConst o Free) frees;
+    val (_, (typedecls, co_datas, consts, recs_specs, axioms)) =
+      consider_term 0 goal (([], [], []), ([], [], [], [], []));
   in
-    isa_tfrees @ isa_frees @ isa_prob0
+    typedecls @ co_datas @ consts @ recs_specs @ axioms @ [IGoal goal]
   end;
 
 fun str_of_isa_term_with_type ctxt t =
