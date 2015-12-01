@@ -75,6 +75,13 @@ fun atomize_toward_False ctxt t =
     if fastype_of t' = HOLogic.boolT then t' else @{const False}
   end;
 
+fun close_form t =
+  fold (fn ((s, i), T) => fn t' =>
+      HOLogic.all_const T $ Abs (s, T, abstract_over (Var ((s, i), T), t')))
+    (Term.add_vars t []) t;
+
+fun preprocess_prop ctxt = atomize_toward_False ctxt #> close_form;
+
 fun mutual_co_datatypes_of ctxt T_name =
   (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
     SOME (fp_sugar as {fp, fp_res = {Ts, ...}, ...}) =>
@@ -108,10 +115,70 @@ fun is_co_datatype_ctr ctxt (s, T) =
     end
   | _  => false);
 
+fun head_of_def_lhs (Const (@{const_name HOL.eq}, _) $ t $ _) = head_of t
+  | head_of_def_lhs t = head_of t;
+
+fun instantiate_constant_type_in_term ctxt const target =
+  let
+    val thy = Proof_Context.theory_of ctxt;
+
+    fun subst_for (Const (s', T')) =
+        (case const of
+          Const (s, T) =>
+          if s = s' then
+            SOME (Sign.typ_match thy (T', T) Vartab.empty)
+            handle Type.TYPE_MATCH => NONE
+          else
+            NONE
+        | _ => NONE)
+      | subst_for (t as Free _) = if t = const then SOME Vartab.empty else NONE
+      | subst_for (t1 $ t2) = (case subst_for t1 of SOME subst => SOME subst | NONE => subst_for t2)
+      | subst_for (Abs (_, _, t')) = subst_for t'
+      | subst_for _ = NONE;
+  in
+    (case subst_for target of
+      SOME subst => Envir.subst_term_types subst target
+    | NONE => raise Type.TYPE_MATCH)
+  end;
+
+fun mutual_recs_or_spec_of ctxt const =
+  let
+    val thy = Proof_Context.theory_of ctxt;
+
+    val const_T = fastype_of const;
+
+    fun subst_of t0 =
+      try (Sign.typ_match thy (fastype_of t0, const_T)) Vartab.empty;
+
+    fun process_spec is_rec (ts0, ths) =
+      (case get_first subst_of ts0 of
+        SOME subst =>
+        (let
+           val ts = map (Envir.subst_term_types subst) ts0;
+           val props = map (instantiate_constant_type_in_term ctxt const o Thm.prop_of) ths;
+         in
+           if exists (exists (exists_type (exists_subtype is_TVar))) [ts, props] then NONE
+           else SOME (is_rec, ts, props)
+         end
+         handle Type.TYPE_MATCH => NONE)
+      | NONE => NONE);
+
+    val specs = Spec_Rules.retrieve ctxt const;
+  in
+    (case find_first (fn (class, _) => class = Spec_Rules.Equational) specs of
+      SOME (_, spec) => process_spec true spec
+    | NONE =>
+      (case find_first (fn (class, _) => class = Spec_Rules.Unknown (* risky *)) specs of
+        SOME (_, spec) => process_spec false spec
+      | NONE => NONE))
+  end;
+
 val is_typ_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
+
 val is_const_builtin =
-  member (op =) [@{const_name conj}, @{const_name disj}, @{const_name HOL.eq}, @{const_name False},
-    @{const_name implies}, @{const_name Not}, @{const_name True}];
+  member (op =) [@{const_name All}, @{const_name conj}, @{const_name disj}, @{const_name HOL.eq},
+    @{const_name Ex}, @{const_name False}, @{const_name implies}, @{const_name Not},
+    @{const_name True}];
 
 fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) =
   (case typ of Type (s, _) => s);
@@ -263,14 +330,49 @@ fun isa_problem_of_goal ctxt goal0 =
                 (if is_const_builtin s orelse is_co_datatype_ctr ctxt x then
                    (seens, prob)
                  else
-                   (seens, IConst t :: prob))
+                   let val specs = Spec_Rules.retrieve ctxt t in
+                     (case mutual_recs_or_spec_of ctxt t of
+                       SOME (is_rec, funcs, props0) =>
+                       let
+                         val props = map (preprocess_prop ctxt) props0;
+
+                         fun partition_eqs eqs =
+                           if length funcs = 1 then
+                             SOME [eqs]
+                           else
+                             let
+                               fun eqs_of_func func =
+                                 filter (fn prop => head_of_def_lhs prop aconv func) props;
+
+                               val eqss = map eqs_of_func funcs;
+                             in
+                               if eq_set (op aconv) (eqs, flat eqss) then SOME eqss else NONE
+                             end;
+
+                         val rec_or_spec =
+                           (if is_rec then
+                              (case partition_eqs props of
+                                SOME eqss =>
+                                IRec (map2 (fn func => fn eqs => {func = func, eqs = eqs})
+                                  funcs eqss)
+                              | NONE => ISpec {funcs = funcs, props = props})
+                            else
+                              ISpec {funcs = funcs, props = props});
+
+                         val prob = rec_or_spec :: prob;
+                       in
+                         ((seenS, seenT, union (op aconv) funcs seen), prob)
+                         |> fold (consider_term (depth + 1)) props
+                       end
+                     | NONE => (seens, IConst t :: prob))
+                   end)
                 |> consider_type depth T
               | Free (_, T) =>
                 (seens, IConst t :: prob)
                 |> consider_type depth T)
             end));
 
-    val goal = atomize_toward_False ctxt goal0;
+    val goal = preprocess_prop ctxt goal0;
   in
     (([], [], []), [IGoal goal])
     |> consider_term 0 goal

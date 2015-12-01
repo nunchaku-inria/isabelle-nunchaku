@@ -53,9 +53,11 @@ fun nun_tm_of_isa ctxt t =
           val Ts = Sign.const_typargs thy (s, T);
           val id =
             (case s of
-              @{const_name conj} => nun_conj
+              @{const_name All} => nun_forall
+            | @{const_name conj} => nun_conj
             | @{const_name disj} => nun_disj
             | @{const_name HOL.eq} => nun_equals
+            | @{const_name Ex} => nun_exists
             | @{const_name False} => nun_false
             | @{const_name implies} => nun_implies
             | @{const_name Not} => nun_not

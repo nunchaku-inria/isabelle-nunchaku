@@ -14,7 +14,12 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-lemma "Cons x xs = Nil"
+ML {*
+Spec_Rules.retrieve @{context} @{term "rev"}
+|> find_first (fn (class, _) => class = Spec_Rules.Equational)
+*}
+
+lemma "[x] @ ys = x # ys"
 nunchaku[overlord]
 oops
 

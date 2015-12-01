@@ -61,7 +61,9 @@ sig
   val nun_conj: ident
   val nun_disj: ident
   val nun_equals: ident
+  val nun_exists: ident
   val nun_false: ident
+  val nun_forall: ident
   val nun_implies: ident
   val nun_not: ident
   val nun_true: ident
@@ -77,6 +79,7 @@ sig
   val str_of_ident: ident -> string
   val str_of_ty: ty -> string
   val str_of_tm: tm -> string
+  val str_of_tmty: tm -> string
 
   val nice_nun_problem: nun_problem -> nun_problem * name_pool
   val str_of_nun_problem: nun_problem -> string
@@ -143,11 +146,14 @@ val nun_prop = "prop";
 val nun_conj = "&&";
 val nun_disj = "||";
 val nun_equals = "=";
+val nun_exists = "exists";
 val nun_false = "false";
+val nun_forall = "forall";
 val nun_implies = "=>";
 val nun_not = "~";
 val nun_true = "true";
 
+val is_nun_const_binder = member (op =) [nun_forall, nun_exists];
 val is_nun_const_infix = member (op =) [nun_conj, nun_disj, nun_equals, nun_implies];
 
 fun gen_nun_const_of_str pre suf s =
@@ -166,6 +172,9 @@ val nun_tconst_of_str = gen_nun_const_of_str "y" "__";
 val nun_tvar_of_str = gen_nun_var_of_str "A" "__";
 val nun_const_of_str = gen_nun_const_of_str "c" "_";
 val nun_var_of_str = gen_nun_var_of_str "V" "_";
+
+fun nun_domain_ty (NType (id, [ty, _])) = if id = nun_fun then ty else raise Fail "non-fun"
+  | nun_domain_ty _ = raise Fail "non-fun";
 
 fun nun_range_ty (NType (id, [_, ty])) = if id = nun_fun then ty else raise Fail "non-fun"
   | nun_range_ty _ = raise Fail "non-fun";
@@ -293,20 +302,26 @@ val str_of_tm =
         str_of_at_const id tys
       | str_of _ (NVar (id, _)) = str_of_ident id
       | str_of ty_opt (NAbs (tm, tm')) =
-        "fn " ^ str_of NONE tm ^ " => " ^ str_of (Option.map nun_range_ty ty_opt) tm'
+        "fn " ^ str_of (Option.map nun_domain_ty ty_opt) tm ^ " => " ^
+        str_of (Option.map nun_range_ty ty_opt) tm'
       | str_of ty_opt (NApp (tm, tm')) =
-        (case tm of
-          NApp (NConst (id, _, _), tm1) =>
+        (case (tm, tm') of
+          (NApp (NConst (id, _, _), tm1), _) =>
           if is_nun_const_infix id then
             let val ty_opt' = try nun_ty_of tm' in
               str_of NONE tm1 ^ " " ^ id ^ " " ^ str_of ty_opt' tm'
             end
           else
             str_of_app ty_opt tm tm'
+        | (NConst (id, _, _), NAbs (tm1, tm2)) =>
+          if is_nun_const_binder id then id ^ " " ^ str_of NONE tm1 ^ ". " ^ str_of NONE tm2
+          else str_of_app ty_opt tm tm'
         | _ => str_of_app ty_opt tm tm');
   in
     str_of NONE
   end;
+
+fun str_of_tmty tm = str_of_tm tm ^ " : " ^ str_of_ty (nun_ty_of tm);
 
 val nice_of_ugly_suggestion = unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
 
@@ -344,10 +359,10 @@ fun str_of_nun_co_data_spec {ty, ctrs} =
   str_of_ty ty ^ " :=\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
 
 fun str_of_nun_rec_spec {func, eqs} =
-  str_of_tm func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm eqs);
+  str_of_tmty func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm eqs);
 
 fun str_of_nun_aliased_func {func, alias} =
-  str_of_tm func ^ " as " ^ str_of_tm alias;
+  str_of_tmty func ^ " as " ^ str_of_tm alias;
 
 fun str_of_nun_spec_spec {funcs, props} =
   space_implode " and " (map str_of_nun_aliased_func funcs) ^ " :=\n" ^
