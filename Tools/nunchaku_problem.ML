@@ -341,7 +341,7 @@ fun str_of_nun_ctr_spec {ctr_id, arg_tys} =
   str_of_ident ctr_id ^ str_of_arg_list str_of_ty arg_tys;
 
 fun str_of_nun_co_data_spec {ty, ctrs} =
-  str_of_ty ty ^ " =\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
+  str_of_ty ty ^ " :=\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
 
 fun str_of_nun_rec_spec {func, eqs} =
   str_of_tm func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm eqs);
@@ -367,6 +367,7 @@ fun str_of_nun_command (NTVal ty) =
   | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_tm tm
   | str_of_nun_command (NGoal tm) = "goal " ^ str_of_tm tm
 
-val str_of_nun_problem = map (suffix "." o str_of_nun_command) #> cat_lines #> suffix "\n";
+val str_of_nun_problem =
+  map (suffix "." o str_of_nun_command) #> space_implode "\n\n" #> suffix "\n";
 
 end;

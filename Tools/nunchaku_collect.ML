@@ -125,32 +125,44 @@ fun isa_problem_of_goal ctxt goal0 =
         Type (@{type_name fun}, Ts) => fold (consider_type depth) Ts
       | @{typ prop} => I
       | @{typ bool} => I
-      | _ => (fn (seens as (seenS, seenT, seen), prob_tuple) =>
-        if member (op =) seenT T then
-          (seens, prob_tuple)
-        else
-          let
-            val seenT = T :: seenT;
-            val seens = (seenS, seenT, seen);
-          in
-            (case T of
-              TFree (_, S) => consider_sort depth T S
-            | TVar (_, S) => consider_sort depth T S
-            | Type (s, Ts) =>
-              fold (consider_type depth) Ts
-              #> (case mutual_co_datatypes_of ctxt s of
-                   SOME (kind, ctr_sugars) =>
-                   (fn accum as (seens, (typedecls, co_datas, consts, recs_specs, axioms)) =>
-                       let
-                         val co_data = isa_cmd_of_ctr_sugars kind ctr_sugars;
-                         val prob_tuple =
-                           (typedecls, co_data :: co_datas, consts, recs_specs, axioms);
-                       in
-                         (seens, prob_tuple)
-                       end)
-                 | NONE => I))
+      | _ =>
+        (fn (seens as (seenS, seenT, seen), prob_tuple) =>
+            if member (op =) seenT T then
               (seens, prob_tuple)
-          end));
+            else
+              let
+                val seenT = T :: seenT;
+                val seens = (seenS, seenT, seen);
+              in
+                (case T of
+                  TFree (_, S) =>
+                  (fn (seen, (typedecls, co_datas, consts, recs_specs, axioms)) =>
+                      (seen, (ITypedecl T :: typedecls, co_datas, consts, recs_specs, axioms))
+                      |> consider_sort depth T S)
+                | TVar (_, S) => consider_sort depth T S
+                | Type (s, Ts) =>
+                  fold (consider_type depth) Ts
+                  #> (case mutual_co_datatypes_of ctxt s of
+                       SOME (kind, ctr_sugars0) =>
+                       (fn ((seenS, seenT, seen),
+                            (typedecls, co_datas, consts, recs_specs, axioms)) =>
+                           let
+                             val ctr_sugars = ctr_sugars0; (* FIXME *)
+                             val dataTs = map #T ctr_sugars;
+                             val ctrss = map #ctrs ctr_sugars;
+                             val co_data = isa_cmd_of_ctr_sugars kind ctr_sugars;
+                             val prob_tuple =
+                               (typedecls, co_data :: co_datas, consts, recs_specs, axioms);
+                           in
+                             ((seenS, union (op =) dataTs seenT, seen), prob_tuple)
+                             |> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
+                           end)
+                     | NONE =>
+                      (fn (seen, (typedecls, co_datas, consts, recs_specs, axioms)) =>
+                          (seen,
+                           (ITypedecl T :: typedecls, co_datas, consts, recs_specs, axioms)))))
+                  (seens, prob_tuple)
+              end));
 
     fun consider_term depth t =
       (case t of
@@ -217,6 +229,6 @@ fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ c
   | str_of_isa_command ctxt (IGoal t) = "goal " ^ Syntax.string_of_term ctxt t;
 
 fun str_of_isa_problem ctxt =
-  map (suffix "." o str_of_isa_command ctxt) #> cat_lines #> suffix "\n";
+  map (suffix "." o str_of_isa_command ctxt) #> space_implode "\n\n" #> suffix "\n";
 
 end;

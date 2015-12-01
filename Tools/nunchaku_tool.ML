@@ -60,20 +60,17 @@ val cached_outcome =
   Synchronized.var "Nunchaku_Tool.cached_outcome" (NONE : (nun_problem * nun_outcome) option);
 
 fun uncached_solve_nun_problem overlord prob =
-  let
-    val prob_str = str_of_nun_problem prob;
-  in
-    with_tmp_or_overlord_file overlord "nunchaku" "nun" (fn prob_path =>
-      let
-        val _ = File.write prob_path prob_str;
-        val bash_cmd = "$" ^ nunchaku_env_var ^ " " ^ File.shell_path prob_path;
-        val (output, code) = Isabelle_System.bash_output bash_cmd;
-      in
-        if String.isPrefix "SAT" output then Sat {tys = [], tms = []}
-        else if String.isPrefix "UNSAT" output then Unsat
-        else Unknown_Error
-      end)
-  end;
+  with_tmp_or_overlord_file overlord "nunchaku" "nun" (fn prob_path =>
+    let
+      val bash_cmd = "$" ^ nunchaku_env_var ^ " " ^ File.shell_path prob_path;
+      val prob_str = "# " ^ bash_cmd ^ "\n\n" ^ str_of_nun_problem prob;
+      val _ = File.write prob_path prob_str;
+      val (output, code) = Isabelle_System.bash_output bash_cmd;
+    in
+      if String.isPrefix "SAT" output then Sat {tys = [], tms = []}
+      else if String.isPrefix "UNSAT" output then Unsat
+      else Unknown_Error
+    end);
 
 fun solve_nun_problem {overlord, debug} prob =
   let
