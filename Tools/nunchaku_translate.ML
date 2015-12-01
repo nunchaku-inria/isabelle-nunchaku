@@ -20,36 +20,28 @@ open Nunchaku_Util;
 open Nunchaku_Collect;
 open Nunchaku_Problem;
 
-datatype encoding = Mono | Poly_Experimental;
-
 fun flip_quote s =
   (case try (unprefix "'") s of
     SOME s' => s'
   | NONE => prefix "'" s);
 
-fun nun_ty_of_isa enc (Type (s, Ts)) =
+fun nun_ty_of_isa (Type (s, Ts)) =
     let
       val id =
         (case s of
           @{type_name bool} => nun_prop
         | @{type_name fun} => nun_fun
         | _ => nun_tconst_of_str s);
-      val tys = map (nun_ty_of_isa enc) Ts;
+      val tys = map nun_ty_of_isa Ts;
+      val args' = space_implode (ascii_of ",") (map str_of_ty tys);
+      val id' = ascii_of "(" ^ args' ^ ascii_of ")." ^ id;
     in
-      (case enc of
-        Mono =>
-        let
-          val args' = space_implode (ascii_of ",") (map str_of_ty tys);
-          val id' = ascii_of "(" ^ args' ^ ascii_of ")." ^ id;
-        in
-          NType (id', [])
-        end
-      | Poly_Experimental => NType (id, tys))
+      NType (id', [])
     end
-  | nun_ty_of_isa _ (TFree (s, _)) = NType (nun_tconst_of_str (flip_quote s), [])
-  | nun_ty_of_isa _ (TVar (x, _)) = NTVar (nun_tvar_of_str (flip_quote (string_of_indexname x)));
+  | nun_ty_of_isa (TFree (s, _)) = NType (nun_tconst_of_str (flip_quote s), [])
+  | nun_ty_of_isa (TVar (x, _)) = NTVar (nun_tvar_of_str (flip_quote (string_of_indexname x)));
 
-fun nun_tm_of_isa ctxt enc t =
+fun nun_tm_of_isa ctxt t =
   let
     val thy = Proof_Context.theory_of ctxt;
 
@@ -68,15 +60,11 @@ fun nun_tm_of_isa ctxt enc t =
             | @{const_name Not} => nun_not
             | @{const_name True} => nun_true
             | _ => nun_const_of_str s);
-          val tys =
-            (case enc of
-              Mono => []
-            | Poly_Experimental => map (nun_ty_of_isa enc) Ts);
         in
-          NConst (id, tys, nun_ty_of_isa enc T)
+          NConst (id, [], nun_ty_of_isa T)
         end
-      | tm_of (Free (s, T)) = NConst (nun_const_of_str s, [], nun_ty_of_isa enc T)
-      | tm_of (Var (x, T)) = NVar (nun_var_of_str (string_of_indexname x), nun_ty_of_isa enc T)
+      | tm_of (Free (s, T)) = NConst (nun_const_of_str s, [], nun_ty_of_isa T)
+      | tm_of (Var (x, T)) = NVar (nun_var_of_str (string_of_indexname x), nun_ty_of_isa T)
       | tm_of (Abs (s, T, t)) =
         let val x = Var ((s, j), T) in
           NAbs (tm_of x, tm_of (subst_bound (x, t)))
@@ -87,20 +75,20 @@ fun nun_tm_of_isa ctxt enc t =
     tm_of t
   end;
 
-fun nun_ctr_of_isa enc (Const (s, T)) =
-    {ctr_id = nun_const_of_str s, arg_tys = map (nun_ty_of_isa enc) (binder_types T)}
-  | nun_ctr_of_isa _ _ = raise Fail "expected Const";
+fun nun_ctr_of_isa (Const (s, T)) =
+    {ctr_id = nun_const_of_str s, arg_tys = map nun_ty_of_isa (binder_types T)}
+  | nun_ctr_of_isa _ = raise Fail "expected Const";
 
-fun nun_co_data_spec_of_isa enc {typ, ctrs} =
-  {ty = nun_ty_of_isa enc typ, ctrs = map (nun_ctr_of_isa enc) ctrs};
+fun nun_co_data_spec_of_isa {typ, ctrs} =
+  {ty = nun_ty_of_isa typ, ctrs = map nun_ctr_of_isa ctrs};
 
-fun nun_rec_spec_of_isa ctxt enc {func, eqs} =
-  {func = nun_tm_of_isa ctxt enc func, eqs = map (nun_tm_of_isa ctxt enc) eqs};
+fun nun_rec_spec_of_isa ctxt {func, eqs} =
+  {func = nun_tm_of_isa ctxt func, eqs = map (nun_tm_of_isa ctxt) eqs};
 
-fun nun_spec_spec_of_isa ctxt enc {funcs, props} =
+fun nun_spec_spec_of_isa ctxt {funcs, props} =
   let
     fun func_of func alias =
-      {func = nun_tm_of_isa ctxt enc func, alias = nun_tm_of_isa ctxt enc alias};
+      {func = nun_tm_of_isa ctxt func, alias = nun_tm_of_isa ctxt alias};
 
     val j = fold (Integer.max o maxidx_of_term) props ~1 + 1;
 
@@ -108,26 +96,24 @@ fun nun_spec_spec_of_isa ctxt enc {funcs, props} =
       map_index (fn (i, func) => Var ((("F" ^ string_of_int i), j), fastype_of func)) funcs;
     val props' = map (subst_atomic (funcs ~~ aliases)) props;
   in
-    {funcs = map2 func_of funcs aliases, props = map (nun_tm_of_isa ctxt enc) props'}
+    {funcs = map2 func_of funcs aliases, props = map (nun_tm_of_isa ctxt) props'}
   end;
 
 fun nun_problem_of_isa ctxt =
   let
-    val enc = Mono;
-
     fun prob_of [] = []
       | prob_of (cmd :: prob) =
         let
           val cmds' =
             (case cmd of
-              ITypedecl T => [NTVal (nun_ty_of_isa enc T)]
-            | IData specs => [NData (map (nun_co_data_spec_of_isa enc) specs)]
-            | ICodata specs => [NCodata (map (nun_co_data_spec_of_isa enc) specs)]
-            | IConst t => [NVal (nun_tm_of_isa ctxt enc t, nun_ty_of_isa enc (fastype_of t))]
-            | IRec specs => [NRec (map (nun_rec_spec_of_isa ctxt enc) specs)]
-            | ISpec spec => [NSpec (nun_spec_spec_of_isa ctxt enc spec)]
-            | IAxiom prop => [NAxiom (nun_tm_of_isa ctxt enc prop)]
-            | IGoal prop => [NGoal (nun_tm_of_isa ctxt enc prop)]);
+              ITypedecl T => [NTVal (nun_ty_of_isa T)]
+            | IData specs => [NData (map nun_co_data_spec_of_isa specs)]
+            | ICodata specs => [NCodata (map nun_co_data_spec_of_isa specs)]
+            | IConst t => [NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))]
+            | IRec specs => [NRec (map (nun_rec_spec_of_isa ctxt) specs)]
+            | ISpec spec => [NSpec (nun_spec_spec_of_isa ctxt spec)]
+            | IAxiom prop => [NAxiom (nun_tm_of_isa ctxt prop)]
+            | IGoal prop => [NGoal (nun_tm_of_isa ctxt prop)]);
         in
           cmds' @ prob_of prob
         end;

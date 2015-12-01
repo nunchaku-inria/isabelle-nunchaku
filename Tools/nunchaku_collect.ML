@@ -126,9 +126,9 @@ fun isa_problem_of_goal ctxt goal0 =
       | @{typ prop} => I
       | @{typ bool} => I
       | _ =>
-        (fn (seens as (seenS, seenT, seen), prob_tuple) =>
+        (fn (seens as (seenS, seenT, seen), prob) =>
             if member (op =) seenT T then
-              (seens, prob_tuple)
+              (seens, prob)
             else
               let
                 val seenT = T :: seenT;
@@ -136,32 +136,27 @@ fun isa_problem_of_goal ctxt goal0 =
               in
                 (case T of
                   TFree (_, S) =>
-                  (fn (seen, (typedecls, co_datas, consts, recs_specs, axioms)) =>
-                      (seen, (ITypedecl T :: typedecls, co_datas, consts, recs_specs, axioms))
+                  (fn (seen, prob) =>
+                      (seen, ITypedecl T :: prob)
                       |> consider_sort depth T S)
                 | TVar (_, S) => consider_sort depth T S
                 | Type (s, Ts) =>
                   fold (consider_type depth) Ts
                   #> (case mutual_co_datatypes_of ctxt s of
                        SOME (kind, ctr_sugars0) =>
-                       (fn ((seenS, seenT, seen),
-                            (typedecls, co_datas, consts, recs_specs, axioms)) =>
+                       (fn ((seenS, seenT, seen), prob) =>
                            let
                              val ctr_sugars = ctr_sugars0; (* FIXME *)
                              val dataTs = map #T ctr_sugars;
                              val ctrss = map #ctrs ctr_sugars;
                              val co_data = isa_cmd_of_ctr_sugars kind ctr_sugars;
-                             val prob_tuple =
-                               (typedecls, co_data :: co_datas, consts, recs_specs, axioms);
+                             val prob = co_data :: prob;
                            in
-                             ((seenS, union (op =) dataTs seenT, seen), prob_tuple)
+                             ((seenS, union (op =) dataTs seenT, seen), prob)
                              |> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
                            end)
-                     | NONE =>
-                      (fn (seen, (typedecls, co_datas, consts, recs_specs, axioms)) =>
-                          (seen,
-                           (ITypedecl T :: typedecls, co_datas, consts, recs_specs, axioms)))))
-                  (seens, prob_tuple)
+                     | NONE => (fn (seen, prob) => (seen, ITypedecl T :: prob))))
+                  (seens, prob)
               end));
 
     fun consider_term depth t =
@@ -172,9 +167,9 @@ fun isa_problem_of_goal ctxt goal0 =
       | Abs (_, T, t') =>
         consider_term depth t'
         #> consider_type depth T
-      | _ => (fn (seens as (seenS, seenT, seen), prob_tuple) =>
+      | _ => (fn (seens as (seenS, seenT, seen), prob) =>
           if member (op aconv) seen t then
-            (seens, prob_tuple)
+            (seens, prob)
           else if depth > axioms_max_depth then
             raise Fail "too many nested axioms"
           else
@@ -185,21 +180,20 @@ fun isa_problem_of_goal ctxt goal0 =
               (case t of
                 Const (x as (s, T)) =>
                 (if is_const_builtin s orelse is_co_data_ctr ctxt x then
-                   (seens, prob_tuple)
+                   (seens, prob)
                  else
-                   (seens, prob_tuple))
+                   (seens, IConst t :: prob))
                 |> consider_type depth T
               | Free (_, T) =>
-                (seens, prob_tuple)
+                (seens, IConst t :: prob)
                 |> consider_type depth T)
             end));
 
     val goal = atomize_toward_False ctxt goal0;
-
-    val (_, (typedecls, co_datas, consts, recs_specs, axioms)) =
-      consider_term 0 goal (([], [], []), ([], [], [], [], []));
   in
-    typedecls @ co_datas @ consts @ recs_specs @ axioms @ [IGoal goal]
+    (([], [], []), [IGoal goal])
+    |> consider_term 0 goal
+    |> snd
   end;
 
 fun str_of_isa_term_with_type ctxt t =
