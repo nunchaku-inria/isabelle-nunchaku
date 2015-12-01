@@ -80,13 +80,13 @@ fun mutual_co_datatypes_of ctxt T_name =
   | NONE =>
     (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
       SOME (ctr_sugar as {kind, ...}) =>
-      (case kind of
-        Ctr_Sugar.Datatype => SOME (BNF_Util.Least_FP, [ctr_sugar])
-      | Ctr_Sugar.Codatatype => SOME (BNF_Util.Greatest_FP, [ctr_sugar])
-      | _ => NONE)
+      (* Any freely constructed type that is not a codatatype is considered a datatype. This is
+         sound (but incomplete) for model finding. *)
+      SOME (if kind = Ctr_Sugar.Codatatype then BNF_Util.Greatest_FP else BNF_Util.Least_FP,
+        [ctr_sugar])
     | NONE => NONE));
 
-fun is_co_data_ctr ctxt (s, T) =
+fun is_co_datatype_ctr ctxt (s, T) =
   (case body_type T of
     dataT as Type (dataT_name, Ts) =>
     let
@@ -106,12 +106,6 @@ val is_typ_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 val is_const_builtin =
   member (op =) [@{const_name conj}, @{const_name disj}, @{const_name HOL.eq}, @{const_name False},
     @{const_name implies}, @{const_name True}];
-
-fun isa_cmd_of_ctr_sugars fp (ctr_sugars : Ctr_Sugar.ctr_sugar list) =
-  (case fp of
-    BNF_Util.Least_FP => IData
-  | BNF_Util.Greatest_FP => ICodata)
-    (map (fn {T, ctrs, ...} => {typ = T, ctrs = ctrs}) ctr_sugars);
 
 fun sort_isa_problem_topologically prob =
   let
@@ -155,13 +149,17 @@ fun isa_problem_of_goal ctxt goal0 =
                 | Type (s, Ts) =>
                   fold (consider_type depth) Ts
                   #> (case mutual_co_datatypes_of ctxt s of
-                       SOME (kind, ctr_sugars0) =>
+                       SOME (fp, ctr_sugars) =>
                        (fn ((seenS, seenT, seen), prob) =>
                            let
-                             val ctr_sugars = ctr_sugars0; (* FIXME *)
-                             val dataTs = map #T ctr_sugars;
-                             val ctrss = map #ctrs ctr_sugars;
-                             val co_data = isa_cmd_of_ctr_sugars kind ctr_sugars;
+                             val dataTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars;
+                             val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars;
+                             val co_data =
+                               (case fp of
+                                 BNF_Util.Least_FP => IData
+                               | BNF_Util.Greatest_FP => ICodata)
+                                 (map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
+
                              val prob = co_data :: prob;
                            in
                              ((seenS, union (op =) dataTs seenT, seen), prob)
@@ -191,7 +189,7 @@ fun isa_problem_of_goal ctxt goal0 =
             in
               (case t of
                 Const (x as (s, T)) =>
-                (if is_const_builtin s orelse is_co_data_ctr ctxt x then
+                (if is_const_builtin s orelse is_co_datatype_ctr ctxt x then
                    (seens, prob)
                  else
                    (seens, IConst t :: prob))
