@@ -111,7 +111,7 @@ fun is_co_datatype_ctr ctxt (s, T) =
 val is_typ_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 val is_const_builtin =
   member (op =) [@{const_name conj}, @{const_name disj}, @{const_name HOL.eq}, @{const_name False},
-    @{const_name implies}, @{const_name True}];
+    @{const_name implies}, @{const_name Not}, @{const_name True}];
 
 fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) =
   (case typ of Type (s, _) => s);

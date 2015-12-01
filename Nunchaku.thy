@@ -14,11 +14,7 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-datatype a = A
-datatype b = B a b | B'
-datatype c = C b a
-
-lemma "x = B u \<or> y = C v"
+lemma "Cons x xs = Nil"
 nunchaku[overlord]
 oops
 
