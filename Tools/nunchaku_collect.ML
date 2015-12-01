@@ -64,10 +64,17 @@ datatype isa_command =
 
 type isa_problem = isa_command list list;
 
-fun add_type_names (Type (s, Ts)) = insert (op =) s #> fold add_type_names Ts
-  | add_type_names _ = I;
+fun key_of_typ (Type (s, [])) = s
+  | key_of_typ (Type (s, Ts)) = s ^ "(" ^ commas (map key_of_typ Ts) ^ ")"
+  | key_of_typ (TFree (s, _)) = s;
 
-val add_const_and_free_names =
+fun key_of_func (Const (s, T)) = s ^ "(" ^ key_of_typ T ^ ")"
+  | key_of_func (Free (s, _)) = s;
+
+fun add_type_keys (Type (s, Ts)) = insert (op =) s #> fold add_type_keys Ts
+  | add_type_keys _ = I;
+
+val add_func_keys =
   fold_aterms (fn Const (s, _) => insert (op =) s | Free (s, _) => insert (op =) s | _ => I);
 
 fun atomize_toward_False ctxt t =
@@ -180,11 +187,7 @@ val is_const_builtin =
     @{const_name Ex}, @{const_name False}, @{const_name implies}, @{const_name Not},
     @{const_name True}];
 
-fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) =
-  (case typ of Type (s, _) => s);
-
-fun key_of_func (Const (s, _)) = s
-  | key_of_func (Free (s, _)) = s;
+fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) = key_of_typ typ;
 
 fun rec_spec_key_of ({func, ...} : isa_rec_spec) = key_of_func func;
 fun spec_spec_keys_of ({funcs, ...} : isa_spec_spec) = map key_of_func funcs;
@@ -198,12 +201,10 @@ fun rec_or_spec_keys_of (IRec specs) = map rec_spec_key_of specs
   | rec_or_spec_keys_of _ = [];
 
 fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
-  fold (add_type_names o fastype_of) ctrs [];
+  fold (add_type_keys o fastype_of) ctrs [];
 
-fun rec_spec_deps_of ({eqs, ...} : isa_rec_spec) =
-  fold add_const_and_free_names eqs [];
-fun spec_spec_deps_of ({props, ...} : isa_spec_spec) =
-  fold add_const_and_free_names props [];
+fun rec_spec_deps_of ({eqs, ...} : isa_rec_spec) = fold add_func_keys eqs [];
+fun spec_spec_deps_of ({props, ...} : isa_spec_spec) = fold add_func_keys props [];
 
 fun co_data_deps_of (IData specs) = maps co_data_spec_deps_of specs
   | co_data_deps_of (ICodata specs) = maps co_data_spec_deps_of specs

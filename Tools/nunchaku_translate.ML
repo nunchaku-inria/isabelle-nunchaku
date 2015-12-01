@@ -51,7 +51,7 @@ fun nun_tm_of_isa ctxt t =
     fun tm_of (Const (s, T)) =
         let
           val Ts = Sign.const_typargs thy (s, T);
-          val id =
+          val id' =
             (case s of
               @{const_name All} => nun_forall
             | @{const_name conj} => nun_conj
@@ -62,13 +62,16 @@ fun nun_tm_of_isa ctxt t =
             | @{const_name implies} => nun_implies
             | @{const_name Not} => nun_not
             | @{const_name True} => nun_true
-            | _ => nun_const_of_str s);
-
-          val tys = map nun_ty_of_isa Ts;
-          val args' = space_implode (ascii_of ",") (map str_of_ty tys);
-          val id' = ascii_of "(" ^ args' ^ ascii_of ")." ^ id;
+            | _ =>
+              let
+                val id = nun_const_of_str s;
+                val tys = map nun_ty_of_isa Ts;
+                val args' = space_implode (ascii_of ",") (map str_of_ty tys);
+              in
+                ascii_of "(" ^ args' ^ ascii_of ")." ^ id
+              end);
         in
-          NConst (id, [], nun_ty_of_isa T)
+          NConst (id', [], nun_ty_of_isa T)
         end
       | tm_of (Free (s, T)) = NConst (nun_const_of_str s, [], nun_ty_of_isa T)
       | tm_of (Var (x, T)) = NVar (nun_var_of_str (string_of_indexname x), nun_ty_of_isa T)
@@ -82,12 +85,11 @@ fun nun_tm_of_isa ctxt t =
     tm_of t
   end;
 
-fun nun_ctr_of_isa (Const (s, T)) =
-    {ctr_id = nun_const_of_str s, arg_tys = map nun_ty_of_isa (binder_types T)}
-  | nun_ctr_of_isa _ = raise Fail "expected Const";
+fun nun_ctr_of_isa ctxt ctr =
+  {ctr = nun_tm_of_isa ctxt ctr, arg_tys = map nun_ty_of_isa (binder_types (fastype_of ctr))};
 
-fun nun_co_data_spec_of_isa {typ, ctrs} =
-  {ty = nun_ty_of_isa typ, ctrs = map nun_ctr_of_isa ctrs};
+fun nun_co_data_spec_of_isa ctxt {typ, ctrs} =
+  {ty = nun_ty_of_isa typ, ctrs = map (nun_ctr_of_isa ctxt) ctrs};
 
 fun nun_rec_spec_of_isa ctxt {func, eqs} =
   {func = nun_tm_of_isa ctxt func, eqs = map (nun_tm_of_isa ctxt) eqs};
@@ -111,8 +113,8 @@ fun nun_problem_of_isa ctxt =
     fun cmd_of cmd =
       (case cmd of
         ITypedecl T => NTVal (nun_ty_of_isa T)
-      | IData specs => NData (map nun_co_data_spec_of_isa specs)
-      | ICodata specs => NCodata (map nun_co_data_spec_of_isa specs)
+      | IData specs => NData (map (nun_co_data_spec_of_isa ctxt) specs)
+      | ICodata specs => NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
       | IConst t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
       | IRec specs => NRec (map (nun_rec_spec_of_isa ctxt) specs)
       | ISpec spec => NSpec (nun_spec_spec_of_isa ctxt spec)

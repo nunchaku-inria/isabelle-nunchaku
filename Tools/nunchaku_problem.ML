@@ -20,7 +20,7 @@ sig
   | NApp of tm * tm
 
   type nun_ctr_spec =
-    {ctr_id: ident,
+    {ctr: tm,
      arg_tys: ty list}
 
   type nun_co_data_spec =
@@ -103,7 +103,7 @@ datatype tm =
 | NApp of tm * tm;
 
 type nun_ctr_spec =
-  {ctr_id: ident,
+  {ctr: tm,
    arg_tys: ty list};
 
 type nun_co_data_spec =
@@ -218,10 +218,10 @@ fun fold_map_tm_idents f (NConst (id, tys, ty)) =
     ##>> fold_map_tm_idents f tm'
     #>> NApp;
 
-fun fold_map_nun_ctr_spec_idents f {ctr_id, arg_tys} =
-  f ctr_id
+fun fold_map_nun_ctr_spec_idents f {ctr, arg_tys} =
+  fold_map_tm_idents f ctr
   ##>> fold_map (fold_map_ty_idents f) arg_tys
-  #>> (fn (ctr_id, arg_tys) => {ctr_id = ctr_id, arg_tys = arg_tys});
+  #>> (fn (ctr, arg_tys) => {ctr = ctr, arg_tys = arg_tys});
 
 fun fold_map_nun_co_data_spec_idents f {ty, ctrs} =
   fold_map_ty_idents f ty
@@ -364,8 +364,8 @@ fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
 fun nice_nun_problem prob =
   fold_map_nun_problem_idents nice_ident prob empty_name_pool;
 
-fun str_of_nun_ctr_spec {ctr_id, arg_tys} =
-  str_of_ident ctr_id ^ str_of_arg_list str_of_ty arg_tys;
+fun str_of_nun_ctr_spec {ctr, arg_tys} =
+  str_of_tm ctr ^ str_of_arg_list str_of_ty arg_tys;
 
 fun str_of_nun_co_data_spec {ty, ctrs} =
   str_of_ty ty ^ " :=\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);

@@ -14,13 +14,19 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-ML {*
-Spec_Rules.retrieve @{context} @{term "rev"}
-|> find_first (fn (class, _) => class = Spec_Rules.Equational)
-*}
+declare [[ML_exception_trace]]
+
+lemma "rev xs = xs \<and> rev ys = ys"
+nunchaku[debug]
+
+(*
+lemma "rev xs = xs"
+nunchaku[overlord]
+oops
 
 lemma "[x] @ ys = x # ys"
 nunchaku[overlord]
 oops
+*)
 
 end
