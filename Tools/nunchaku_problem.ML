@@ -184,6 +184,14 @@ fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NAbs (tm, tm')) = NType (nun_fun, [nun_ty_of tm, nun_ty_of tm'])
   | nun_ty_of (NApp (tm, _)) = nun_range_ty (nun_ty_of tm);
 
+fun strip_nun_binders id (tm as NApp (NConst (id', _, _), NAbs (var, body))) =
+    if id' = id then
+      strip_nun_binders id body
+      |>> cons var
+    else
+      ([], body)
+  | strip_nun_binders _ tm = ([], tm);
+
 fun fold_map_ty_idents f (NType (id, tys)) =
     f id
     ##>> fold_map (fold_map_ty_idents f) tys
@@ -304,7 +312,7 @@ val str_of_tm =
       | str_of ty_opt (NAbs (tm, tm')) =
         "fn " ^ str_of (Option.map nun_domain_ty ty_opt) tm ^ " => " ^
         str_of (Option.map nun_range_ty ty_opt) tm'
-      | str_of ty_opt (NApp (tm, tm')) =
+      | str_of ty_opt (tm0 as NApp (tm, tm')) =
         (case (tm, tm') of
           (NApp (NConst (id, _, _), tm1), _) =>
           if is_nun_const_infix id then
@@ -313,9 +321,13 @@ val str_of_tm =
             end
           else
             str_of_app ty_opt tm tm'
-        | (NConst (id, _, _), NAbs (tm1, tm2)) =>
-          if is_nun_const_binder id then id ^ " " ^ str_of NONE tm1 ^ ". " ^ str_of NONE tm2
-          else str_of_app ty_opt tm tm'
+        | (NConst (id, _, _), NAbs _) =>
+          if is_nun_const_binder id then
+            let val (vars, body) = strip_nun_binders id tm0 in
+              id ^ " " ^ space_implode " " (map (str_of NONE) vars) ^ ". " ^ str_of NONE body
+            end
+          else
+            str_of_app ty_opt tm tm'
         | _ => str_of_app ty_opt tm tm');
   in
     str_of NONE
