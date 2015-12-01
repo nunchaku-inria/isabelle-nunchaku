@@ -67,6 +67,9 @@ type isa_problem = isa_command list list;
 fun add_type_names (Type (s, Ts)) = insert (op =) s #> fold add_type_names Ts
   | add_type_names _ = I;
 
+val add_const_and_free_names =
+  fold_aterms (fn Const (s, _) => insert (op =) s | Free (s, _) => insert (op =) s | _ => I);
+
 fun atomize_toward_False ctxt t =
   let val t' = Object_Logic.atomize_term ctxt t in
     if fastype_of t' = HOLogic.boolT then t' else @{const False}
@@ -123,18 +126,25 @@ fun co_data_keys_of (IData specs) = map co_data_spec_key_of specs
   | co_data_keys_of (ICodata specs) = map co_data_spec_key_of specs
   | co_data_keys_of _ = [];
 
-fun rec_spec_keys_of (IRec specs) = map rec_spec_key_of specs
-  | rec_spec_keys_of (ISpec spec) = spec_spec_keys_of spec
-  | rec_spec_keys_of _ = [];
+fun rec_or_spec_keys_of (IRec specs) = map rec_spec_key_of specs
+  | rec_or_spec_keys_of (ISpec spec) = spec_spec_keys_of spec
+  | rec_or_spec_keys_of _ = [];
 
 fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
-  fold (fold add_type_names o binder_types o fastype_of) ctrs [];
+  fold (add_type_names o fastype_of) ctrs [];
+
+fun rec_spec_deps_of ({eqs, ...} : isa_rec_spec) =
+  fold add_const_and_free_names eqs [];
+fun spec_spec_deps_of ({props, ...} : isa_spec_spec) =
+  fold add_const_and_free_names props [];
 
 fun co_data_deps_of (IData specs) = maps co_data_spec_deps_of specs
   | co_data_deps_of (ICodata specs) = maps co_data_spec_deps_of specs
   | co_data_deps_of _ = [];
 
-fun rec_spec_deps_of _ = [] (* TODO *)
+fun rec_or_spec_deps_of (IRec specs) = maps rec_spec_deps_of specs
+  | rec_or_spec_deps_of (ISpec spec) = spec_spec_deps_of spec
+  | rec_or_spec_deps_of _ = [];
 
 fun sort_isa_subproblem_topologically keys_of deps_of cmds =
   let
@@ -172,7 +182,7 @@ fun sort_and_group_isa_problem cmds =
       |> sort_isa_subproblem_topologically co_data_keys_of co_data_deps_of;
     val consts = filter (can (fn IConst _ => ())) cmds;
     val recs_specs = filter (can (fn IRec _ => () | ISpec _ => ())) cmds
-      |> sort_isa_subproblem_topologically rec_spec_keys_of rec_spec_deps_of;
+      |> sort_isa_subproblem_topologically rec_or_spec_keys_of rec_or_spec_deps_of;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
   in
@@ -265,6 +275,7 @@ fun isa_problem_of_goal ctxt goal0 =
     (([], [], []), [IGoal goal])
     |> consider_term 0 goal
     |> snd
+    |> rev (* prettier *)
     |> sort_and_group_isa_problem
   end;
 
