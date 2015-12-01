@@ -337,17 +337,28 @@ fun str_of_tmty tm = str_of_tm tm ^ " : " ^ str_of_ty (nun_ty_of tm);
 
 val nice_of_ugly_suggestion = unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
 
+fun index_name 1 s = s
+  | index_name j s =
+    let
+      val n = size s;
+      val m = n - 1;
+    in
+      String.substring (s, 0, m) ^ string_of_int j ^ String.substring (s, m, n - m)
+    end;
+
 fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
   let
-    fun alloc nice_sugg =
-      (case Symtab.lookup nice_but_taken nice_sugg of
-        NONE =>
-        (nice_sugg,
-         {nice_of_ugly = Symtab.update_new (ugly, nice_sugg) nice_of_ugly,
-          nice_but_taken = Symtab.update_new (nice_sugg, ()) nice_but_taken})
-      | SOME () => alloc (nice_sugg ^ nice_sugg0));
+    fun alloc j =
+      let val nice_sugg = index_name j nice_sugg0 in
+        (case Symtab.lookup nice_but_taken nice_sugg of
+          NONE =>
+          (nice_sugg,
+           {nice_of_ugly = Symtab.update_new (ugly, nice_sugg) nice_of_ugly,
+            nice_but_taken = Symtab.update_new (nice_sugg, ()) nice_but_taken})
+        | SOME () => alloc (j + 1))
+      end;
   in
-    alloc nice_sugg0
+    alloc 1
   end;
 
 fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
