@@ -113,6 +113,18 @@ fun isa_cmd_of_ctr_sugars fp (ctr_sugars : Ctr_Sugar.ctr_sugar list) =
   | BNF_Util.Greatest_FP => ICodata)
     (map (fn {T, ctrs, ...} => {typ = T, ctrs = ctrs}) ctr_sugars);
 
+fun sort_isa_problem_topologically prob =
+  let
+    val typedecls = filter (can (fn ITypedecl _ => ())) prob;
+    val co_datas = filter (can (fn IData _ => () | ICodata _ => ())) prob;
+    val consts = filter (can (fn IConst _ => ())) prob;
+    val recs_specs = filter (can (fn IRec _ => () | ISpec _ => ())) prob;
+    val axioms = filter (can (fn IAxiom _ => ())) prob;
+    val goals = filter (can (fn IGoal _ => ())) prob;
+  in
+    typedecls @ co_datas @ consts @ recs_specs @ axioms @ goals
+  end;
+
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
 val axioms_max_depth = 255
 
@@ -194,6 +206,7 @@ fun isa_problem_of_goal ctxt goal0 =
     (([], [], []), [IGoal goal])
     |> consider_term 0 goal
     |> snd
+    |> sort_isa_problem_topologically
   end;
 
 fun str_of_isa_term_with_type ctxt t =
