@@ -71,11 +71,9 @@ fun key_of_typ (Type (s, [])) = s
 fun key_of_func (Const (s, T)) = s ^ "(" ^ key_of_typ T ^ ")"
   | key_of_func (Free (s, _)) = s;
 
-fun add_type_keys (Type (s, Ts)) = insert (op =) s #> fold add_type_keys Ts
-  | add_type_keys _ = I;
-
+val add_type_keys = fold_subtypes (insert (op =) o key_of_typ);
 val add_func_keys =
-  fold_aterms (fn Const (s, _) => insert (op =) s | Free (s, _) => insert (op =) s | _ => I);
+  fold_aterms (fn t => if is_Const t orelse is_Free t then insert (op =) (key_of_func t) else I);
 
 fun atomize_toward_False ctxt t =
   let val t' = Object_Logic.atomize_term ctxt t in
