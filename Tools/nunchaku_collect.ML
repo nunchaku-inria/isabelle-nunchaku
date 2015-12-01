@@ -64,6 +64,9 @@ datatype isa_command =
 
 type isa_problem = isa_command list list;
 
+fun add_type_names (Type (s, Ts)) = insert (op =) s #> fold add_type_names Ts
+  | add_type_names _ = I;
+
 fun atomize_toward_False ctxt t =
   let val t' = Object_Logic.atomize_term ctxt t in
     if fastype_of t' = HOLogic.boolT then t' else @{const False}
@@ -108,13 +111,10 @@ val is_const_builtin =
     @{const_name implies}, @{const_name True}];
 
 fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) =
-  (case typ of
-    Type (s, _) => s
-  | _ => "");
+  (case typ of Type (s, _) => s);
 
 fun key_of_func (Const (s, _)) = s
-  | key_of_func (Free (s, _)) = s
-  | key_of_func _ = "";
+  | key_of_func (Free (s, _)) = s;
 
 fun rec_spec_key_of ({func, ...} : isa_rec_spec) = key_of_func func;
 fun spec_spec_keys_of ({funcs, ...} : isa_spec_spec) = map key_of_func funcs;
@@ -127,21 +127,52 @@ fun rec_spec_keys_of (IRec specs) = map rec_spec_key_of specs
   | rec_spec_keys_of (ISpec spec) = spec_spec_keys_of spec
   | rec_spec_keys_of _ = [];
 
-fun sort_isa_subproblem_topologically keys_of cmds =
+fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
+  fold (fold add_type_names o binder_types o fastype_of) ctrs [];
+
+fun co_data_deps_of (IData specs) = maps co_data_spec_deps_of specs
+  | co_data_deps_of (ICodata specs) = maps co_data_spec_deps_of specs
+  | co_data_deps_of _ = [];
+
+fun rec_spec_deps_of _ = [] (* TODO *)
+
+fun sort_isa_subproblem_topologically keys_of deps_of cmds =
   let
-    val keys = maps keys_of cmds;
+    fun normal_pairs [] = []
+      | normal_pairs (all as normal :: others) = map (rpair normal) all;
+
+    val keyss = map keys_of cmds;
+    val normal_keys = Symtab.make (maps normal_pairs keyss);
+    val normalize = Symtab.lookup normal_keys;
+
+    fun add_node [] _ = I
+      | add_node (normal :: _) cmd = Graph.new_node (normal, cmd);
+
+    fun add_deps [] _ = I
+      | add_deps (normal :: _) cmd =
+        let
+          val deps = deps_of cmd
+            |> map_filter normalize
+            |> remove1 (op =) normal;
+        in
+          Graph.add_deps_acyclic (normal, deps)
+        end;
+
+    val G = Graph.empty
+      |> fold2 add_node keyss cmds
+      |> fold2 add_deps keyss cmds;
   in
-    cmds
+    Graph.schedule (K snd) G
   end;
 
 fun sort_and_group_isa_problem cmds =
   let
     val typedecls = filter (can (fn ITypedecl _ => ())) cmds;
     val co_datas = filter (can (fn IData _ => () | ICodata _ => ())) cmds
-      |> sort_isa_subproblem_topologically co_data_keys_of;
+      |> sort_isa_subproblem_topologically co_data_keys_of co_data_deps_of;
     val consts = filter (can (fn IConst _ => ())) cmds;
     val recs_specs = filter (can (fn IRec _ => () | ISpec _ => ())) cmds
-      |> sort_isa_subproblem_topologically rec_spec_keys_of;
+      |> sort_isa_subproblem_topologically rec_spec_keys_of rec_spec_deps_of;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
   in
