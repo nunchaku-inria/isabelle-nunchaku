@@ -33,6 +33,7 @@ fun nun_ty_of_isa (Type (s, Ts)) =
         | @{type_name fun} => nun_fun
         | _ => nun_tconst_of_str s);
       val tys = map nun_ty_of_isa Ts;
+
       val args' = space_implode (ascii_of ",") (map str_of_ty tys);
       val id' = ascii_of "(" ^ args' ^ ascii_of ")." ^ id;
     in
@@ -60,6 +61,10 @@ fun nun_tm_of_isa ctxt t =
             | @{const_name Not} => nun_not
             | @{const_name True} => nun_true
             | _ => nun_const_of_str s);
+
+          val tys = map nun_ty_of_isa Ts;
+          val args' = space_implode (ascii_of ",") (map str_of_ty tys);
+          val id' = ascii_of "(" ^ args' ^ ascii_of ")." ^ id;
         in
           NConst (id, [], nun_ty_of_isa T)
         end
@@ -101,24 +106,18 @@ fun nun_spec_spec_of_isa ctxt {funcs, props} =
 
 fun nun_problem_of_isa ctxt =
   let
-    fun prob_of [] = []
-      | prob_of (cmd :: prob) =
-        let
-          val cmds' =
-            (case cmd of
-              ITypedecl T => [NTVal (nun_ty_of_isa T)]
-            | IData specs => [NData (map nun_co_data_spec_of_isa specs)]
-            | ICodata specs => [NCodata (map nun_co_data_spec_of_isa specs)]
-            | IConst t => [NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))]
-            | IRec specs => [NRec (map (nun_rec_spec_of_isa ctxt) specs)]
-            | ISpec spec => [NSpec (nun_spec_spec_of_isa ctxt spec)]
-            | IAxiom prop => [NAxiom (nun_tm_of_isa ctxt prop)]
-            | IGoal prop => [NGoal (nun_tm_of_isa ctxt prop)]);
-        in
-          cmds' @ prob_of prob
-        end;
+    fun cmd_of cmd =
+      (case cmd of
+        ITypedecl T => NTVal (nun_ty_of_isa T)
+      | IData specs => NData (map nun_co_data_spec_of_isa specs)
+      | ICodata specs => NCodata (map nun_co_data_spec_of_isa specs)
+      | IConst t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
+      | IRec specs => NRec (map (nun_rec_spec_of_isa ctxt) specs)
+      | ISpec spec => NSpec (nun_spec_spec_of_isa ctxt spec)
+      | IAxiom prop => NAxiom (nun_tm_of_isa ctxt prop)
+      | IGoal prop => NGoal (nun_tm_of_isa ctxt prop));
   in
-    prob_of
-  end
+    map (map cmd_of)
+  end;
 
 end;

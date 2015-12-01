@@ -29,7 +29,7 @@ sig
   | IAxiom of term
   | IGoal of term
 
-  type isa_problem = isa_command list
+  type isa_problem = isa_command list list
 
   val isa_problem_of_goal: Proof.context -> term -> isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
@@ -62,7 +62,7 @@ datatype isa_command =
 | IAxiom of term
 | IGoal of term;
 
-type isa_problem = isa_command list;
+type isa_problem = isa_command list list;
 
 fun atomize_toward_False ctxt t =
   let val t' = Object_Logic.atomize_term ctxt t in
@@ -107,16 +107,25 @@ val is_const_builtin =
   member (op =) [@{const_name conj}, @{const_name disj}, @{const_name HOL.eq}, @{const_name False},
     @{const_name implies}, @{const_name True}];
 
-fun sort_isa_problem_topologically prob =
+fun sort_isa_subproblem_topologically prob =
+  let
+  in
+    prob
+  end;
+
+fun sort_and_group_isa_problem prob =
   let
     val typedecls = filter (can (fn ITypedecl _ => ())) prob;
-    val co_datas = filter (can (fn IData _ => () | ICodata _ => ())) prob;
+    val co_datas = filter (can (fn IData _ => () | ICodata _ => ())) prob
+      |> sort_isa_subproblem_topologically;
     val consts = filter (can (fn IConst _ => ())) prob;
-    val recs_specs = filter (can (fn IRec _ => () | ISpec _ => ())) prob;
+    val recs_specs = filter (can (fn IRec _ => () | ISpec _ => ())) prob
+      |> sort_isa_subproblem_topologically;
     val axioms = filter (can (fn IAxiom _ => ())) prob;
     val goals = filter (can (fn IGoal _ => ())) prob;
   in
-    typedecls @ co_datas @ consts @ recs_specs @ axioms @ goals
+    [typedecls, co_datas, consts, recs_specs, axioms, goals]
+    |> filter_out null
   end;
 
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
@@ -204,7 +213,7 @@ fun isa_problem_of_goal ctxt goal0 =
     (([], [], []), [IGoal goal])
     |> consider_term 0 goal
     |> snd
-    |> sort_isa_problem_topologically
+    |> sort_and_group_isa_problem
   end;
 
 fun str_of_isa_term_with_type ctxt t =
@@ -234,6 +243,8 @@ fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ c
   | str_of_isa_command ctxt (IGoal t) = "goal " ^ Syntax.string_of_term ctxt t;
 
 fun str_of_isa_problem ctxt =
-  map (suffix "." o str_of_isa_command ctxt) #> space_implode "\n\n" #> suffix "\n";
+  map (cat_lines o map (suffix "." o str_of_isa_command ctxt))
+  #> space_implode "\n\n"
+  #> suffix "\n";
 
 end;

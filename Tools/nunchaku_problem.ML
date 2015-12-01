@@ -49,7 +49,7 @@ sig
   | NAxiom of tm
   | NGoal of tm
 
-  type nun_problem = nun_command list
+  type nun_problem = nun_command list list
 
   type name_pool =
     {nice_of_ugly: string Symtab.table,
@@ -129,7 +129,7 @@ datatype nun_command =
 | NAxiom of tm
 | NGoal of tm;
 
-type nun_problem = nun_command list;
+type nun_problem = nun_command list list;
 
 type name_pool =
   {nice_of_ugly: string Symtab.table,
@@ -253,7 +253,7 @@ fun fold_map_nun_command_idents f (NTVal ty) =
     #>> NGoal;
 
 fun fold_map_nun_problem_idents f =
-  fold_map (fold_map_nun_command_idents f);
+  fold_map (fold_map (fold_map_nun_command_idents f));
 
 val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
 
@@ -368,6 +368,7 @@ fun str_of_nun_command (NTVal ty) =
   | str_of_nun_command (NGoal tm) = "goal " ^ str_of_tm tm
 
 val str_of_nun_problem =
-  map (suffix "." o str_of_nun_command) #> space_implode "\n\n" #> suffix "\n";
+  map (cat_lines o map (suffix "." o str_of_nun_command))
+  #> space_implode "\n\n" #> suffix "\n";
 
 end;

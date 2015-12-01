@@ -14,9 +14,11 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-(* datatype natopt = None | Some nat *)
+datatype a = A
+datatype b = B a
+datatype c = C b
 
-lemma "x = None"
+lemma "x = B u \<or> y = C v"
 nunchaku[overlord]
 oops
 
