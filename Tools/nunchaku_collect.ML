@@ -107,22 +107,43 @@ val is_const_builtin =
   member (op =) [@{const_name conj}, @{const_name disj}, @{const_name HOL.eq}, @{const_name False},
     @{const_name implies}, @{const_name True}];
 
-fun sort_isa_subproblem_topologically prob =
+fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) =
+  (case typ of
+    Type (s, _) => s
+  | _ => "");
+
+fun key_of_func (Const (s, _)) = s
+  | key_of_func (Free (s, _)) = s
+  | key_of_func _ = "";
+
+fun rec_spec_key_of ({func, ...} : isa_rec_spec) = key_of_func func;
+fun spec_spec_keys_of ({funcs, ...} : isa_spec_spec) = map key_of_func funcs;
+
+fun co_data_keys_of (IData specs) = map co_data_spec_key_of specs
+  | co_data_keys_of (ICodata specs) = map co_data_spec_key_of specs
+  | co_data_keys_of _ = [];
+
+fun rec_spec_keys_of (IRec specs) = map rec_spec_key_of specs
+  | rec_spec_keys_of (ISpec spec) = spec_spec_keys_of spec
+  | rec_spec_keys_of _ = [];
+
+fun sort_isa_subproblem_topologically keys_of cmds =
   let
+    val keys = maps keys_of cmds;
   in
-    prob
+    cmds
   end;
 
-fun sort_and_group_isa_problem prob =
+fun sort_and_group_isa_problem cmds =
   let
-    val typedecls = filter (can (fn ITypedecl _ => ())) prob;
-    val co_datas = filter (can (fn IData _ => () | ICodata _ => ())) prob
-      |> sort_isa_subproblem_topologically;
-    val consts = filter (can (fn IConst _ => ())) prob;
-    val recs_specs = filter (can (fn IRec _ => () | ISpec _ => ())) prob
-      |> sort_isa_subproblem_topologically;
-    val axioms = filter (can (fn IAxiom _ => ())) prob;
-    val goals = filter (can (fn IGoal _ => ())) prob;
+    val typedecls = filter (can (fn ITypedecl _ => ())) cmds;
+    val co_datas = filter (can (fn IData _ => () | ICodata _ => ())) cmds
+      |> sort_isa_subproblem_topologically co_data_keys_of;
+    val consts = filter (can (fn IConst _ => ())) cmds;
+    val recs_specs = filter (can (fn IRec _ => () | ISpec _ => ())) cmds
+      |> sort_isa_subproblem_topologically rec_spec_keys_of;
+    val axioms = filter (can (fn IAxiom _ => ())) cmds;
+    val goals = filter (can (fn IGoal _ => ())) cmds;
   in
     [typedecls, co_datas, consts, recs_specs, axioms, goals]
     |> filter_out null
