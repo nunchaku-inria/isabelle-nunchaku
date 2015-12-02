@@ -60,7 +60,9 @@ sig
   val nun_exists: ident
   val nun_false: ident
   val nun_forall: ident
+  val nun_if: ident
   val nun_implies: ident
+  val nun_let: ident
   val nun_not: ident
   val nun_true: ident
 
@@ -145,11 +147,14 @@ val nun_equals = "=";
 val nun_exists = "exists";
 val nun_false = "false";
 val nun_forall = "forall";
+val nun_if = "if";
 val nun_implies = "=>";
+val nun_let = "let";
 val nun_not = "~";
 val nun_true = "true";
 
-val is_nun_const_binder = member (op =) [nun_forall, nun_exists];
+val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
+val is_nun_const_truth_value = member (op =) [nun_false, nun_true];
 val is_nun_const_connective = member (op =) [nun_conj, nun_disj, nun_implies];
 val is_nun_const_infix = is_nun_const_connective orf curry (op =) nun_equals;
 
@@ -309,7 +314,8 @@ val str_of_ty =
 
 val str_of_tm =
   let
-    fun is_triv_head (NConst (id, _, _)) = not (is_nun_const_binder id orelse is_nun_const_infix id)
+    fun is_triv_head (NConst (id, _, ty)) =
+        is_non_builtin_ident id orelse is_nun_const_truth_value id
       | is_triv_head (NVar _) = true
       | is_triv_head (NApp (func, _)) = is_triv_head func
       | is_triv_head (NAbs _) = false
@@ -341,6 +347,8 @@ val str_of_tm =
           if id = nun_equals then
             (str_of NONE arg0 |> not (is_triv_head arg0) ? parens) ^ " " ^ id ^ " " ^
             (str_of (try nun_ty_of arg) arg |> not (is_triv_head arg) ? parens)
+          else if id = nun_let then
+            parens (id ^ " " ^ str_of NONE arg0 ^ " in " ^ str_of NONE arg1)
           else if is_nun_const_connective id then
             let
               val ty_opt' = SOME nun_prop_ty;
@@ -352,7 +360,7 @@ val str_of_tm =
           else
             str_of_app ty_opt func arg
         | (NConst (id, _, _), NAbs _) =>
-          if is_nun_const_binder id then
+          if is_nun_const_quantifier id then
             let val (vars, body) = strip_nun_binders id app in
               id ^ " " ^ space_implode " " (map (str_of NONE) vars) ^ ". " ^ str_of NONE body
             end

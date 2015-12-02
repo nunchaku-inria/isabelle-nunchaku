@@ -1,5 +1,6 @@
 Isabelle frontend:
 
+  * partially unapplied builtins (eta-expand)
   * leverage 'if then else', 'let', 'match with'
   * type classes
   * (co)inductive predicates
@@ -20,6 +21,7 @@ Middleware:
   * quotient types
   * BNF-style nesting (through functions, mixed FPs, etc.)?
   * polarity for other predicates
+  * description operators
   * almost true / almost false predicate inference?
     (so that "card" and "finite" work for infinite domains)
   * finitize? (replace interpreted (typically infinite) type whose constructors are not used by
