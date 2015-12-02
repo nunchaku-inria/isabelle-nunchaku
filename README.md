@@ -1,2 +1,2 @@
 # isabelle-nunchaku
-Nunchaku for Isabelle: a tactic for sending potential theorems to [Nunchaku](https://github.com/nunchaku-inria/nunchaku) for looking for counter-examples.
+Nunchaku for Isabelle: a frontend for [Nunchaku](https://github.com/nunchaku-inria/nunchaku).
