@@ -14,6 +14,10 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+lemma "rev xs = xs \<and> rev ys = ys"
+nunchaku[debug,overlord]
+oops
+
 (*
 declare [[ML_exception_trace]]
 

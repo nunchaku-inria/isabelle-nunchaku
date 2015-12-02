@@ -9,6 +9,7 @@ signature NUNCHAKU_UTIL =
 sig
   val parens: string -> string
   val parens_if_space: string -> string
+  val timestamp: unit -> string
   val str_of_arg_list: ('a -> string) -> 'a list -> string
   val str_of_and_list: ('a -> string) -> 'a list -> string
   val parse_bool_option: bool -> string -> string -> bool option
@@ -26,6 +27,8 @@ struct
 val parens = enclose "(" ")";
 
 fun parens_if_space s = s |> String.isSubstring " " s ? parens;
+
+val timestamp = ATP_Util.timestamp;
 
 fun str_of_arg_list str_of_arg =
   map (prefix " " o parens_if_space o str_of_arg) #> space_implode "";

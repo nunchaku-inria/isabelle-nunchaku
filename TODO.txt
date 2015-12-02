@@ -1,5 +1,6 @@
 Isabelle frontend:
 
+  * leverage 'if then else', 'let', 'match with'
   * type classes
   * (co)inductive predicates
   * quotient types
