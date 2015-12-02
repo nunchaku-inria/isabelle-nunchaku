@@ -4,15 +4,16 @@ Isabelle frontend:
   * (co)inductive predicates
   * quotient types
   * other definitional mechanisms?
-  * BNF-style nesting (through functions, mixed FPs, etc.)
+  * BNF-style nesting (through functions, mixed FPs, etc.)?
   * parse models
 
 Middleware:
 
+  * syntax for models
   * specialization
   * (co)inductive predicates
   * quotient types
-  * BNF-style nesting (through functions, mixed FPs, etc.)
+  * BNF-style nesting (through functions, mixed FPs, etc.)?
   * polarity for other predicates
   * almost true / almost false predicate inference?
     (so that "card" and "finite" work for infinite domains)
