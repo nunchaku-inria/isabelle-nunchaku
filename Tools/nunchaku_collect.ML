@@ -208,14 +208,19 @@ fun rec_or_spec_keys_of ctxt (IRec specs) = map (rec_spec_key_of ctxt) specs
 fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
   fold (add_type_keys o fastype_of) ctrs [];
 
-fun rec_spec_deps_of ctxt ({eqs, ...} : isa_rec_spec) = fold (add_func_keys ctxt) eqs [];
-fun spec_spec_deps_of ctxt ({props, ...} : isa_spec_spec) = fold (add_func_keys ctxt) props [];
+fun rec_spec_deps_of ctxt funcs eqs =
+  fold (add_func_keys ctxt) eqs [] |> subtract (op =) (map (key_of_func ctxt) funcs);
+fun spec_spec_deps_of ctxt {funcs, props} =
+  fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
 
 fun co_data_deps_of (IData specs) = maps co_data_spec_deps_of specs
   | co_data_deps_of (ICodata specs) = maps co_data_spec_deps_of specs
   | co_data_deps_of _ = [];
 
-fun rec_or_spec_deps_of ctxt (IRec specs) = maps (rec_spec_deps_of ctxt) specs
+fun rec_or_spec_deps_of ctxt (IRec specs) =
+    let val funcs = map #func specs in
+      maps (rec_spec_deps_of ctxt funcs o #eqs) specs
+    end
   | rec_or_spec_deps_of ctxt (ISpec spec) = spec_spec_deps_of ctxt spec
   | rec_or_spec_deps_of _ _ = [];
 

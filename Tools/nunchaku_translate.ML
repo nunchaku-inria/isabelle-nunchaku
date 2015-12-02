@@ -95,18 +95,7 @@ fun nun_rec_spec_of_isa ctxt {func, eqs} =
   {func = nun_tm_of_isa ctxt func, eqs = map (nun_tm_of_isa ctxt) eqs};
 
 fun nun_spec_spec_of_isa ctxt {funcs, props} =
-  let
-    fun func_of func alias =
-      {func = nun_tm_of_isa ctxt func, alias = nun_tm_of_isa ctxt alias};
-
-    val j = fold (Integer.max o maxidx_of_term) props ~1 + 1;
-
-    val aliases =
-      map_index (fn (i, func) => Var ((("F" ^ string_of_int i), j), fastype_of func)) funcs;
-    val props' = map (subst_atomic (funcs ~~ aliases)) props;
-  in
-    {funcs = map2 func_of funcs aliases, props = map (nun_tm_of_isa ctxt) props'}
-  end;
+  {funcs = map (nun_tm_of_isa ctxt) funcs, props = map (nun_tm_of_isa ctxt) props};
 
 fun nun_problem_of_isa ctxt =
   let

@@ -31,12 +31,8 @@ sig
     {func: tm,
      eqs: tm list}
 
-  type nun_aliased_func =
-    {func: tm,
-     alias: tm}
-
   type nun_spec_spec =
-    {funcs: nun_aliased_func list,
+    {funcs: tm list,
      props: tm list}
 
   datatype nun_command =
@@ -114,12 +110,8 @@ type nun_rec_spec =
   {func: tm,
    eqs: tm list};
 
-type nun_aliased_func =
-  {func: tm,
-   alias: tm};
-
 type nun_spec_spec =
-  {funcs: nun_aliased_func list,
+  {funcs: tm list,
    props: tm list};
 
 datatype nun_command =
@@ -235,13 +227,8 @@ fun fold_map_nun_rec_spec_idents f {func, eqs} =
   ##>> fold_map (fold_map_tm_idents f) eqs
   #>> (fn (func, eqs) => {func = func, eqs = eqs});
 
-fun fold_map_nun_aliased_func_idents f {func, alias} =
-  fold_map_tm_idents f func
-  ##>> fold_map_tm_idents f alias
-  #>> (fn (func, alias) => {func = func, alias = alias});
-
 fun fold_map_nun_spec_spec_idents f {funcs, props} =
-  fold_map (fold_map_nun_aliased_func_idents f) funcs
+  fold_map (fold_map_tm_idents f) funcs
   ##>> fold_map (fold_map_tm_idents f) props
   #>> (fn (funcs, props) => {funcs = funcs, props = props});
 
@@ -312,7 +299,7 @@ val str_of_tm =
         str_of_at_const id tys
       | str_of _ (NVar (id, _)) = str_of_ident id
       | str_of ty_opt (NAbs (tm, tm')) =
-        "fn " ^ str_of (Option.map nun_domain_ty ty_opt) tm ^ " => " ^
+        "fun " ^ str_of (Option.map nun_domain_ty ty_opt) tm ^ ". " ^
         str_of (Option.map nun_range_ty ty_opt) tm'
       | str_of ty_opt (tm0 as NApp (tm, tm')) =
         (case (tm, tm') of
@@ -387,11 +374,8 @@ fun str_of_nun_co_data_spec {ty, ctrs} =
 fun str_of_nun_rec_spec {func, eqs} =
   str_of_tmty func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm eqs);
 
-fun str_of_nun_aliased_func {func, alias} =
-  str_of_tmty func ^ " as " ^ str_of_tm alias;
-
 fun str_of_nun_spec_spec {funcs, props} =
-  space_implode " and " (map str_of_nun_aliased_func funcs) ^ " :=\n" ^
+  space_implode " and\n     " (map str_of_tmty funcs) ^ " :=\n  " ^
   space_implode ";\n  " (map str_of_tm props);
 
 fun str_of_nun_command (NTVal ty) =

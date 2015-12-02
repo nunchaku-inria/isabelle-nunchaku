@@ -14,6 +14,10 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+ML {*
+Spec_Rules.retrieve @{context} @{term Collect}
+*}
+
 lemma "p {x. q x}"
 nunchaku[overlord]
 
