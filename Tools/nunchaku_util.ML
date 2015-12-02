@@ -17,6 +17,7 @@ sig
   val unascii_of: string -> string
   val with_overlord_file: string -> string -> (Path.T -> 'a) -> 'a
   val with_tmp_or_overlord_file: bool -> string -> string -> (Path.T -> 'a) -> 'a
+  val attach_typeS: term -> term
 end;
 
 structure Nunchaku_Util : NUNCHAKU_UTIL =
@@ -44,5 +45,12 @@ fun with_overlord_file name ext f =
 
 fun with_tmp_or_overlord_file overlord =
   if overlord then with_overlord_file else Isabelle_System.with_tmp_file;
+
+(* Clone from "HOL/Tools/inductive_realizer.ML" *)
+val attach_typeS =
+  map_types (map_atyps
+    (fn TFree (s, []) => TFree (s, @{sort type})
+      | TVar (ixn, []) => TVar (ixn, @{sort type})
+      | T => T));
 
 end;

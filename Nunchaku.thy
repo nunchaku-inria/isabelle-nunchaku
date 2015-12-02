@@ -14,17 +14,6 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-ML {*
-@{thm Ex1_def}
-|> Thm.prop_of
-|> Logic.dest_equals
-*}
-
-
-lemma "(\<forall>x. \<exists>y. P x y)"
-nunchaku [expect = genuine]
-
-
 (*
 declare [[ML_exception_trace]]
 

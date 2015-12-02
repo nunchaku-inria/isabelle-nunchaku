@@ -198,9 +198,9 @@ lemma "f (g x) = g (f x)"
 nunchaku [expect = genuine]
 oops
 
-text {* "Two functions that are equivalent wrt.\ the same predicate 'P' are equal." *}
+text {* "Two functions that are equivalent w.r.t.\ the same predicate 'P' are equal." *}
 
-lemma "((P::('a\<Rightarrow>'b)\<Rightarrow>bool) f = P g) \<longrightarrow> (f x = g x)"
+lemma "((P :: ('a \<Rightarrow> 'b) \<Rightarrow> bool) f = P g) \<longrightarrow> (f x = g x)"
 nunchaku [expect = genuine]
 oops
 
@@ -242,16 +242,14 @@ oops
 
 text {* ``The transitive closure of an arbitrary relation is non-empty.'' *}
 
-definition "trans" :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool" where
-"trans P \<equiv> (ALL x y z. P x y \<longrightarrow> P y z \<longrightarrow> P x z)"
+definition trans :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool" where
+  "trans P \<longleftrightarrow> (ALL x y z. P x y \<longrightarrow> P y z \<longrightarrow> P x z)"
 
-definition
-"subset" :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool" where
-"subset P Q \<equiv> (ALL x y. P x y \<longrightarrow> Q x y)"
+definition subset :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool" where
+  "subset P Q \<longleftrightarrow> (ALL x y. P x y \<longrightarrow> Q x y)"
 
-definition
-"trans_closure" :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool" where
-"trans_closure P Q \<equiv> (subset Q P) \<and> (trans P) \<and> (ALL R. subset Q R \<longrightarrow> trans R \<longrightarrow> subset P R)"
+definition trans_closure :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool" where
+  "trans_closure P Q \<longleftrightarrow> (subset Q P) \<and> (trans P) \<and> (ALL R. subset Q R \<longrightarrow> trans R \<longrightarrow> subset P R)"
 
 lemma "trans_closure T P \<longrightarrow> (\<exists>x y. T x y)"
 nunchaku [expect = genuine]
