@@ -21,7 +21,7 @@ sig
 
   datatype nun_outcome =
     Unsat
-  | Sat of nun_solution
+  | Sat of string * nun_solution
   | Timed_Out
   | Nunchaku_Not_Found
   | CVC4_Not_Found
@@ -48,7 +48,7 @@ type nun_solution =
 
 datatype nun_outcome =
   Unsat
-| Sat of nun_solution
+| Sat of string * nun_solution
 | Timed_Out
 | Nunchaku_Not_Found
 | CVC4_Not_Found
@@ -67,7 +67,7 @@ fun uncached_solve_nun_problem overlord prob =
       val _ = File.write prob_path prob_str;
       val (output, code) = Isabelle_System.bash_output bash_cmd;
     in
-      if String.isPrefix "SAT" output then Sat {tys = [], tms = []}
+      if String.isPrefix "SAT" output then Sat (output, {tys = [], tms = []})
       else if String.isPrefix "UNSAT" output then Unsat
       else Unknown_Error
     end);

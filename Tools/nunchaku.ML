@@ -166,7 +166,8 @@ val _ = tracing ("*** NICE NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
             val outcome as (outcome_code, _) =
               (case nun_outcome of
                 Unsat => (print_nt ("Nunchaku found no " ^ das_wort_model); (noneN, []))
-              | Sat _ => (print ("Nunchaku found a " ^ das_wort_model); (genuineN, []))
+              | Sat (output, _) =>
+                (print ("Nunchaku found a " ^ das_wort_model ^ ":\n" ^ output); (genuineN, []))
               | Timed_Out => (print_nt "Nunchaku ran out of time"; (unknownN, []))
               | Nunchaku_Not_Found =>
                 (print_nt "External tool \"nunchaku\" not installed"; (unknownN, []))

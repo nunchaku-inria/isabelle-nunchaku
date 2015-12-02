@@ -31,7 +31,6 @@ apply auto
 done
 
 lemma "False"
-nunchaku[overlord]
 nunchaku [expect = genuine]
 oops
 
@@ -52,7 +51,6 @@ nunchaku [expect = genuine]
 oops
 
 lemma "P \<longrightarrow> Q"
-nunchaku[overlord]
 nunchaku [expect = genuine]
 oops
 
@@ -96,11 +94,11 @@ lemma "f x = g x"
 nunchaku [expect = genuine]
 oops
 
-lemma "(f::'a\<Rightarrow>'b) = g"
+lemma "(f :: 'a \<Rightarrow> 'b) = g"
 nunchaku [expect = genuine]
 oops
 
-lemma "(f::('d\<Rightarrow>'d)\<Rightarrow>('c\<Rightarrow>'d)) = g"
+lemma "(f :: ('d \<Rightarrow> 'd) \<Rightarrow> ('c \<Rightarrow> 'd)) = g"
 nunchaku [expect = genuine]
 oops
 

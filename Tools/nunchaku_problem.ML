@@ -156,7 +156,7 @@ val nun_true = "true";
 val is_nun_const_binder = member (op =) [nun_forall, nun_exists];
 val is_nun_const_infix = member (op =) [nun_conj, nun_disj, nun_equals, nun_implies];
 val is_nun_const_infix_lassoc = member (op =) [nun_conj, nun_disj];
-val is_nun_const_infix_rassoc = member (op =) [nun_conj, nun_disj, nun_implies];
+val is_nun_const_infix_rassoc = member (op =) [nun_conj, nun_disj (* FIXME: , nun_implies *)];
 
 fun gen_nun_const_of_str pre suf s =
   let val s' = ascii_of s ^ suf in

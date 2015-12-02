@@ -236,7 +236,9 @@ fun sort_isa_subproblem_topologically keys_of deps_of cmds =
 
     val G = Graph.empty
       |> fold2 add_node keyss cmds
-      |> fold2 add_deps keyss cmds;
+      |> fold2 add_deps keyss cmds
+      handle Graph.CYCLES (cycle :: _) =>
+        raise Fail ("cyclic dependencies: " ^ commas cycle);
   in
     Graph.schedule (K snd) G
   end;

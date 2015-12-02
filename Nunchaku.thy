@@ -14,6 +14,11 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+lemma "p {x. q x}"
+nunchaku[overlord]
+
+
+
 (*
 declare [[ML_exception_trace]]
 
