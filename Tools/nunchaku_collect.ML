@@ -68,12 +68,19 @@ fun key_of_typ (Type (s, [])) = s
   | key_of_typ (Type (s, Ts)) = s ^ "(" ^ commas (map key_of_typ Ts) ^ ")"
   | key_of_typ (TFree (s, _)) = s;
 
-fun key_of_func (Const (s, T)) = s ^ "(" ^ key_of_typ T ^ ")"
-  | key_of_func (Free (s, _)) = s;
+fun key_of_func ctxt (Const (x as (s, _))) =
+    let val thy = Proof_Context.theory_of ctxt in
+      (case Sign.const_typargs thy x of
+        [] => s
+      | Ts => s ^ "(" ^ commas (map key_of_typ Ts) ^ ")")
+    end
+  | key_of_func _ (Free (s, _)) = s;
 
 val add_type_keys = fold_subtypes (insert (op =) o key_of_typ);
-val add_func_keys =
-  fold_aterms (fn t => if is_Const t orelse is_Free t then insert (op =) (key_of_func t) else I);
+
+fun add_func_keys ctxt =
+  fold_aterms (fn t =>
+    if is_Const t orelse is_Free t then insert (op =) (key_of_func ctxt t) else I);
 
 fun atomize_toward_False ctxt t =
   let val t' = Object_Logic.atomize_term ctxt t in
@@ -187,30 +194,30 @@ val is_const_builtin =
 
 fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) = key_of_typ typ;
 
-fun rec_spec_key_of ({func, ...} : isa_rec_spec) = key_of_func func;
-fun spec_spec_keys_of ({funcs, ...} : isa_spec_spec) = map key_of_func funcs;
+fun rec_spec_key_of ctxt ({func, ...} : isa_rec_spec) = key_of_func ctxt func;
+fun spec_spec_keys_of ctxt ({funcs, ...} : isa_spec_spec) = map (key_of_func ctxt) funcs;
 
 fun co_data_keys_of (IData specs) = map co_data_spec_key_of specs
   | co_data_keys_of (ICodata specs) = map co_data_spec_key_of specs
   | co_data_keys_of _ = [];
 
-fun rec_or_spec_keys_of (IRec specs) = map rec_spec_key_of specs
-  | rec_or_spec_keys_of (ISpec spec) = spec_spec_keys_of spec
-  | rec_or_spec_keys_of _ = [];
+fun rec_or_spec_keys_of ctxt (IRec specs) = map (rec_spec_key_of ctxt) specs
+  | rec_or_spec_keys_of ctxt (ISpec spec) = spec_spec_keys_of ctxt spec
+  | rec_or_spec_keys_of _ _ = [];
 
 fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
   fold (add_type_keys o fastype_of) ctrs [];
 
-fun rec_spec_deps_of ({eqs, ...} : isa_rec_spec) = fold add_func_keys eqs [];
-fun spec_spec_deps_of ({props, ...} : isa_spec_spec) = fold add_func_keys props [];
+fun rec_spec_deps_of ctxt ({eqs, ...} : isa_rec_spec) = fold (add_func_keys ctxt) eqs [];
+fun spec_spec_deps_of ctxt ({props, ...} : isa_spec_spec) = fold (add_func_keys ctxt) props [];
 
 fun co_data_deps_of (IData specs) = maps co_data_spec_deps_of specs
   | co_data_deps_of (ICodata specs) = maps co_data_spec_deps_of specs
   | co_data_deps_of _ = [];
 
-fun rec_or_spec_deps_of (IRec specs) = maps rec_spec_deps_of specs
-  | rec_or_spec_deps_of (ISpec spec) = spec_spec_deps_of spec
-  | rec_or_spec_deps_of _ = [];
+fun rec_or_spec_deps_of ctxt (IRec specs) = maps (rec_spec_deps_of ctxt) specs
+  | rec_or_spec_deps_of ctxt (ISpec spec) = spec_spec_deps_of ctxt spec
+  | rec_or_spec_deps_of _ _ = [];
 
 fun sort_isa_subproblem_topologically keys_of deps_of cmds =
   let
@@ -243,14 +250,14 @@ fun sort_isa_subproblem_topologically keys_of deps_of cmds =
     Graph.schedule (K snd) G
   end;
 
-fun sort_and_group_isa_problem cmds =
+fun sort_and_group_isa_problem ctxt cmds =
   let
     val typedecls = filter (can (fn ITypedecl _ => ())) cmds;
     val co_datas = filter (can (fn IData _ => () | ICodata _ => ())) cmds
       |> sort_isa_subproblem_topologically co_data_keys_of co_data_deps_of;
     val consts = filter (can (fn IConst _ => ())) cmds;
     val recs_specs = filter (can (fn IRec _ => () | ISpec _ => ())) cmds
-      |> sort_isa_subproblem_topologically rec_or_spec_keys_of rec_or_spec_deps_of;
+      |> sort_isa_subproblem_topologically (rec_or_spec_keys_of ctxt) (rec_or_spec_deps_of ctxt);
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
   in
@@ -379,7 +386,7 @@ fun isa_problem_of_goal ctxt goal0 =
     |> consider_term 0 goal
     |> snd
     |> rev (* prettier *)
-    |> sort_and_group_isa_problem
+    |> sort_and_group_isa_problem ctxt
   end;
 
 fun str_of_isa_term_with_type ctxt t =
