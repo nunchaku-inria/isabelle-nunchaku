@@ -8,6 +8,7 @@ General-purpose functions used by Nunchaku.
 signature NUNCHAKU_UTIL =
 sig
   val parens: string -> string
+  val parens_if_space: string -> string
   val str_of_arg_list: ('a -> string) -> 'a list -> string
   val str_of_and_list: ('a -> string) -> 'a list -> string
   val parse_bool_option: bool -> string -> string -> bool option
@@ -23,10 +24,10 @@ struct
 
 val parens = enclose "(" ")";
 
-fun maybe_parens s = s |> String.isSubstring " " s ? parens;
+fun parens_if_space s = s |> String.isSubstring " " s ? parens;
 
 fun str_of_arg_list str_of_arg =
-  map (prefix " " o maybe_parens o str_of_arg) #> space_implode "";
+  map (prefix " " o parens_if_space o str_of_arg) #> space_implode "";
 
 fun str_of_and_list str_of_elem =
   map str_of_elem #> space_implode "\nand ";

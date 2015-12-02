@@ -155,6 +155,8 @@ val nun_true = "true";
 
 val is_nun_const_binder = member (op =) [nun_forall, nun_exists];
 val is_nun_const_infix = member (op =) [nun_conj, nun_disj, nun_equals, nun_implies];
+val is_nun_const_infix_lassoc = member (op =) [nun_conj, nun_disj];
+val is_nun_const_infix_rassoc = member (op =) [nun_conj, nun_disj, nun_implies];
 
 fun gen_nun_const_of_str pre suf s =
   let val s' = ascii_of s ^ suf in
@@ -317,7 +319,8 @@ val str_of_tm =
           (NApp (NConst (id, _, _), tm1), _) =>
           if is_nun_const_infix id then
             let val ty_opt' = try nun_ty_of tm' in
-              str_of NONE tm1 ^ " " ^ id ^ " " ^ str_of ty_opt' tm'
+              (str_of NONE tm1 |> not (is_nun_const_infix_lassoc id) ? parens_if_space) ^ " " ^ id ^
+              " " ^ (str_of ty_opt' tm' |> not (is_nun_const_infix_rassoc id) ? parens_if_space)
             end
           else
             str_of_app ty_opt tm tm'
