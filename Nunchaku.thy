@@ -14,8 +14,8 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-lemma "rev xs = xs \<and> rev ys = ys"
-nunchaku[debug,overlord]
+lemma "rev xs = ys \<and> rev ys = xs"
+nunchaku[debug,overlord,satisfy]
 oops
 
 (*

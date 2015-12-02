@@ -153,6 +153,10 @@ val nun_let = "let";
 val nun_not = "~";
 val nun_true = "true";
 
+val nun_else = "else";
+val nun_in = "in";
+val nun_then = "then";
+
 val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
 val is_nun_const_truth_value = member (op =) [nun_false, nun_true];
 val is_nun_const_connective = member (op =) [nun_conj, nun_disj, nun_implies];
@@ -341,32 +345,40 @@ val str_of_tm =
       | str_of ty_opt (NAbs (var, body)) =
         "fun " ^ str_of (Option.map nun_domain_ty ty_opt) var ^ ". " ^
         str_of (Option.map nun_range_ty ty_opt) body
-      | str_of ty_opt (app as NApp (func, arg)) =
-        (case (func, arg) of
-          (NApp (oper as NConst (id, _, _), arg0), _) =>
+      | str_of ty_opt (app as NApp (func, argN)) =
+        (case (func, argN) of
+          (NApp (oper as NConst (id, _, _), arg1), arg2) =>
           if id = nun_equals then
-            (str_of NONE arg0 |> not (is_triv_head arg0) ? parens) ^ " " ^ id ^ " " ^
-            (str_of (try nun_ty_of arg) arg |> not (is_triv_head arg) ? parens)
+            (str_of NONE arg1 |> not (is_triv_head arg1) ? parens) ^ " " ^ id ^ " " ^
+            (str_of (try nun_ty_of arg2) arg2 |> not (is_triv_head arg2) ? parens)
           else if id = nun_let then
-            parens (id ^ " " ^ str_of NONE arg0 ^ " in " ^ str_of NONE arg1)
+            id ^ " " ^ str_of NONE arg1 ^ " " ^ nun_in ^ " " ^ str_of NONE arg1
+            |> parens
           else if is_nun_const_connective id then
             let
               val ty_opt' = SOME nun_prop_ty;
-              val args = dest_rassoc_args oper arg0 arg;
+              val args = dest_rassoc_args oper arg1 arg2;
             in
               space_implode (" " ^ id ^ " ")
                 (map (fn arg => str_of NONE arg |> not (is_triv_head arg) ? parens) args)
             end
           else
-            str_of_app ty_opt func arg
+            str_of_app ty_opt func argN
+        | (NApp (NApp (oper as NConst (id, _, _), arg1), arg2), arg3) =>
+          if id = nun_if then
+            id ^ " " ^ str_of NONE arg1 ^ " " ^ nun_then ^ " " ^ str_of NONE arg2 ^ " " ^
+            str_of NONE arg3
+            |> parens
+          else
+            str_of_app ty_opt func argN
         | (NConst (id, _, _), NAbs _) =>
           if is_nun_const_quantifier id then
             let val (vars, body) = strip_nun_binders id app in
               id ^ " " ^ space_implode " " (map (str_of NONE) vars) ^ ". " ^ str_of NONE body
             end
           else
-            str_of_app ty_opt func arg
-        | _ => str_of_app ty_opt func arg);
+            str_of_app ty_opt func argN
+        | _ => str_of_app ty_opt func argN);
   in
     str_of NONE
   end;
