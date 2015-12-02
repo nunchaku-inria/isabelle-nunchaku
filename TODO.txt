@@ -10,6 +10,9 @@ Isabelle frontend:
 
 Middleware:
 
+  * declare var not constant for cardinality witness
+  * leverage empty sorts
+
   * syntax for models
   * specialization
   * heuristic inlining of definitions
@@ -21,3 +24,7 @@ Middleware:
     (so that "card" and "finite" work for infinite domains)
   * finitize? (replace interpreted (typically infinite) type whose constructors are not used by
       uninterpreted type, if monotonic)
+
+CVC4
+
+  * syntax for empty sorts
