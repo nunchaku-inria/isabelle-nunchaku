@@ -7,3 +7,5 @@ Middleware:
   * specialization
   * (co)inductive predicates
   * polarity for other predicates
+  * almost true / almost false predicate inference?
+    (so that "card" and "finite" work for infinite domains)
