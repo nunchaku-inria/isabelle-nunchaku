@@ -82,7 +82,7 @@ fun add_func_keys ctxt =
   fold_aterms (fn t =>
     if is_Const t orelse is_Free t then insert (op =) (key_of_func ctxt t) else I);
 
-fun atomize_toward_False ctxt t =
+fun atomize_towards_False ctxt t =
   let val t' = Object_Logic.atomize_term ctxt t in
     if fastype_of t' = HOLogic.boolT then t' else @{const False}
   end;
@@ -92,7 +92,13 @@ fun close_form t =
       HOLogic.all_const T $ Abs (s, T, abstract_over (Var ((s, i), T), t')))
     (Term.add_vars t []) t;
 
-fun preprocess_prop ctxt = atomize_toward_False ctxt #> close_form;
+fun unfold_Ex1_def ctxt =
+  let val thy = Proof_Context.theory_of ctxt in
+    Pattern.rewrite_term thy [Logic.dest_equals (Thm.prop_of @{thm Ex1_def})] []
+  end;
+
+fun preprocess_prop ctxt =
+  atomize_towards_False ctxt #> unfold_Ex1_def ctxt #> close_form;
 
 fun mutual_co_datatypes_of ctxt T_name =
   (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of

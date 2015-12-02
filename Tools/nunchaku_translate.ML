@@ -25,8 +25,6 @@ fun flip_quote s =
     SOME s' => s'
   | NONE => prefix "'" s);
 
-val nun_prop_ty = NType (nun_prop, []);
-
 fun nun_ty_of_isa (Type (s, Ts)) =
     let val tys = map nun_ty_of_isa Ts in
       (case s of

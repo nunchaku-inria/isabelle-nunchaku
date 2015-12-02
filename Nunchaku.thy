@@ -14,12 +14,14 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-term Set.member
+ML {*
+@{thm Ex1_def}
+|> Thm.prop_of
+|> Logic.dest_equals
+*}
 
-lemma "q x \<Longrightarrow> x \<in> {x. q x}"
-nunchaku[overlord]
-
-
+lemma "\<exists>!x. P x"
+nunchaku [expect = genuine]
 
 (*
 declare [[ML_exception_trace]]

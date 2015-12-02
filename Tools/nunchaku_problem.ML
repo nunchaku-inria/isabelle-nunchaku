@@ -69,6 +69,8 @@ sig
   val nun_const_of_str: string -> ident
   val nun_var_of_str: string -> ident
 
+  val nun_prop_ty: ty
+
   val fold_map_nun_problem_idents: (string -> 'a -> string * 'a) -> nun_problem -> 'a ->
     nun_problem * 'a
 
@@ -148,9 +150,8 @@ val nun_not = "~";
 val nun_true = "true";
 
 val is_nun_const_binder = member (op =) [nun_forall, nun_exists];
-val is_nun_const_infix = member (op =) [nun_conj, nun_disj, nun_equals, nun_implies];
-val is_nun_const_infix_lassoc = member (op =) [nun_conj, nun_disj];
-val is_nun_const_infix_rassoc = member (op =) [nun_conj, nun_disj (* FIXME: , nun_implies *)];
+val is_nun_const_connective = member (op =) [nun_conj, nun_disj, nun_implies];
+val is_nun_const_infix = is_nun_const_connective orf curry (op =) nun_equals;
 
 fun gen_nun_const_of_str pre suf s =
   let val s' = ascii_of s ^ suf in
@@ -168,6 +169,8 @@ val nun_tconst_of_str = gen_nun_const_of_str "y" "__";
 val nun_tvar_of_str = gen_nun_var_of_str "A" "__";
 val nun_const_of_str = gen_nun_const_of_str "c" "_";
 val nun_var_of_str = gen_nun_var_of_str "V" "_";
+
+val nun_prop_ty = NType (nun_prop, []);
 
 fun nun_domain_ty (NType (id, [ty, _])) = if id = nun_fun then ty else raise Fail "non-fun"
   | nun_domain_ty _ = raise Fail "non-fun";
@@ -263,7 +266,11 @@ fun fold_map_nun_command_idents f (NTVal ty) =
 fun fold_map_nun_problem_idents f =
   fold_map (fold_map (fold_map_nun_command_idents f));
 
-val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
+fun dest_rassoc_args oper arg1 rest =
+  (case rest of
+    NApp (NApp (oper', arg2), rest') =>
+    if oper' = oper then arg1 :: dest_rassoc_args oper arg2 rest' else [arg1, rest]
+  | _ => [arg1, rest]);
 
 fun replace_tm from to =
   let
@@ -302,6 +309,11 @@ val str_of_ty =
 
 val str_of_tm =
   let
+    fun is_triv_head (NConst (id, _, _)) = not (is_nun_const_binder id orelse is_nun_const_infix id)
+      | is_triv_head (NVar _) = true
+      | is_triv_head (NApp (func, _)) = is_triv_head func
+      | is_triv_head (NAbs _) = false
+
     fun str_of_at_const id tys =
       "@" ^ str_of_ident id ^ str_of_arg_list str_of_ty tys;
 
@@ -325,11 +337,17 @@ val str_of_tm =
         str_of (Option.map nun_range_ty ty_opt) tm'
       | str_of ty_opt (tm0 as NApp (tm, tm')) =
         (case (tm, tm') of
-          (NApp (NConst (id, _, _), tm1), _) =>
-          if is_nun_const_infix id then
-            let val ty_opt' = try nun_ty_of tm' in
-              (str_of NONE tm1 |> not (is_nun_const_infix_lassoc id) ? parens_if_space) ^ " " ^ id ^
-              " " ^ (str_of ty_opt' tm' |> not (is_nun_const_infix_rassoc id) ? parens_if_space)
+          (NApp (oper as NConst (id, _, _), tm1), _) =>
+          if id = nun_equals then
+            (str_of NONE tm1 |> not (is_triv_head tm1) ? parens) ^ " " ^ id ^ " " ^
+            (str_of (try nun_ty_of tm') tm' |> not (is_triv_head tm') ? parens)
+          else if is_nun_const_connective id then
+            let
+              val ty_opt' = SOME nun_prop_ty;
+              val args = dest_rassoc_args oper tm1 tm';
+            in
+              space_implode (" " ^ id ^ " ")
+                (map (fn arg => str_of NONE arg |> not (is_triv_head arg) ? parens) args)
             end
           else
             str_of_app ty_opt tm tm'
@@ -346,6 +364,8 @@ val str_of_tm =
   end;
 
 fun str_of_tmty tm = str_of_tm tm ^ " : " ^ str_of_ty (nun_ty_of tm);
+
+val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
 
 val nice_of_ugly_suggestion = unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
 
