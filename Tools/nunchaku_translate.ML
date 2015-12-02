@@ -111,8 +111,8 @@ fun nun_problem_of_isa ctxt =
     fun cmd_of cmd =
       (case cmd of
         ITypedecl T => NTVal (nun_ty_of_isa T)
-      | IData specs => NData (map (nun_co_data_spec_of_isa ctxt) specs)
-      | ICodata specs => NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
+      | ICoData (fp, specs) =>
+        BNF_Util.case_fp fp NData NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
       | IConst t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
       | IRec specs => NRec (map (nun_rec_spec_of_isa ctxt) specs)
       | ISpec spec => NSpec (nun_spec_spec_of_isa ctxt spec)

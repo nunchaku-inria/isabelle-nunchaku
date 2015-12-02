@@ -7,6 +7,8 @@ Collection of Isabelle/HOL definitions etc. for Nunchaku.
 
 signature NUNCHAKU_COLLECT =
 sig
+  type fp_kind = BNF_Util.fp_kind
+
   type isa_co_data_spec =
     {typ: typ,
      ctrs: term list}
@@ -21,8 +23,7 @@ sig
 
   datatype isa_command =
     ITypedecl of typ
-  | IData of isa_co_data_spec list
-  | ICodata of isa_co_data_spec list
+  | ICoData of fp_kind * isa_co_data_spec list
   | IConst of term
   | IRec of isa_rec_spec list
   | ISpec of isa_spec_spec
@@ -40,6 +41,8 @@ struct
 
 open Nunchaku_Util;
 
+type fp_kind = BNF_Util.fp_kind;
+
 type isa_co_data_spec =
   {typ: typ,
    ctrs: term list};
@@ -54,8 +57,7 @@ type isa_spec_spec =
 
 datatype isa_command =
   ITypedecl of typ
-| IData of isa_co_data_spec list
-| ICodata of isa_co_data_spec list
+| ICoData of fp_kind * isa_co_data_spec list
 | IConst of term
 | IRec of isa_rec_spec list
 | ISpec of isa_spec_spec
@@ -212,39 +214,7 @@ val is_const_builtin =
 fun is_term_builtin (Const (s, _)) = is_const_builtin s
   | is_term_builtin _ = false;
 
-fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) = key_of_typ typ;
-
-fun rec_spec_key_of ctxt ({func, ...} : isa_rec_spec) = key_of_func ctxt func;
-fun spec_spec_keys_of ctxt ({funcs, ...} : isa_spec_spec) = map (key_of_func ctxt) funcs;
-
-fun co_data_keys_of (IData specs) = map co_data_spec_key_of specs
-  | co_data_keys_of (ICodata specs) = map co_data_spec_key_of specs
-  | co_data_keys_of _ = [];
-
-fun rec_or_spec_keys_of ctxt (IRec specs) = map (rec_spec_key_of ctxt) specs
-  | rec_or_spec_keys_of ctxt (ISpec spec) = spec_spec_keys_of ctxt spec
-  | rec_or_spec_keys_of _ _ = [];
-
-fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
-  fold (add_type_keys o fastype_of) ctrs [];
-
-fun rec_spec_deps_of ctxt funcs eqs =
-  fold (add_func_keys ctxt) eqs [] |> subtract (op =) (map (key_of_func ctxt) funcs);
-fun spec_spec_deps_of ctxt {funcs, props} =
-  fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
-
-fun co_data_deps_of (IData specs) = maps co_data_spec_deps_of specs
-  | co_data_deps_of (ICodata specs) = maps co_data_spec_deps_of specs
-  | co_data_deps_of _ = [];
-
-fun rec_or_spec_deps_of ctxt (IRec specs) =
-    let val funcs = map #func specs in
-      maps (rec_spec_deps_of ctxt funcs o #eqs) specs
-    end
-  | rec_or_spec_deps_of ctxt (ISpec spec) = spec_spec_deps_of ctxt spec
-  | rec_or_spec_deps_of _ _ = [];
-
-fun sort_isa_subproblem_topologically keys_of deps_of cmds =
+fun sort_isa_subproblem_topologically keys_of deps_of merge_two cmds =
   let
     fun normal_pairs [] = []
       | normal_pairs (all as normal :: others) = map (rpair normal) all;
@@ -263,26 +233,73 @@ fun sort_isa_subproblem_topologically keys_of deps_of cmds =
             |> map_filter normalize
             |> remove (op =) normal;
         in
-          Graph.add_deps_acyclic (normal, deps)
+          fold (fn dep => Graph.add_edge (dep, normal)) deps
         end;
 
     val G = Graph.empty
       |> fold2 add_node keyss cmds
-      |> fold2 add_deps keyss cmds
-      handle Graph.CYCLES (cycle :: _) =>
-        raise Fail ("cyclic dependencies: " ^ commas cycle);
+      |> fold2 add_deps keyss cmds;
+
+    fun merge_scc (cmd :: cmds) = fold merge_two cmds cmd;
+
+    val cmd_of_key = the o AList.lookup (op =) (map hd keyss ~~ cmds);
+
+    val cmd_sccs = rev (Graph.strong_conn G)
+      |> map (map cmd_of_key);
   in
-    Graph.schedule (K snd) G
+    map merge_scc cmd_sccs
   end;
+
+fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) = key_of_typ typ;
+
+fun rec_spec_key_of ctxt ({func, ...} : isa_rec_spec) = key_of_func ctxt func;
+fun spec_spec_keys_of ctxt ({funcs, ...} : isa_spec_spec) = map (key_of_func ctxt) funcs;
+
+fun co_data_keys_of (ICoData (_, specs)) = map co_data_spec_key_of specs;
+
+fun rec_or_spec_keys_of ctxt (IRec specs) = map (rec_spec_key_of ctxt) specs
+  | rec_or_spec_keys_of ctxt (ISpec spec) = spec_spec_keys_of ctxt spec;
+
+fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
+  fold (add_type_keys o fastype_of) ctrs [];
+
+fun rec_spec_deps_of ctxt funcs eqs =
+  fold (add_func_keys ctxt) eqs [] |> subtract (op =) (map (key_of_func ctxt) funcs);
+fun spec_spec_deps_of ctxt {funcs, props} =
+  fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
+
+fun co_data_deps_of (ICoData (_, specs)) = maps co_data_spec_deps_of specs;
+
+fun rec_or_spec_deps_of ctxt (IRec specs) =
+    let val funcs = map #func specs in
+      maps (rec_spec_deps_of ctxt funcs o #eqs) specs
+    end
+  | rec_or_spec_deps_of ctxt (ISpec spec) = spec_spec_deps_of ctxt spec
+  | rec_or_spec_deps_of _ _ = [];
+
+fun merge_two_co_data (ICoData (fp, specs)) (ICoData (fp', specs')) =
+  ICoData (BNF_Util.case_fp fp fp fp', specs @ specs');
+
+fun funcs_of_rec_or_spec (IRec specs) = map #func specs
+  | funcs_of_rec_or_spec (ISpec {funcs, ...}) = funcs;
+
+fun props_of_rec_or_spec (IRec specs) = maps #eqs specs
+  | props_of_rec_or_spec (ISpec {props, ...}) = props;
+
+fun merge_two_rec_or_spec (IRec specs) (IRec specs') = IRec (specs @ specs')
+  | merge_two_rec_or_spec cmd cmd' =
+    ISpec {funcs = funcs_of_rec_or_spec cmd @ funcs_of_rec_or_spec cmd',
+      props = props_of_rec_or_spec cmd @ props_of_rec_or_spec cmd'};
 
 fun sort_and_group_isa_problem ctxt cmds =
   let
     val typedecls = filter (can (fn ITypedecl _ => ())) cmds;
-    val co_datas = filter (can (fn IData _ => () | ICodata _ => ())) cmds
-      |> sort_isa_subproblem_topologically co_data_keys_of co_data_deps_of;
+    val co_datas = filter (can (fn ICoData _ => ())) cmds
+      |> sort_isa_subproblem_topologically co_data_keys_of co_data_deps_of merge_two_co_data;
     val consts = filter (can (fn IConst _ => ())) cmds;
     val recs_specs = filter (can (fn IRec _ => () | ISpec _ => ())) cmds
-      |> sort_isa_subproblem_topologically (rec_or_spec_keys_of ctxt) (rec_or_spec_deps_of ctxt);
+      |> sort_isa_subproblem_topologically (rec_or_spec_keys_of ctxt) (rec_or_spec_deps_of ctxt)
+        merge_two_rec_or_spec;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
   in
@@ -325,11 +342,8 @@ fun isa_problem_of_goal ctxt goal0 =
                      let
                        val dataTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars;
                        val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars;
-                       val co_data =
-                         (case fp of
-                           BNF_Util.Least_FP => IData
-                         | BNF_Util.Greatest_FP => ICodata)
-                           (map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
+                       val co_data = ICoData (fp,
+                         map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
 
                        val prob = co_data :: prob;
                      in
@@ -436,10 +450,8 @@ fun str_of_isa_spec_spec ctxt {funcs, props} =
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
 fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ ctxt T
-  | str_of_isa_command ctxt (IData specs) =
-    "data " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
-  | str_of_isa_command ctxt (ICodata specs) = 
-    "data " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
+  | str_of_isa_command ctxt (ICoData (fp, specs)) =
+    BNF_Util.case_fp fp "data" "codata" ^ " " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
   | str_of_isa_command ctxt (IConst t) = "const " ^ str_of_isa_term_with_type ctxt t
   | str_of_isa_command ctxt (IRec specs) = "rec " ^ str_of_and_list (str_of_isa_rec_spec ctxt) specs
   | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_spec_spec ctxt spec

@@ -14,12 +14,6 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-datatype XOpt = CX "XOpt option" | DX "bool \<Rightarrow> XOpt option"
-
-lemma "P (x :: XOpt)"
-nunchaku
-oops
-
 (*
 declare [[ML_exception_trace]]
 
