@@ -11,6 +11,7 @@ Middleware:
 
   * syntax for models
   * specialization
+  * heuristic inlining of definitions
   * (co)inductive predicates
   * quotient types
   * BNF-style nesting (through functions, mixed FPs, etc.)?
