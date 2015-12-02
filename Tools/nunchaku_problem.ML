@@ -180,12 +180,12 @@ fun nun_range_ty (NType (id, [_, ty])) = if id = nun_fun then ty else raise Fail
 
 fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NVar (_, ty)) = ty
-  | nun_ty_of (NAbs (tm, tm')) = NType (nun_fun, [nun_ty_of tm, nun_ty_of tm'])
-  | nun_ty_of (NApp (tm, _)) = nun_range_ty (nun_ty_of tm);
+  | nun_ty_of (NAbs (var, body)) = NType (nun_fun, [nun_ty_of var, nun_ty_of body])
+  | nun_ty_of (NApp (func, _)) = nun_range_ty (nun_ty_of func);
 
-fun strip_nun_binders id (tm as NApp (NConst (id', _, _), NAbs (var, body))) =
-    if id' = id then
-      strip_nun_binders id body
+fun strip_nun_binders binder (tm as NApp (NConst (id, _, _), NAbs (var, body))) =
+    if id = binder then
+      strip_nun_binders binder body
       |>> cons var
     else
       ([], body)
@@ -208,13 +208,13 @@ fun fold_map_tm_idents f (NConst (id, tys, ty)) =
     f id
     ##>> fold_map_ty_idents f ty
     #>> NVar
-  | fold_map_tm_idents f (NAbs (tm, tm')) =
-    fold_map_tm_idents f tm
-    ##>> fold_map_tm_idents f tm'
+  | fold_map_tm_idents f (NAbs (var, body)) =
+    fold_map_tm_idents f var
+    ##>> fold_map_tm_idents f body
     #>> NAbs
-  | fold_map_tm_idents f (NApp (tm, tm')) =
-    fold_map_tm_idents f tm
-    ##>> fold_map_tm_idents f tm'
+  | fold_map_tm_idents f (NApp (func, arg)) =
+    fold_map_tm_idents f func
+    ##>> fold_map_tm_idents f arg
     #>> NApp;
 
 fun fold_map_nun_ctr_spec_idents f {ctr, arg_tys} =
@@ -266,11 +266,11 @@ fun fold_map_nun_command_idents f (NTVal ty) =
 fun fold_map_nun_problem_idents f =
   fold_map (fold_map (fold_map_nun_command_idents f));
 
-fun dest_rassoc_args oper arg1 rest =
+fun dest_rassoc_args oper arg0 rest =
   (case rest of
-    NApp (NApp (oper', arg2), rest') =>
-    if oper' = oper then arg1 :: dest_rassoc_args oper arg2 rest' else [arg1, rest]
-  | _ => [arg1, rest]);
+    NApp (NApp (oper', arg1), rest') =>
+    if oper' = oper then arg0 :: dest_rassoc_args oper arg1 rest' else [arg0, rest]
+  | _ => [arg0, rest]);
 
 fun replace_tm from to =
   let
@@ -317,14 +317,14 @@ val str_of_tm =
     fun str_of_at_const id tys =
       "@" ^ str_of_ident id ^ str_of_arg_list str_of_ty tys;
 
-    fun str_of_app ty_opt tm tm' =
+    fun str_of_app ty_opt func arg =
       let
         val ty_opt' =
-          try (Option.map (fn ty => NType (nun_fun, [nun_ty_of tm', ty]))) ty_opt
+          try (Option.map (fn ty => NType (nun_fun, [nun_ty_of arg, ty]))) ty_opt
           |> the_default NONE;
       in
-        (str_of ty_opt' tm |> (case tm of NAbs _ => parens | _ => I)) ^
-        str_of_arg_list (str_of NONE) [tm']
+        (str_of ty_opt' func |> (case func of NAbs _ => parens | _ => I)) ^
+        str_of_arg_list (str_of NONE) [arg]
       end
     and str_of _ (NConst (id, [], _)) = str_of_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
@@ -332,33 +332,33 @@ val str_of_tm =
       | str_of _ (NConst (id, tys, _)) =
         str_of_at_const id tys
       | str_of _ (NVar (id, _)) = str_of_ident id
-      | str_of ty_opt (NAbs (tm, tm')) =
-        "fun " ^ str_of (Option.map nun_domain_ty ty_opt) tm ^ ". " ^
-        str_of (Option.map nun_range_ty ty_opt) tm'
-      | str_of ty_opt (tm0 as NApp (tm, tm')) =
-        (case (tm, tm') of
-          (NApp (oper as NConst (id, _, _), tm1), _) =>
+      | str_of ty_opt (NAbs (var, body)) =
+        "fun " ^ str_of (Option.map nun_domain_ty ty_opt) var ^ ". " ^
+        str_of (Option.map nun_range_ty ty_opt) body
+      | str_of ty_opt (app as NApp (func, arg)) =
+        (case (func, arg) of
+          (NApp (oper as NConst (id, _, _), arg0), _) =>
           if id = nun_equals then
-            (str_of NONE tm1 |> not (is_triv_head tm1) ? parens) ^ " " ^ id ^ " " ^
-            (str_of (try nun_ty_of tm') tm' |> not (is_triv_head tm') ? parens)
+            (str_of NONE arg0 |> not (is_triv_head arg0) ? parens) ^ " " ^ id ^ " " ^
+            (str_of (try nun_ty_of arg) arg |> not (is_triv_head arg) ? parens)
           else if is_nun_const_connective id then
             let
               val ty_opt' = SOME nun_prop_ty;
-              val args = dest_rassoc_args oper tm1 tm';
+              val args = dest_rassoc_args oper arg0 arg;
             in
               space_implode (" " ^ id ^ " ")
                 (map (fn arg => str_of NONE arg |> not (is_triv_head arg) ? parens) args)
             end
           else
-            str_of_app ty_opt tm tm'
+            str_of_app ty_opt func arg
         | (NConst (id, _, _), NAbs _) =>
           if is_nun_const_binder id then
-            let val (vars, body) = strip_nun_binders id tm0 in
+            let val (vars, body) = strip_nun_binders id app in
               id ^ " " ^ space_implode " " (map (str_of NONE) vars) ^ ". " ^ str_of NONE body
             end
           else
-            str_of_app ty_opt tm tm'
-        | _ => str_of_app ty_opt tm tm');
+            str_of_app ty_opt func arg
+        | _ => str_of_app ty_opt func arg);
   in
     str_of NONE
   end;
