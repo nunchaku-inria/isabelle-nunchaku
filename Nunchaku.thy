@@ -20,8 +20,10 @@ ML {*
 |> Logic.dest_equals
 *}
 
-lemma "\<exists>!x. P x"
+
+lemma "(\<forall>x. \<exists>y. P x y)"
 nunchaku [expect = genuine]
+
 
 (*
 declare [[ML_exception_trace]]

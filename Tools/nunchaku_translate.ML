@@ -47,9 +47,10 @@ fun nun_tm_of_isa ctxt t =
   let
     val thy = Proof_Context.theory_of ctxt;
 
-    fun tm_of j (Const (@{const_name Collect}, T)) = tm_of j (Abs (Name.uu, domain_type T, Bound 0))
-      | tm_of j (Const (@{const_name Set.member}, T)) =
-        tm_of j (Abs (Name.uu, domain_type T,
+    fun tm_of bounds (Const (@{const_name Collect}, T)) =
+        tm_of bounds (Abs (Name.uu, domain_type T, Bound 0))
+      | tm_of bounds (Const (@{const_name Set.member}, T)) =
+        tm_of bounds (Abs (Name.uu, domain_type T,
           Abs (Name.uu, domain_type (range_type T), Bound 0 $ Bound 1)))
       | tm_of _ (Const (s, T)) =
         let
@@ -78,15 +79,18 @@ fun nun_tm_of_isa ctxt t =
         end
       | tm_of _ (Free (s, T)) = NConst (nun_const_of_str s, [], nun_ty_of_isa T)
       | tm_of _ (Var (x, T)) = NVar (nun_var_of_str (string_of_indexname x), nun_ty_of_isa T)
-      | tm_of j (Abs (s, T, t)) =
-        let val x = Var ((s, j), T) in
-          NAbs (tm_of j x, tm_of (j + 1) (subst_bound (x, t)))
+      | tm_of bounds (Abs (s, T, t)) =
+        let
+          val (s', bounds') = Name.variant s bounds;
+          val x = Var ((s', 0), T);
+        in
+          NAbs (tm_of bounds' x, tm_of bounds' (subst_bound (x, t)))
         end
-      | tm_of j (t $ u) = NApp (tm_of j t, tm_of j u)
+      | tm_of bounds (t $ u) = NApp (tm_of bounds t, tm_of bounds u)
       | tm_of _ (Bound _) = raise Fail "unexpected Bound"
   in
     t
-    |> tm_of (maxidx_of_term t + 1)
+    |> tm_of Name.context
     |> beta_reduce_tm
   end;
 

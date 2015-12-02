@@ -165,10 +165,10 @@ fun gen_nun_var_of_str pre suf s =
 
 fun is_non_builtin_ident s = String.isSuffix "_" s;
 
-val nun_tconst_of_str = gen_nun_const_of_str "y" "__";
-val nun_tvar_of_str = gen_nun_var_of_str "A" "__";
-val nun_const_of_str = gen_nun_const_of_str "c" "_";
-val nun_var_of_str = gen_nun_var_of_str "V" "_";
+val nun_tconst_of_str = gen_nun_const_of_str "y." "__";
+val nun_tvar_of_str = gen_nun_var_of_str "A." "__";
+val nun_const_of_str = gen_nun_const_of_str "c." "_";
+val nun_var_of_str = gen_nun_var_of_str "V." "_";
 
 val nun_prop_ty = NType (nun_prop, []);
 
@@ -367,7 +367,8 @@ fun str_of_tmty tm = str_of_tm tm ^ " : " ^ str_of_ty (nun_ty_of tm);
 
 val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
 
-val nice_of_ugly_suggestion = unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
+val nice_of_ugly_suggestion =
+  unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
 
 fun index_name 1 s = s
   | index_name j s =
