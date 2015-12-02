@@ -1,3 +1,9 @@
-
+Isabelle frontend:
 
   * parse models
+
+Middleware:
+
+  * specialization
+  * (co)inductive predicates
+  * polarity for other predicates

@@ -54,7 +54,7 @@ lemma "P \<longrightarrow> Q"
 nunchaku [expect = genuine]
 oops
 
-lemma "(P::bool) = Q"
+lemma "(P :: bool) = Q"
 nunchaku [expect = genuine]
 oops
 
@@ -363,11 +363,11 @@ done
 
 subsubsection {* Sets *}
 
-lemma "P (A::'a set)"
+lemma "P (A :: 'a set)"
 nunchaku [expect = genuine]
 oops
 
-lemma "P (A::'a set set)"
+lemma "P (A :: 'a set set)"
 nunchaku [expect = genuine]
 oops
 
@@ -469,23 +469,23 @@ done
 
 subsubsection {* Operations on Natural Numbers *}
 
-lemma "(x::nat) + y = 0"
+lemma "(x :: nat) + y = 0"
 nunchaku [expect = genuine]
 oops
 
-lemma "(x::nat) = x + x"
+lemma "(x :: nat) = x + x"
 nunchaku [expect = genuine]
 oops
 
-lemma "(x::nat) - y + y = x"
+lemma "(x :: nat) - y + y = x"
 nunchaku [expect = genuine]
 oops
 
-lemma "(x::nat) = x * x"
+lemma "(x :: nat) = x * x"
 nunchaku [expect = genuine]
 oops
 
-lemma "(x::nat) < x + y"
+lemma "(x :: nat) < x + y"
 nunchaku [card = 1, expect = genuine]
 oops
 
@@ -523,23 +523,23 @@ subsubsection {* Subtypes (typedef), typedecl *}
 
 text {* A completely unspecified non-empty subset of @{typ "'a"}: *}
 
-definition "myTdef = insert (undefined::'a) (undefined::'a set)"
+definition "myTdef = insert (undefined :: 'a) (undefined :: 'a set)"
 
 typedef 'a myTdef = "myTdef :: 'a set"
 unfolding myTdef_def by auto
 
-lemma "(x::'a myTdef) = y"
+lemma "(x :: 'a myTdef) = y"
 nunchaku [expect = genuine]
 oops
 
 typedecl myTdecl
 
-definition "T_bij = {(f::'a\<Rightarrow>'a). \<forall>y. \<exists>!x. f x = y}"
+definition "T_bij = {(f :: 'a\<Rightarrow>'a). \<forall>y. \<exists>!x. f x = y}"
 
 typedef 'a T_bij = "T_bij :: ('a \<Rightarrow> 'a) set"
 unfolding T_bij_def by auto
 
-lemma "P (f::(myTdecl myTdef) T_bij)"
+lemma "P (f :: (myTdecl myTdef) T_bij)"
 nunchaku [expect = genuine]
 oops
 
@@ -683,11 +683,11 @@ oops
 
 datatype ('a, 'b) T3 = E "'a \<Rightarrow> 'b"
 
-lemma "P (x::('a, 'b) T3)"
+lemma "P (x :: ('a, 'b) T3)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::('a, 'b) T3. P x"
+lemma "\<forall>x :: ('a, 'b) T3. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -1018,7 +1018,7 @@ oops
 
 datatype 'a YOpt = CY "('a \<Rightarrow> 'a YOpt) option"
 
-lemma "P (x::'a YOpt)"
+lemma "P (x :: 'a YOpt)"
 nunchaku [expect = genuine]
 oops
 
@@ -1032,11 +1032,11 @@ oops
 
 datatype Trie = TR "Trie list"
 
-lemma "P (x::Trie)"
+lemma "P (x :: Trie)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::Trie. P x"
+lemma "\<forall>x :: Trie. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -1046,11 +1046,11 @@ oops
 
 datatype InfTree = Leaf | Node "nat \<Rightarrow> InfTree"
 
-lemma "P (x::InfTree)"
+lemma "P (x :: InfTree)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::InfTree. P x"
+lemma "\<forall>x :: InfTree. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -1063,7 +1063,8 @@ nunchaku [card = 1-3, expect = none]
 apply simp
 done
 
-lemma "rec_InfTree leaf node (Node g) = node ((\<lambda>InfTree. (InfTree, rec_InfTree leaf node InfTree)) \<circ> g)"
+lemma "rec_InfTree leaf node (Node g) =
+  node ((\<lambda>InfTree. (InfTree, rec_InfTree leaf node InfTree)) \<circ> g)"
 nunchaku [card = 1-3, expect = none]
 apply simp
 done
@@ -1074,11 +1075,11 @@ oops
 
 datatype 'a lambda = Var 'a | App "'a lambda" "'a lambda" | Lam "'a \<Rightarrow> 'a lambda"
 
-lemma "P (x::'a lambda)"
+lemma "P (x :: 'a lambda)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'a lambda. P x"
+lemma "\<forall>x :: 'a lambda. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -1111,11 +1112,11 @@ text {* Taken from "Inductive datatypes in HOL", p. 8: *}
 datatype (dead 'a, 'b) T = C "'a \<Rightarrow> bool" | D "'b list"
 datatype 'c U = E "('c, 'c U) T"
 
-lemma "P (x::'c U)"
+lemma "P (x :: 'c U)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'c U. P x"
+lemma "\<forall>x :: 'c U. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -1129,14 +1130,14 @@ record ('a, 'b) point =
   xpos :: 'a
   ypos :: 'b
 
-lemma "(x::('a, 'b) point) = y"
+lemma "(x :: ('a, 'b) point) = y"
 nunchaku [expect = genuine]
 oops
 
 record ('a, 'b, 'c) extpoint = "('a, 'b) point" +
   ext :: 'c
 
-lemma "(x::('a, 'b, 'c) extpoint) = y"
+lemma "(x :: ('a, 'b, 'c) extpoint) = y"
 nunchaku [expect = genuine]
 oops
 
@@ -1217,7 +1218,7 @@ text {* A type class without axioms: *}
 
 class classA
 
-lemma "P (x::'a::classA)"
+lemma "P (x :: 'a :: classA)"
 nunchaku [expect = genuine]
 oops
 
@@ -1226,11 +1227,11 @@ text {* An axiom with a type variable (denoting types which have at least two el
 class classC =
   assumes classC_ax: "\<exists>x y. x \<noteq> y"
 
-lemma "P (x::'a::classC)"
+lemma "P (x :: 'a :: classC)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<exists>x y. (x::'a::classC) \<noteq> y"
+lemma "\<exists>x y. (x :: 'a :: classC) \<noteq> y"
 nunchaku [expect = none]
 sorry
 
@@ -1240,7 +1241,7 @@ class classD =
   fixes classD_const :: "'a \<Rightarrow> 'a"
   assumes classD_ax: "classD_const (classD_const x) = classD_const x"
 
-lemma "P (x::'a::classD)"
+lemma "P (x :: 'a :: classD)"
 nunchaku [expect = genuine]
 oops
 
@@ -1248,23 +1249,23 @@ text {* A type class with multiple superclasses: *}
 
 class classE = classC + classD
 
-lemma "P (x::'a::classE)"
+lemma "P (x :: 'a :: classE)"
 nunchaku [expect = genuine]
 oops
 
 text {* OFCLASS: *}
 
-lemma "OFCLASS('a::type, type_class)"
+lemma "OFCLASS('a :: type, type_class)"
 nunchaku [expect = none]
 apply intro_classes
 done
 
-lemma "OFCLASS('a::classC, type_class)"
+lemma "OFCLASS('a :: classC, type_class)"
 nunchaku [expect = none]
 apply intro_classes
 done
 
-lemma "OFCLASS('a::type, classC_class)"
+lemma "OFCLASS('a :: type, classC_class)"
 nunchaku [expect = genuine]
 oops
 
@@ -1273,19 +1274,19 @@ text {* Overloading: *}
 consts inverse :: "'a \<Rightarrow> 'a"
 
 defs (overloaded)
-inverse_bool: "inverse (b::bool) \<equiv> \<not> b"
-inverse_set: "inverse (S::'a set) \<equiv> -S"
+inverse_bool: "inverse (b :: bool) \<equiv> \<not> b"
+inverse_set: "inverse (S :: 'a set) \<equiv> -S"
 inverse_pair: "inverse p \<equiv> (inverse (fst p), inverse (snd p))"
 
 lemma "inverse b"
 nunchaku [expect = genuine]
 oops
 
-lemma "P (inverse (S::'a set))"
+lemma "P (inverse (S :: 'a set))"
 nunchaku [expect = genuine]
 oops
 
-lemma "P (inverse (p::'a\<times>'b))"
+lemma "P (inverse (p :: 'a\<times>'b))"
 nunchaku [expect = genuine]
 oops
 

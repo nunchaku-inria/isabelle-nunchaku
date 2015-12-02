@@ -214,40 +214,46 @@ val is_const_builtin =
 fun is_term_builtin (Const (s, _)) = is_const_builtin s
   | is_term_builtin _ = false;
 
-fun sort_isa_subproblem_topologically keys_of deps_of merge_two cmds =
+fun sort_isa_subproblem_topologically keys_of deps_of merge_two =
   let
     fun normal_pairs [] = []
       | normal_pairs (all as normal :: others) = map (rpair normal) all;
 
-    val keyss = map keys_of cmds;
-    val normal_keys = Symtab.make (maps normal_pairs keyss);
-    val normalize = Symtab.lookup normal_keys;
-
     fun add_node [] _ = I
       | add_node (normal :: _) cmd = Graph.new_node (normal, cmd);
 
-    fun add_deps [] _ = I
-      | add_deps (normal :: _) cmd =
-        let
-          val deps = deps_of cmd
-            |> map_filter normalize
-            |> remove (op =) normal;
-        in
-          fold (fn dep => Graph.add_edge (dep, normal)) deps
-        end;
-
-    val G = Graph.empty
-      |> fold2 add_node keyss cmds
-      |> fold2 add_deps keyss cmds;
-
     fun merge_scc (cmd :: cmds) = fold merge_two cmds cmd;
 
-    val cmd_of_key = the o AList.lookup (op =) (map hd keyss ~~ cmds);
+    fun sort_subprob cmds =
+      let
+        val keyss = map keys_of cmds;
+        val normal_keys = Symtab.make (maps normal_pairs keyss);
+        val normalize = Symtab.lookup normal_keys;
 
-    val cmd_sccs = rev (Graph.strong_conn G)
-      |> map (map cmd_of_key);
+        fun add_deps [] _ = I
+          | add_deps (normal :: _) cmd =
+            let
+              val deps = deps_of cmd
+                |> map_filter normalize
+                |> remove (op =) normal;
+            in
+              fold (fn dep => Graph.add_edge (dep, normal)) deps
+            end;
+
+        val cmd_of_key = the o AList.lookup (op =) (map hd keyss ~~ cmds);
+
+        val G = Graph.empty
+          |> fold2 add_node keyss cmds
+          |> fold2 add_deps keyss cmds;
+
+        val cmd_sccs = rev (Graph.strong_conn G)
+          |> map (map cmd_of_key);
+      in
+        if exists (can (fn _ :: _ :: _ => ())) cmd_sccs then sort_subprob (map merge_scc cmd_sccs)
+        else Graph.schedule (K snd) G
+      end
   in
-    map merge_scc cmd_sccs
+    sort_subprob
   end;
 
 fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) = key_of_typ typ;
