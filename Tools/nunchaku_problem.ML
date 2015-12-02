@@ -72,6 +72,8 @@ sig
   val fold_map_nun_problem_idents: (string -> 'a -> string * 'a) -> nun_problem -> 'a ->
     nun_problem * 'a
 
+  val beta_reduce_tm: tm -> tm
+
   val str_of_ident: ident -> string
   val str_of_ty: ty -> string
   val str_of_tm: tm -> string
@@ -160,7 +162,7 @@ fun gen_nun_var_of_str pre suf s =
     if Char.isUpper (String.sub (s', 0)) then s' else pre ^ s'
   end;
 
-fun is_user_ident s = String.isSuffix "_" s;
+fun is_non_builtin_ident s = String.isSuffix "_" s;
 
 val nun_tconst_of_str = gen_nun_const_of_str "y" "__";
 val nun_tvar_of_str = gen_nun_var_of_str "A" "__";
@@ -263,6 +265,25 @@ fun fold_map_nun_problem_idents f =
 
 val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
 
+fun replace_tm from to =
+  let
+    (* This code assumes all enclosing binders bind distinct variables and bound variables are
+       distinct from any other variables. *)
+    fun replace (NApp (func, arg)) = NApp (replace func, replace arg)
+      | replace (NAbs (var, body)) = NAbs (var, replace body)
+      | replace tm = if tm = from then to else tm;
+  in
+    replace
+  end;
+
+fun beta_reduce_tm (NApp (NAbs (var, body), arg)) = beta_reduce_tm (replace_tm var arg body)
+  | beta_reduce_tm (NApp (func, arg)) =
+    (case beta_reduce_tm func of
+      func' as NAbs _ => beta_reduce_tm (NApp (func', arg))
+    | func' => NApp (func', beta_reduce_tm arg))
+  | beta_reduce_tm (NAbs (var, body)) = NAbs (var, beta_reduce_tm body)
+  | beta_reduce_tm tm = tm;
+
 fun str_of_ident id = id;
 
 val str_of_ty =
@@ -290,7 +311,8 @@ val str_of_tm =
           try (Option.map (fn ty => NType (nun_fun, [nun_ty_of tm', ty]))) ty_opt
           |> the_default NONE;
       in
-        str_of ty_opt' tm ^ str_of_arg_list (str_of NONE) [tm']
+        (str_of ty_opt' tm |> (case tm of NAbs _ => parens | _ => I)) ^
+        str_of_arg_list (str_of NONE) [tm']
       end
     and str_of _ (NConst (id, [], _)) = str_of_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
@@ -352,7 +374,7 @@ fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
   end;
 
 fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
-  if is_user_ident ugly then
+  if is_non_builtin_ident ugly then
     (case Symtab.lookup nice_of_ugly ugly of
       NONE =>
       let val nice_sugg = nice_of_ugly_suggestion ugly in

@@ -185,12 +185,12 @@ fun mutual_recs_or_spec_of ctxt const =
       | NONE => NONE))
   end;
 
-val is_typ_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
+val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}, @{type_name set}];
 
 val is_const_builtin =
-  member (op =) [@{const_name All}, @{const_name conj}, @{const_name disj}, @{const_name HOL.eq},
-    @{const_name Ex}, @{const_name False}, @{const_name implies}, @{const_name Not},
-    @{const_name True}];
+  member (op =) [@{const_name All}, @{const_name Collect}, @{const_name conj}, @{const_name disj},
+    @{const_name HOL.eq}, @{const_name Ex}, @{const_name False}, @{const_name implies},
+    @{const_name Set.member}, @{const_name Not}, @{const_name True}];
 
 fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) = key_of_typ typ;
 
@@ -279,46 +279,46 @@ fun isa_problem_of_goal ctxt goal0 =
 
     fun consider_type depth T =
       (case T of
-        Type (@{type_name fun}, Ts) => fold (consider_type depth) Ts
-      | @{typ prop} => I
-      | @{typ bool} => I
-      | _ =>
-        (fn (seens as (seenS, seenT, seen), prob) =>
-            if member (op =) seenT T then
-              (seens, prob)
-            else
-              let
-                val seenT = T :: seenT;
-                val seens = (seenS, seenT, seen);
-              in
-                (case T of
-                  TFree (_, S) =>
-                  (fn (seen, prob) =>
-                      (seen, ITypedecl T :: prob)
-                      |> consider_sort depth T S)
-                | TVar (_, S) => consider_sort depth T S
-                | Type (s, Ts) =>
-                  fold (consider_type depth) Ts
-                  #> (case mutual_co_datatypes_of ctxt s of
-                       SOME (fp, ctr_sugars) =>
-                       (fn ((seenS, seenT, seen), prob) =>
-                           let
-                             val dataTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars;
-                             val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars;
-                             val co_data =
-                               (case fp of
-                                 BNF_Util.Least_FP => IData
-                               | BNF_Util.Greatest_FP => ICodata)
-                                 (map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
+        Type (s, Ts) =>
+        if is_type_builtin s then fold (consider_type depth) Ts
+        else consider_non_builtin_type depth T
+      | _ => consider_non_builtin_type depth T)
+    and consider_non_builtin_type depth T (seens as (seenS, seenT, seen), prob) =
+      if member (op =) seenT T then
+        (seens, prob)
+      else
+        let
+          val seenT = T :: seenT;
+          val seens = (seenS, seenT, seen);
+        in
+          (case T of
+            TFree (_, S) =>
+            (fn (seen, prob) =>
+                (seen, ITypedecl T :: prob)
+                |> consider_sort depth T S)
+          | TVar (_, S) => consider_sort depth T S
+          | Type (s, Ts) =>
+            fold (consider_type depth) Ts
+            #> (case mutual_co_datatypes_of ctxt s of
+                 SOME (fp, ctr_sugars) =>
+                 (fn ((seenS, seenT, seen), prob) =>
+                     let
+                       val dataTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars;
+                       val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars;
+                       val co_data =
+                         (case fp of
+                           BNF_Util.Least_FP => IData
+                         | BNF_Util.Greatest_FP => ICodata)
+                           (map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
 
-                             val prob = co_data :: prob;
-                           in
-                             ((seenS, union (op =) dataTs seenT, seen), prob)
-                             |> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
-                           end)
-                     | NONE => (fn (seen, prob) => (seen, ITypedecl T :: prob))))
-                  (seens, prob)
-              end));
+                       val prob = co_data :: prob;
+                     in
+                       ((seenS, union (op =) dataTs seenT, seen), prob)
+                       |> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
+                     end)
+               | NONE => (fn (seen, prob) => (seen, ITypedecl T :: prob))))
+            (seens, prob)
+        end;
 
     fun consider_term depth t =
       (case t of
