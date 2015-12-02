@@ -63,6 +63,7 @@ fun nun_tm_of_isa ctxt t =
             | @{const_name HOL.eq} => nun_equals
             | @{const_name Ex} => nun_exists
             | @{const_name False} => nun_false
+            | @{const_name If} => nun_if
             | @{const_name implies} => nun_implies
             | @{const_name Not} => nun_not
             | @{const_name True} => nun_true

@@ -62,7 +62,6 @@ sig
   val nun_forall: ident
   val nun_if: ident
   val nun_implies: ident
-  val nun_let: ident
   val nun_not: ident
   val nun_true: ident
 
@@ -149,12 +148,10 @@ val nun_false = "false";
 val nun_forall = "forall";
 val nun_if = "if";
 val nun_implies = "=>";
-val nun_let = "let";
 val nun_not = "~";
 val nun_true = "true";
 
 val nun_else = "else";
-val nun_in = "in";
 val nun_then = "then";
 
 val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
@@ -351,9 +348,6 @@ val str_of_tm =
           if id = nun_equals then
             (str_of NONE arg1 |> not (is_triv_head arg1) ? parens) ^ " " ^ id ^ " " ^
             (str_of (try nun_ty_of arg2) arg2 |> not (is_triv_head arg2) ? parens)
-          else if id = nun_let then
-            id ^ " " ^ str_of NONE arg1 ^ " " ^ nun_in ^ " " ^ str_of NONE arg1
-            |> parens
           else if is_nun_const_connective id then
             let
               val ty_opt' = SOME nun_prop_ty;
@@ -366,8 +360,8 @@ val str_of_tm =
             str_of_app ty_opt func argN
         | (NApp (NApp (oper as NConst (id, _, _), arg1), arg2), arg3) =>
           if id = nun_if then
-            id ^ " " ^ str_of NONE arg1 ^ " " ^ nun_then ^ " " ^ str_of NONE arg2 ^ " " ^
-            str_of NONE arg3
+            nun_if ^ " " ^ str_of NONE arg1 ^ " " ^ nun_then ^ " " ^ str_of NONE arg2 ^ " " ^
+            nun_else ^ " " ^ str_of NONE arg3
             |> parens
           else
             str_of_app ty_opt func argN

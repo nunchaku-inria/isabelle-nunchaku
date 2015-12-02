@@ -99,7 +99,7 @@ fun close_form t =
     (Term.add_vars t []) t;
 
 val basic_defs =
-  @{thm Ex1_def} :: map (fn th => th RS @{thm eq_reflection}) @{thms Ball_def Bex_def};
+  @{thms Ex1_def Let_def} @ map (fn th => th RS @{thm eq_reflection}) @{thms Ball_def Bex_def};
 
 fun unfold_basic_def ctxt =
   let val thy = Proof_Context.theory_of ctxt in
@@ -208,8 +208,8 @@ val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}, @{type
 
 val is_const_builtin =
   member (op =) [@{const_name All}, @{const_name Collect}, @{const_name conj}, @{const_name disj},
-    @{const_name HOL.eq}, @{const_name Ex}, @{const_name False}, @{const_name implies},
-    @{const_name Set.member}, @{const_name Not}, @{const_name True}];
+    @{const_name HOL.eq}, @{const_name Ex}, @{const_name False}, @{const_name If},
+    @{const_name implies}, @{const_name Set.member}, @{const_name Not}, @{const_name True}];
 
 fun is_term_builtin (Const (s, _)) = is_const_builtin s
   | is_term_builtin _ = false;
