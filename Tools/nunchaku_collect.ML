@@ -172,6 +172,9 @@ fun mutual_recs_or_spec_of ctxt const =
 
     val const_T = fastype_of const;
 
+    fun is_right_spec class (class', (ts, _)) =
+      class' = class andalso exists (fn t => Pattern.matches thy (t, const)) ts;
+
     fun subst_of t0 =
       try (Sign.typ_match thy (fastype_of t0, const_T)) Vartab.empty;
 
@@ -183,6 +186,7 @@ fun mutual_recs_or_spec_of ctxt const =
            val props = map (instantiate_constant_type_in_term ctxt const o Thm.prop_of) ths;
          in
            if exists (exists (exists_type (exists_subtype is_TVar))) [ts, props] then NONE
+           else if null props then SOME (false, [const], [])
            else SOME (is_rec, ts, props)
          end
          handle Type.TYPE_MATCH => NONE)
@@ -190,10 +194,10 @@ fun mutual_recs_or_spec_of ctxt const =
 
     val specs = Spec_Rules.retrieve ctxt const;
   in
-    (case find_first (fn (class, _) => class = Spec_Rules.Equational) specs of
+    (case find_first (is_right_spec Spec_Rules.Equational) specs of
       SOME (_, spec) => process_spec true spec
     | NONE =>
-      (case find_first (fn (class, _) => class = Spec_Rules.Unknown (* risky *)) specs of
+      (case find_first (is_right_spec Spec_Rules.Unknown) specs of
         SOME (_, spec) => process_spec false spec
       | NONE => NONE))
   end;
@@ -204,6 +208,9 @@ val is_const_builtin =
   member (op =) [@{const_name All}, @{const_name Collect}, @{const_name conj}, @{const_name disj},
     @{const_name HOL.eq}, @{const_name Ex}, @{const_name False}, @{const_name implies},
     @{const_name Set.member}, @{const_name Not}, @{const_name True}];
+
+fun is_term_builtin (Const (s, _)) = is_const_builtin s
+  | is_term_builtin _ = false;
 
 fun co_data_spec_key_of ({typ, ...} : isa_co_data_spec) = key_of_typ typ;
 
@@ -254,7 +261,7 @@ fun sort_isa_subproblem_topologically keys_of deps_of cmds =
         let
           val deps = deps_of cmd
             |> map_filter normalize
-            |> remove1 (op =) normal;
+            |> remove (op =) normal;
         in
           Graph.add_deps_acyclic (normal, deps)
         end;
@@ -372,20 +379,26 @@ fun isa_problem_of_goal ctxt goal0 =
 
                                val eqss = map eqs_of_func funcs;
                              in
-                               if eq_set (op aconv) (eqs, flat eqss) then SOME eqss else NONE
+                               if eq_set (op aconv) (eqs, flat eqss) andalso
+                                  forall (not o null) eqss then
+                                SOME eqss
+                              else
+                                NONE
                              end;
 
-                         val rec_or_spec =
-                           (if is_rec then
-                              (case partition_eqs props of
-                                SOME eqss =>
-                                IRec (map2 (fn func => fn eqs => {func = func, eqs = eqs})
-                                  funcs eqss)
-                              | NONE => ISpec {funcs = funcs, props = props})
-                            else
-                              ISpec {funcs = funcs, props = props});
+                         val cmds =
+                           if null props then
+                             map IConst funcs
+                           else if is_rec then
+                             (case partition_eqs props of
+                               SOME eqss =>
+                               [IRec (map2 (fn func => fn eqs => {func = func, eqs = eqs})
+                                  funcs eqss)]
+                             | NONE => [ISpec {funcs = funcs, props = props}])
+                           else
+                             [ISpec {funcs = funcs, props = props}];
 
-                         val prob = rec_or_spec :: prob;
+                         val prob = cmds @ prob;
                        in
                          ((seenS, seenT, union (op aconv) funcs seen), prob)
                          |> fold (consider_term (depth + 1)) props
@@ -419,7 +432,7 @@ fun str_of_isa_rec_spec ctxt {func, eqs} =
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) eqs);
 
 fun str_of_isa_spec_spec ctxt {funcs, props} =
-  space_implode " and " (map (str_of_isa_term_with_type ctxt) funcs) ^ " :=\n" ^
+  space_implode " and\n     " (map (str_of_isa_term_with_type ctxt) funcs) ^ " :=\n  " ^
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
 fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ ctxt T

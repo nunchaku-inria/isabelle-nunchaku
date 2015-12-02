@@ -436,7 +436,7 @@ lemma "P (The P)"
 nunchaku [expect = genuine]
 oops
 
-lemma "(THE x. x=y) = z"
+lemma "(THE x. x = y) = z"
 nunchaku [expect = genuine]
 oops
 
@@ -491,11 +491,11 @@ oops
 
 text {* \<times> *}
 
-lemma "P (x::'a\<times>'b)"
+lemma "P (x :: 'a \<times> 'b)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'a\<times>'b. P x"
+lemma "\<forall>x :: 'a \<times> 'b. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -547,11 +547,11 @@ subsubsection {* Inductive Datatypes *}
 
 text {* unit *}
 
-lemma "P (x::unit)"
+lemma "P (x :: unit)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::unit. P x"
+lemma "\<forall>x :: unit. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -565,11 +565,11 @@ oops
 
 text {* option *}
 
-lemma "P (x::'a option)"
+lemma "P (x :: 'a option)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'a option. P x"
+lemma "\<forall>x :: 'a option. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -587,11 +587,11 @@ oops
 
 text {* + *}
 
-lemma "P (x::'a+'b)"
+lemma "P (x :: 'a + 'b)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'a+'b. P x"
+lemma "\<forall>x :: 'a + 'b. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -615,11 +615,11 @@ text {* Non-recursive datatypes *}
 
 datatype T1 = A | B
 
-lemma "P (x::T1)"
+lemma "P (x :: T1)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::T1. P x"
+lemma "\<forall>x :: T1. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -651,11 +651,11 @@ oops
 
 datatype 'a T2 = C T1 | D 'a
 
-lemma "P (x::'a T2)"
+lemma "P (x :: 'a T2)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'a T2. P x"
+lemma "\<forall>x :: 'a T2. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -712,11 +712,11 @@ text {* Recursive datatypes *}
 
 text {* nat *}
 
-lemma "P (x::nat)"
+lemma "P (x :: nat)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::nat. P x"
+lemma "\<forall>x :: nat. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -748,11 +748,11 @@ oops
 
 text {* 'a list *}
 
-lemma "P (xs::'a list)"
+lemma "P (xs :: 'a list)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>xs::'a list. P xs"
+lemma "\<forall>xs :: 'a list. P xs"
 nunchaku [expect = genuine]
 oops
 
@@ -778,7 +778,7 @@ lemma "P (case x of Nil \<Rightarrow> nil | Cons a b \<Rightarrow> cons a b)"
 nunchaku [expect = genuine]
 oops
 
-lemma "(xs::'a list) = ys"
+lemma "(xs :: 'a list) = ys"
 nunchaku [expect = genuine]
 oops
 
@@ -788,11 +788,11 @@ oops
 
 datatype BitList = BitListNil | Bit0 BitList | Bit1 BitList
 
-lemma "P (x::BitList)"
+lemma "P (x :: BitList)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::BitList. P x"
+lemma "\<forall>x :: BitList. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -821,11 +821,11 @@ oops
 
 datatype 'a BinTree = Leaf 'a | Node "'a BinTree" "'a BinTree"
 
-lemma "P (x::'a BinTree)"
+lemma "P (x :: 'a BinTree)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'a BinTree. P x"
+lemma "\<forall>x :: 'a BinTree. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -856,11 +856,11 @@ text {* Mutually recursive datatypes *}
 datatype 'a aexp = Number 'a | ITE "'a bexp" "'a aexp" "'a aexp"
  and 'a bexp = Equal "'a aexp" "'a aexp"
 
-lemma "P (x::'a aexp)"
+lemma "P (x :: 'a aexp)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'a aexp. P x"
+lemma "\<forall>x :: 'a aexp. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -868,11 +868,11 @@ lemma "P (ITE (Equal (Number x) (Number y)) (Number x) (Number y))"
 nunchaku [expect = genuine]
 oops
 
-lemma "P (x::'a bexp)"
+lemma "P (x :: 'a bexp)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'a bexp. P x"
+lemma "\<forall>x :: 'a bexp. P x"
 nunchaku [expect = genuine]
 oops
 
@@ -881,7 +881,9 @@ nunchaku [card = 1-3, expect = none]
 apply simp
 done
 
-lemma "rec_aexp number ite equal (ITE x y z) = ite x y z (rec_bexp number ite equal x) (rec_aexp number ite equal y) (rec_aexp number ite equal z)"
+lemma "rec_aexp number ite equal (ITE x y z) =
+  ite x y z (rec_bexp number ite equal x) (rec_aexp number ite equal y)
+    (rec_aexp number ite equal z)"
 nunchaku [card = 1-3, expect = none]
 apply simp
 done
@@ -894,7 +896,8 @@ lemma "P (case x of Number a \<Rightarrow> number a | ITE b a1 a2 \<Rightarrow> 
 nunchaku [expect = genuine]
 oops
 
-lemma "rec_bexp number ite equal (Equal x y) = equal x y (rec_aexp number ite equal x) (rec_aexp number ite equal y)"
+lemma "rec_bexp number ite equal (Equal x y) =
+  equal x y (rec_aexp number ite equal x) (rec_aexp number ite equal y)"
 nunchaku [card = 1-3, expect = none]
 apply simp
 done
@@ -909,11 +912,11 @@ oops
 
 datatype X = A | B X | C Y and Y = D X | E Y | F
 
-lemma "P (x::X)"
+lemma "P (x :: X)"
 nunchaku [expect = genuine]
 oops
 
-lemma "P (y::Y)"
+lemma "P (y :: Y)"
 nunchaku [expect = genuine]
 oops
 
@@ -997,7 +1000,7 @@ text {* Indirect recursion is implemented via mutual recursion. *}
 
 datatype XOpt = CX "XOpt option" | DX "bool \<Rightarrow> XOpt option"
 
-lemma "P (x::XOpt)"
+lemma "P (x :: XOpt)"
 nunchaku [expect = genuine]
 oops
 
