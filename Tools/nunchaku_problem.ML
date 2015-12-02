@@ -183,12 +183,12 @@ fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NAbs (var, body)) = NType (nun_fun, [nun_ty_of var, nun_ty_of body])
   | nun_ty_of (NApp (func, _)) = nun_range_ty (nun_ty_of func);
 
-fun strip_nun_binders binder (tm as NApp (NConst (id, _, _), NAbs (var, body))) =
+fun strip_nun_binders binder (app as NApp (NConst (id, _, _), NAbs (var, body))) =
     if id = binder then
       strip_nun_binders binder body
       |>> cons var
     else
-      ([], body)
+      ([], app)
   | strip_nun_binders _ tm = ([], tm);
 
 fun fold_map_ty_idents f (NType (id, tys)) =
