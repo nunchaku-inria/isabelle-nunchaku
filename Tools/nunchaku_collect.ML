@@ -27,8 +27,8 @@ sig
 
   datatype isa_command =
     ITypedecl of typ
-  | ICoData of fp_kind * isa_co_data_spec list
   | ITypedef of typ * term
+  | ICoData of fp_kind * isa_co_data_spec list
   | IConst of term
   | ICoPred of fp_kind * isa_co_pred_spec list
   | IRec of isa_rec_spec list
@@ -67,8 +67,8 @@ type isa_spec_spec =
 
 datatype isa_command =
   ITypedecl of typ
-| ICoData of fp_kind * isa_co_data_spec list
 | ITypedef of typ * term
+| ICoData of fp_kind * isa_co_data_spec list
 | IConst of term
 | ICoPred of fp_kind * isa_co_pred_spec list
 | IRec of isa_rec_spec list
@@ -237,8 +237,8 @@ fun is_term_builtin (Const (s, _)) = is_const_builtin s
   | is_term_builtin _ = false;
 
 fun keys_of _ (ITypedecl T) = [key_of_typ T]
-  | keys_of _ (ICoData (_, specs)) = map (key_of_typ o #typ) specs
   | keys_of _ (ITypedef (T, _)) = [key_of_typ T]
+  | keys_of _ (ICoData (_, specs)) = map (key_of_typ o #typ) specs
   | keys_of ctxt (IConst func) = [key_of_func ctxt func]
   | keys_of ctxt (ICoPred (_, specs)) = map (key_of_func ctxt o #func) specs
   | keys_of ctxt (IRec specs) = map (key_of_func ctxt o #func) specs
@@ -254,8 +254,8 @@ fun spec_spec_deps_of ctxt {funcs, props} =
   fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
 
 fun deps_of _ (ITypedecl _) = []
-  | deps_of _ (ICoData (_, specs)) = maps co_data_spec_deps_of specs
   | deps_of ctxt (ITypedef (_, pred)) = add_func_keys ctxt pred []
+  | deps_of _ (ICoData (_, specs)) = maps co_data_spec_deps_of specs
   | deps_of _ (IConst func) = add_type_keys (fastype_of func) []
   | deps_of ctxt (ICoPred (_, specs)) =
     maps (co_pred_or_rec_spec_deps_of ctxt (map #func specs) o #intros) specs
@@ -334,8 +334,8 @@ fun sort_isa_problem_topologically ctxt cmds =
   end;
 
 fun group_of (ITypedecl _) = 1
-  | group_of (ICoData _) = 2
-  | group_of (ITypedef _) = 3
+  | group_of (ITypedef _) = 2
+  | group_of (ICoData _) = 3
   | group_of (IConst _) = 4
   | group_of (ICoPred _) = 5
   | group_of (IRec _) = 6
@@ -501,10 +501,10 @@ fun str_of_isa_spec_spec ctxt {funcs, props} =
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
 fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ ctxt T
-  | str_of_isa_command ctxt (ICoData (fp, specs)) =
-    BNF_Util.case_fp fp "data" "codata" ^ " " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
   | str_of_isa_command ctxt (ITypedef (T, pred)) =
     "typedef " ^ Syntax.string_of_typ ctxt T ^ " := " ^ Syntax.string_of_term ctxt pred
+  | str_of_isa_command ctxt (ICoData (fp, specs)) =
+    BNF_Util.case_fp fp "data" "codata" ^ " " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
   | str_of_isa_command ctxt (IConst t) = "const " ^ str_of_isa_term_with_type ctxt t
   | str_of_isa_command ctxt (ICoPred (fp, specs)) =
     BNF_Util.case_fp fp "induct" "coinduct" ^ " " ^
