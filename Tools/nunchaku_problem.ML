@@ -41,6 +41,7 @@ sig
 
   datatype nun_command =
     NTVal of ty
+  | NCopy of ty * tm
   | NData of nun_co_data_spec list
   | NCodata of nun_co_data_spec list
   | NVal of tm * ty
@@ -131,6 +132,7 @@ type nun_spec_spec =
 
 datatype nun_command =
   NTVal of ty
+| NCopy of ty * tm
 | NData of nun_co_data_spec list
 | NCodata of nun_co_data_spec list
 | NVal of tm * ty
@@ -263,6 +265,10 @@ fun fold_map_nun_spec_spec_idents f {funcs, props} =
 fun fold_map_nun_command_idents f (NTVal ty) =
     fold_map_ty_idents f ty
     #>> NTVal
+  | fold_map_nun_command_idents f (NCopy (ty, pred)) =
+    fold_map_ty_idents f ty
+    ##>> fold_map_tm_idents f pred
+    #>> NCopy
   | fold_map_nun_command_idents f (NData specs) =
     fold_map (fold_map_nun_co_data_spec_idents f) specs
     #>> NData
@@ -445,6 +451,10 @@ fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
 fun nice_nun_problem prob =
   fold_map_nun_problem_idents nice_ident prob empty_name_pool;
 
+fun str_of_tval (NType (id, tys)) =
+    str_of_ident id ^ " : " ^ fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
+  | str_of_tval _ = raise Fail "non-NType";
+
 fun str_of_nun_ctr_spec {ctr, arg_tys} =
   str_of_tm ctr ^ str_of_arg_list str_of_ty arg_tys;
 
@@ -461,12 +471,8 @@ fun str_of_nun_spec_spec {funcs, props} =
   space_implode " and\n     " (map str_of_tmty funcs) ^ " :=\n  " ^
   space_implode ";\n  " (map str_of_tm props);
 
-fun str_of_nun_command (NTVal ty) =
-    (case ty of
-      NType (id, tys) =>
-      "val " ^ str_of_ident id ^ " : " ^
-      fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
-    | _ => raise Fail "non-NType")
+fun str_of_nun_command (NTVal ty) = "val " ^ str_of_tval ty
+  | str_of_nun_command (NCopy (ty, tm)) = "copy " ^ str_of_ty ty ^ " := " ^ str_of_tm tm
   | str_of_nun_command (NData specs) = "data " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NCodata specs) = "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
