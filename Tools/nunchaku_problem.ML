@@ -31,7 +31,7 @@ sig
     {func: tm,
      props: tm list}
 
-  type nun_spec_spec =
+  type nun_funcs_spec =
     {funcs: tm list,
      props: tm list}
 
@@ -45,7 +45,7 @@ sig
   | NPred of nun_func_spec list
   | NCopred of nun_func_spec list
   | NRec of nun_func_spec list
-  | NSpec of nun_spec_spec
+  | NSpec of nun_funcs_spec
   | NAxiom of tm
   | NGoal of tm
 
@@ -119,7 +119,7 @@ type nun_func_spec =
   {func: tm,
    props: tm list};
 
-type nun_spec_spec =
+type nun_funcs_spec =
   {funcs: tm list,
    props: tm list};
 
@@ -133,7 +133,7 @@ datatype nun_command =
 | NPred of nun_func_spec list
 | NCopred of nun_func_spec list
 | NRec of nun_func_spec list
-| NSpec of nun_spec_spec
+| NSpec of nun_funcs_spec
 | NAxiom of tm
 | NGoal of tm;
 
@@ -246,7 +246,7 @@ fun fold_map_nun_func_spec_idents f {func, props} =
   ##>> fold_map (fold_map_tm_idents f) props
   #>> (fn (func, props) => {func = func, props = props});
 
-fun fold_map_nun_spec_spec_idents f {funcs, props} =
+fun fold_map_nun_funcs_spec_idents f {funcs, props} =
   fold_map (fold_map_tm_idents f) funcs
   ##>> fold_map (fold_map_tm_idents f) props
   #>> (fn (funcs, props) => {funcs = funcs, props = props});
@@ -282,7 +282,7 @@ fun fold_map_nun_command_idents f (NTVal ty) =
     fold_map (fold_map_nun_func_spec_idents f) specs
     #>> NRec
   | fold_map_nun_command_idents f (NSpec spec) =
-    fold_map_nun_spec_spec_idents f spec
+    fold_map_nun_funcs_spec_idents f spec
     #>> NSpec
   | fold_map_nun_command_idents f (NAxiom tm) =
     fold_map_tm_idents f tm
@@ -457,7 +457,7 @@ fun str_of_nun_co_data_spec {ty, ctrs} =
 fun str_of_nun_func_spec {func, props} =
   str_of_tmty func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm props);
 
-fun str_of_nun_spec_spec {funcs, props} =
+fun str_of_nun_funcs_spec {funcs, props} =
   space_implode " and\n     " (map str_of_tmty funcs) ^ " :=\n  " ^
   space_implode ";\n  " (map str_of_tm props);
 
@@ -470,7 +470,7 @@ fun str_of_nun_command (NTVal ty) = "val " ^ str_of_tval ty
   | str_of_nun_command (NPred specs) = "pred " ^ str_of_and_list str_of_nun_func_spec specs
   | str_of_nun_command (NCopred specs) = "copred " ^ str_of_and_list str_of_nun_func_spec specs
   | str_of_nun_command (NRec specs) = "rec " ^ str_of_and_list str_of_nun_func_spec specs
-  | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_spec_spec spec
+  | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_funcs_spec spec
   | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_tm tm
   | str_of_nun_command (NGoal tm) = "goal " ^ str_of_tm tm;
 

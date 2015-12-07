@@ -17,7 +17,7 @@ sig
     {func: term,
      props: term list}
 
-  type isa_spec_spec =
+  type isa_funcs_spec =
     {funcs: term list,
      props: term list}
 
@@ -29,7 +29,7 @@ sig
   | IConst of term
   | ICoPred of fp_kind * isa_func_spec list
   | IRec of isa_func_spec list
-  | ISpec of isa_spec_spec
+  | ISpec of isa_funcs_spec
   | IAxiom of term
   | IGoal of term
 
@@ -54,7 +54,7 @@ type isa_func_spec =
   {func: term,
    props: term list};
 
-type isa_spec_spec =
+type isa_funcs_spec =
   {funcs: term list,
    props: term list};
 
@@ -66,7 +66,7 @@ datatype isa_command =
 | IConst of term
 | ICoPred of fp_kind * isa_func_spec list
 | IRec of isa_func_spec list
-| ISpec of isa_spec_spec
+| ISpec of isa_funcs_spec
 | IAxiom of term
 | IGoal of term;
 
@@ -245,7 +245,7 @@ fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
   fold (add_type_keys o fastype_of) ctrs [];
 fun func_spec_deps_of ctxt funcs props =
   fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
-fun spec_spec_deps_of ctxt {funcs, props} =
+fun funcs_spec_deps_of ctxt {funcs, props} =
   fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
 
 fun deps_of _ (ITypedecl _) = []
@@ -256,7 +256,7 @@ fun deps_of _ (ITypedecl _) = []
   | deps_of ctxt (ICoPred (_, specs)) =
     maps (func_spec_deps_of ctxt (map #func specs) o #props) specs
   | deps_of ctxt (IRec specs) = maps (func_spec_deps_of ctxt (map #func specs) o #props) specs
-  | deps_of ctxt (ISpec spec) = spec_spec_deps_of ctxt spec
+  | deps_of ctxt (ISpec spec) = funcs_spec_deps_of ctxt spec
   | deps_of ctxt (IAxiom prop) = add_func_keys ctxt prop []
   | deps_of ctxt (IGoal prop) = add_func_keys ctxt prop [];
 
@@ -488,7 +488,7 @@ fun str_of_isa_func_spec ctxt {func, props} =
   str_of_isa_term_with_type ctxt func ^ " :=\n  " ^
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
-fun str_of_isa_spec_spec ctxt {funcs, props} =
+fun str_of_isa_funcs_spec ctxt {funcs, props} =
   space_implode " and\n     " (map (str_of_isa_term_with_type ctxt) funcs) ^ " :=\n  " ^
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
@@ -505,7 +505,7 @@ fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ c
     str_of_and_list (str_of_isa_func_spec ctxt) specs
   | str_of_isa_command ctxt (IRec specs) =
     "rec " ^ str_of_and_list (str_of_isa_func_spec ctxt) specs
-  | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_spec_spec ctxt spec
+  | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_funcs_spec ctxt spec
   | str_of_isa_command ctxt (IAxiom t) = "axiom " ^ Syntax.string_of_term ctxt t
   | str_of_isa_command ctxt (IGoal t) = "goal " ^ Syntax.string_of_term ctxt t;
 

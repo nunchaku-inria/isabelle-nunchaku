@@ -104,7 +104,7 @@ fun nun_co_data_spec_of_isa ctxt {typ, ctrs} =
 fun nun_func_spec_of_isa ctxt {func, props} =
   {func = nun_tm_of_isa ctxt func, props = map (nun_tm_of_isa ctxt) props};
 
-fun nun_spec_spec_of_isa ctxt {funcs, props} =
+fun nun_funcs_spec_of_isa ctxt {funcs, props} =
   {funcs = map (nun_tm_of_isa ctxt) funcs, props = map (nun_tm_of_isa ctxt) props};
 
 fun nun_problem_of_isa ctxt =
@@ -120,7 +120,7 @@ fun nun_problem_of_isa ctxt =
       | ICoPred (fp, specs) =>
         BNF_Util.case_fp fp NPred NCopred (map (nun_func_spec_of_isa ctxt) specs)
       | IRec specs => NRec (map (nun_func_spec_of_isa ctxt) specs)
-      | ISpec spec => NSpec (nun_spec_spec_of_isa ctxt spec)
+      | ISpec spec => NSpec (nun_funcs_spec_of_isa ctxt spec)
       | IAxiom prop => NAxiom (nun_tm_of_isa ctxt prop)
       | IGoal prop => NGoal (nun_tm_of_isa ctxt prop));
   in
