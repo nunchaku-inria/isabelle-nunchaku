@@ -13,13 +13,9 @@ sig
     {typ: typ,
      ctrs: term list}
 
-  type isa_co_pred_spec =
+  type isa_func_spec =
     {func: term,
-     intros: term list}
-
-  type isa_rec_spec =
-    {func: term,
-     eqs: term list}
+     props: term list}
 
   type isa_spec_spec =
     {funcs: term list,
@@ -31,8 +27,8 @@ sig
   | IQuotient of typ * term
   | ICoData of fp_kind * isa_co_data_spec list
   | IConst of term
-  | ICoPred of fp_kind * isa_co_pred_spec list
-  | IRec of isa_rec_spec list
+  | ICoPred of fp_kind * isa_func_spec list
+  | IRec of isa_func_spec list
   | ISpec of isa_spec_spec
   | IAxiom of term
   | IGoal of term
@@ -54,13 +50,9 @@ type isa_co_data_spec =
   {typ: typ,
    ctrs: term list};
 
-type isa_co_pred_spec =
+type isa_func_spec =
   {func: term,
-   intros: term list};
-
-type isa_rec_spec =
-  {func: term,
-   eqs: term list};
+   props: term list};
 
 type isa_spec_spec =
   {funcs: term list,
@@ -72,8 +64,8 @@ datatype isa_command =
 | IQuotient of typ * term
 | ICoData of fp_kind * isa_co_data_spec list
 | IConst of term
-| ICoPred of fp_kind * isa_co_pred_spec list
-| IRec of isa_rec_spec list
+| ICoPred of fp_kind * isa_func_spec list
+| IRec of isa_func_spec list
 | ISpec of isa_spec_spec
 | IAxiom of term
 | IGoal of term;
@@ -251,7 +243,7 @@ fun keys_of _ (ITypedecl T) = [key_of_typ T]
 
 fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
   fold (add_type_keys o fastype_of) ctrs [];
-fun co_pred_or_rec_spec_deps_of ctxt funcs props =
+fun func_spec_deps_of ctxt funcs props =
   fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
 fun spec_spec_deps_of ctxt {funcs, props} =
   fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
@@ -262,9 +254,8 @@ fun deps_of _ (ITypedecl _) = []
   | deps_of _ (ICoData (_, specs)) = maps co_data_spec_deps_of specs
   | deps_of _ (IConst func) = add_type_keys (fastype_of func) []
   | deps_of ctxt (ICoPred (_, specs)) =
-    maps (co_pred_or_rec_spec_deps_of ctxt (map #func specs) o #intros) specs
-  | deps_of ctxt (IRec specs) =
-    maps (co_pred_or_rec_spec_deps_of ctxt (map #func specs) o #eqs) specs
+    maps (func_spec_deps_of ctxt (map #func specs) o #props) specs
+  | deps_of ctxt (IRec specs) = maps (func_spec_deps_of ctxt (map #func specs) o #props) specs
   | deps_of ctxt (ISpec spec) = spec_spec_deps_of ctxt spec
   | deps_of ctxt (IAxiom prop) = add_func_keys ctxt prop []
   | deps_of ctxt (IGoal prop) = add_func_keys ctxt prop [];
@@ -272,7 +263,7 @@ fun deps_of _ (ITypedecl _) = []
 fun funcs_of_rec_or_spec (IRec specs) = map #func specs
   | funcs_of_rec_or_spec (ISpec {funcs, ...}) = funcs;
 
-fun props_of_rec_or_spec (IRec specs) = maps #eqs specs
+fun props_of_rec_or_spec (IRec specs) = maps #props specs
   | props_of_rec_or_spec (ISpec {props, ...}) = props;
 
 fun merge_two_rec_or_spec cmd cmd' =
@@ -434,19 +425,19 @@ fun isa_problem_of_goal ctxt goal0 =
                        let
                          val props = map (preprocess_prop ctxt) props0;
 
-                         fun partition_eqs eqs =
+                         fun partition_props props =
                            if length funcs = 1 then
-                             SOME [eqs]
+                             SOME [props]
                            else
                              let
-                               fun eqs_of_func func =
+                               fun props_of_func func =
                                  filter (fn prop => head_of_def_lhs prop aconv func) props;
 
-                               val eqss = map eqs_of_func funcs;
+                               val propss = map props_of_func funcs;
                              in
-                               if eq_set (op aconv) (eqs, flat eqss) andalso
-                                  forall (not o null) eqss then
-                                SOME eqss
+                               if eq_set (op aconv) (props, flat propss) andalso
+                                  forall (not o null) propss then
+                                SOME propss
                               else
                                 NONE
                              end;
@@ -455,10 +446,10 @@ fun isa_problem_of_goal ctxt goal0 =
                            if null props then
                              map IConst funcs
                            else if is_rec then
-                             (case partition_eqs props of
-                               SOME eqss =>
-                               [IRec (map2 (fn func => fn eqs => {func = func, eqs = eqs})
-                                  funcs eqss)]
+                             (case partition_props props of
+                               SOME propss =>
+                               [IRec (map2 (fn func => fn props => {func = func, props = props})
+                                  funcs propss)]
                              | NONE => [ISpec {funcs = funcs, props = props}])
                            else
                              [ISpec {funcs = funcs, props = props}];
@@ -493,13 +484,9 @@ fun str_of_isa_co_data_spec ctxt {typ, ctrs} =
   Syntax.string_of_typ ctxt typ ^ " =\n  " ^
   space_implode "\n| " (map (str_of_isa_term_with_type ctxt) ctrs);
 
-fun str_of_isa_co_pred_spec ctxt {func, intros} =
+fun str_of_isa_func_spec ctxt {func, props} =
   str_of_isa_term_with_type ctxt func ^ " :=\n  " ^
-  space_implode ";\n  " (map (Syntax.string_of_term ctxt) intros);
-
-fun str_of_isa_rec_spec ctxt {func, eqs} =
-  str_of_isa_term_with_type ctxt func ^ " :=\n  " ^
-  space_implode ";\n  " (map (Syntax.string_of_term ctxt) eqs);
+  space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
 fun str_of_isa_spec_spec ctxt {funcs, props} =
   space_implode " and\n     " (map (str_of_isa_term_with_type ctxt) funcs) ^ " :=\n  " ^
@@ -515,8 +502,9 @@ fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ c
   | str_of_isa_command ctxt (IConst t) = "const " ^ str_of_isa_term_with_type ctxt t
   | str_of_isa_command ctxt (ICoPred (fp, specs)) =
     BNF_Util.case_fp fp "induct" "coinduct" ^ " " ^
-    str_of_and_list (str_of_isa_co_pred_spec ctxt) specs
-  | str_of_isa_command ctxt (IRec specs) = "rec " ^ str_of_and_list (str_of_isa_rec_spec ctxt) specs
+    str_of_and_list (str_of_isa_func_spec ctxt) specs
+  | str_of_isa_command ctxt (IRec specs) =
+    "rec " ^ str_of_and_list (str_of_isa_func_spec ctxt) specs
   | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_spec_spec ctxt spec
   | str_of_isa_command ctxt (IAxiom t) = "axiom " ^ Syntax.string_of_term ctxt t
   | str_of_isa_command ctxt (IGoal t) = "goal " ^ Syntax.string_of_term ctxt t;
