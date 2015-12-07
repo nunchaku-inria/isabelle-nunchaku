@@ -101,7 +101,7 @@ fun nun_ctr_of_isa ctxt ctr =
 fun nun_co_data_spec_of_isa ctxt {typ, ctrs} =
   {ty = nun_ty_of_isa typ, ctrs = map (nun_ctr_of_isa ctxt) ctrs};
 
-fun nun_co_induct_spec_of_isa ctxt {func, intros} =
+fun nun_co_pred_spec_of_isa ctxt {func, intros} =
   {func = nun_tm_of_isa ctxt func, intros = map (nun_tm_of_isa ctxt) intros};
 
 fun nun_rec_spec_of_isa ctxt {func, eqs} =
@@ -118,8 +118,8 @@ fun nun_problem_of_isa ctxt =
       | ICoData (fp, specs) =>
         BNF_Util.case_fp fp NData NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
       | IConst t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
-      | ICoInduct (fp, specs) =>
-        BNF_Util.case_fp fp NInduct NCoinduct (map (nun_co_induct_spec_of_isa ctxt) specs)
+      | ICoPred (fp, specs) =>
+        BNF_Util.case_fp fp NPred NCopred (map (nun_co_pred_spec_of_isa ctxt) specs)
       | IRec specs => NRec (map (nun_rec_spec_of_isa ctxt) specs)
       | ISpec spec => NSpec (nun_spec_spec_of_isa ctxt spec)
       | IAxiom prop => NAxiom (nun_tm_of_isa ctxt prop)

@@ -14,9 +14,7 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-(*ind
-(co)uct ... and ...
-
+(*
 subtype
 
 quotient
