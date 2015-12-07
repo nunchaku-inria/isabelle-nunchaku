@@ -13,6 +13,10 @@ sig
     {typ: typ,
      ctrs: term list}
 
+  type isa_co_induct_spec =
+    {func: term,
+     intros: term list}
+
   type isa_rec_spec =
     {func: term,
      eqs: term list}
@@ -25,6 +29,7 @@ sig
     ITypedecl of typ
   | ICoData of fp_kind * isa_co_data_spec list
   | IConst of term
+  | ICoInduct of fp_kind * isa_co_induct_spec list
   | IRec of isa_rec_spec list
   | ISpec of isa_spec_spec
   | IAxiom of term
@@ -47,6 +52,10 @@ type isa_co_data_spec =
   {typ: typ,
    ctrs: term list};
 
+type isa_co_induct_spec =
+  {func: term,
+   intros: term list};
+
 type isa_rec_spec =
   {func: term,
    eqs: term list};
@@ -59,6 +68,7 @@ datatype isa_command =
   ITypedecl of typ
 | ICoData of fp_kind * isa_co_data_spec list
 | IConst of term
+| ICoInduct of fp_kind * isa_co_induct_spec list
 | IRec of isa_rec_spec list
 | ISpec of isa_spec_spec
 | IAxiom of term
@@ -66,17 +76,27 @@ datatype isa_command =
 
 type isa_problem = isa_command list list;
 
-fun key_of_typ (Type (s, [])) = s
-  | key_of_typ (Type (s, Ts)) = s ^ "(" ^ commas (map key_of_typ Ts) ^ ")"
-  | key_of_typ (TFree (s, _)) = s;
+val key_of_typ =
+  let
+    fun key_of (Type (s, [])) = s
+      | key_of (Type (s, Ts)) = s ^ "(" ^ commas (map key_of Ts) ^ ")"
+      | key_of (TFree (s, _)) = s
+  in
+    prefix "y" o key_of
+  end;
 
-fun key_of_func ctxt (Const (x as (s, _))) =
-    let val thy = Proof_Context.theory_of ctxt in
-      (case Sign.const_typargs thy x of
-        [] => s
-      | Ts => s ^ "(" ^ commas (map key_of_typ Ts) ^ ")")
-    end
-  | key_of_func _ (Free (s, _)) = s;
+fun key_of_func ctxt =
+  let
+    val thy = Proof_Context.theory_of ctxt;
+
+    fun key_of (Const (x as (s, _))) =
+        (case Sign.const_typargs thy x of
+          [] => s
+        | Ts => s ^ "(" ^ commas (map key_of_typ Ts) ^ ")")
+      | key_of (Free (s, _)) = s;
+  in
+    prefix "t" o key_of
+  end;
 
 val add_type_keys = fold_subtypes (insert (op =) o key_of_typ);
 
@@ -217,6 +237,7 @@ fun is_term_builtin (Const (s, _)) = is_const_builtin s
 fun keys_of _ (ITypedecl T) = [key_of_typ T]
   | keys_of _ (ICoData (_, specs)) = map (key_of_typ o #typ) specs
   | keys_of ctxt (IConst func) = [key_of_func ctxt func]
+  | keys_of ctxt (ICoInduct (_, specs)) = map (key_of_func ctxt o #func) specs
   | keys_of ctxt (IRec specs) = map (key_of_func ctxt o #func) specs
   | keys_of ctxt (ISpec {funcs, ...}) = map (key_of_func ctxt) funcs
   | keys_of _ (IAxiom _) = []
@@ -224,15 +245,18 @@ fun keys_of _ (ITypedecl T) = [key_of_typ T]
 
 fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
   fold (add_type_keys o fastype_of) ctrs [];
-fun rec_spec_deps_of ctxt funcs eqs =
-  fold (add_func_keys ctxt) eqs [] |> subtract (op =) (map (key_of_func ctxt) funcs);
+fun co_induct_or_rec_spec_deps_of ctxt funcs props =
+  fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
 fun spec_spec_deps_of ctxt {funcs, props} =
   fold (add_func_keys ctxt) props [] |> subtract (op =) (map (key_of_func ctxt) funcs);
 
 fun deps_of _ (ITypedecl _) = []
   | deps_of _ (ICoData (_, specs)) = maps co_data_spec_deps_of specs
   | deps_of _ (IConst func) = [key_of_typ (fastype_of func)]
-  | deps_of ctxt (IRec specs) = maps (rec_spec_deps_of ctxt (map #func specs) o #eqs) specs
+  | deps_of ctxt (ICoInduct (_, specs)) =
+    maps (co_induct_or_rec_spec_deps_of ctxt (map #func specs) o #intros) specs
+  | deps_of ctxt (IRec specs) =
+    maps (co_induct_or_rec_spec_deps_of ctxt (map #func specs) o #eqs) specs
   | deps_of ctxt (ISpec spec) = spec_spec_deps_of ctxt spec
   | deps_of ctxt (IAxiom prop) = add_func_keys ctxt prop []
   | deps_of ctxt (IGoal prop) = add_func_keys ctxt prop [];
@@ -243,12 +267,17 @@ fun funcs_of_rec_or_spec (IRec specs) = map #func specs
 fun props_of_rec_or_spec (IRec specs) = maps #eqs specs
   | props_of_rec_or_spec (ISpec {props, ...}) = props;
 
+fun merge_two_rec_or_spec cmd cmd' =
+  ISpec {funcs = funcs_of_rec_or_spec cmd @ funcs_of_rec_or_spec cmd',
+        props = props_of_rec_or_spec cmd @ props_of_rec_or_spec cmd'};
+
 fun merge_two (ICoData (fp, specs)) (ICoData (fp', specs')) =
     ICoData (BNF_Util.case_fp fp fp fp', specs @ specs')
   | merge_two (IRec specs) (IRec specs') = IRec (specs @ specs')
-  | merge_two cmd cmd' =
-    ISpec {funcs = funcs_of_rec_or_spec cmd @ funcs_of_rec_or_spec cmd',
-      props = props_of_rec_or_spec cmd @ props_of_rec_or_spec cmd'};
+  | merge_two (cmd as IRec _) (cmd' as ISpec _) = merge_two_rec_or_spec cmd cmd'
+  | merge_two (cmd as ISpec _) (cmd' as IRec _) = merge_two_rec_or_spec cmd cmd'
+  | merge_two (cmd as ISpec _) (cmd' as ISpec _) = merge_two_rec_or_spec cmd cmd'
+  | merge_two cmd cmd' = raise Fail "cannot merge mutually dependent commands";
 
 fun sort_isa_problem_topologically ctxt cmds =
   let
@@ -291,7 +320,8 @@ fun sort_isa_problem_topologically ctxt cmds =
 
     val typedecls = filter (can (fn ITypedecl _ => ())) cmds;
     val mixed =
-      filter (can (fn ICoData _ => () | IConst _ => () | IRec _ => () | ISpec _ => ())) cmds
+      filter (can (fn ICoData _ => () | IConst _ => () | ICoInduct _ => () | IRec _ => ()
+        | ISpec _ => ())) cmds
       |> sort_prob;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
@@ -302,10 +332,11 @@ fun sort_isa_problem_topologically ctxt cmds =
 fun group_of (ITypedecl _) = 1
   | group_of (ICoData _) = 2
   | group_of (IConst _) = 3
-  | group_of (IRec _) = 4
-  | group_of (ISpec _) = 5
-  | group_of (IAxiom _) = 6
-  | group_of (IGoal _) = 7;
+  | group_of (ICoInduct _) = 4
+  | group_of (IRec _) = 5
+  | group_of (ISpec _) = 6
+  | group_of (IAxiom _) = 7
+  | group_of (IGoal _) = 8;
 
 fun group_isa_commands [] = []
   | group_isa_commands [cmd] = [[cmd]]
@@ -452,6 +483,10 @@ fun str_of_isa_co_data_spec ctxt {typ, ctrs} =
   Syntax.string_of_typ ctxt typ ^ " =\n  " ^
   space_implode "\n| " (map (str_of_isa_term_with_type ctxt) ctrs);
 
+fun str_of_isa_co_induct_spec ctxt {func, intros} =
+  str_of_isa_term_with_type ctxt func ^ " :=\n  " ^
+  space_implode ";\n  " (map (Syntax.string_of_term ctxt) intros);
+
 fun str_of_isa_rec_spec ctxt {func, eqs} =
   str_of_isa_term_with_type ctxt func ^ " :=\n  " ^
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) eqs);
@@ -464,6 +499,9 @@ fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ c
   | str_of_isa_command ctxt (ICoData (fp, specs)) =
     BNF_Util.case_fp fp "data" "codata" ^ " " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
   | str_of_isa_command ctxt (IConst t) = "const " ^ str_of_isa_term_with_type ctxt t
+  | str_of_isa_command ctxt (ICoInduct (fp, specs)) =
+    BNF_Util.case_fp fp "induct" "coinduct" ^ " " ^
+    str_of_and_list (str_of_isa_co_induct_spec ctxt) specs
   | str_of_isa_command ctxt (IRec specs) = "rec " ^ str_of_and_list (str_of_isa_rec_spec ctxt) specs
   | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_spec_spec ctxt spec
   | str_of_isa_command ctxt (IAxiom t) = "axiom " ^ Syntax.string_of_term ctxt t

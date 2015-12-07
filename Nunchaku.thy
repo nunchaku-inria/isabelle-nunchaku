@@ -34,8 +34,6 @@ oops
 (*
 declare [[ML_exception_trace]]
 
-lemma "rev xs = xs \<and> rev ys = ys"
-nunchaku[debug]
 oops
 
 lemma "rev xs = xs"
