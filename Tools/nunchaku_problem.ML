@@ -27,6 +27,10 @@ sig
     {ty: ty,
      ctrs: nun_ctr_spec list}
 
+  type nun_co_induct_spec =
+    {func: tm,
+     intros: tm list}
+
   type nun_rec_spec =
     {func: tm,
      eqs: tm list}
@@ -40,6 +44,8 @@ sig
   | NData of nun_co_data_spec list
   | NCodata of nun_co_data_spec list
   | NVal of tm * ty
+  | NInduct of nun_co_induct_spec list
+  | NCoinduct of nun_co_induct_spec list
   | NRec of nun_rec_spec list
   | NSpec of nun_spec_spec
   | NAxiom of tm
@@ -111,6 +117,10 @@ type nun_co_data_spec =
   {ty: ty,
    ctrs: nun_ctr_spec list};
 
+type nun_co_induct_spec =
+  {func: tm,
+   intros: tm list};
+
 type nun_rec_spec =
   {func: tm,
    eqs: tm list};
@@ -124,6 +134,8 @@ datatype nun_command =
 | NData of nun_co_data_spec list
 | NCodata of nun_co_data_spec list
 | NVal of tm * ty
+| NInduct of nun_co_induct_spec list
+| NCoinduct of nun_co_induct_spec list
 | NRec of nun_rec_spec list
 | NSpec of nun_spec_spec
 | NAxiom of tm
@@ -233,6 +245,11 @@ fun fold_map_nun_co_data_spec_idents f {ty, ctrs} =
   ##>> fold_map (fold_map_nun_ctr_spec_idents f) ctrs
   #>> (fn (ty, ctrs) => {ty = ty, ctrs = ctrs});
 
+fun fold_map_nun_co_induct_spec_idents f {func, intros} =
+  fold_map_tm_idents f func
+  ##>> fold_map (fold_map_tm_idents f) intros
+  #>> (fn (func, intros) => {func = func, intros = intros});
+
 fun fold_map_nun_rec_spec_idents f {func, eqs} =
   fold_map_tm_idents f func
   ##>> fold_map (fold_map_tm_idents f) eqs
@@ -256,6 +273,12 @@ fun fold_map_nun_command_idents f (NTVal ty) =
     fold_map_tm_idents f tm
     ##>> fold_map_ty_idents f ty
     #>> NVal
+  | fold_map_nun_command_idents f (NInduct specs) =
+    fold_map (fold_map_nun_co_induct_spec_idents f) specs
+    #>> NInduct
+  | fold_map_nun_command_idents f (NCoinduct specs) =
+    fold_map (fold_map_nun_co_induct_spec_idents f) specs
+    #>> NCoinduct
   | fold_map_nun_command_idents f (NRec specs) =
     fold_map (fold_map_nun_rec_spec_idents f) specs
     #>> NRec
@@ -428,6 +451,9 @@ fun str_of_nun_ctr_spec {ctr, arg_tys} =
 fun str_of_nun_co_data_spec {ty, ctrs} =
   str_of_ty ty ^ " :=\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
 
+fun str_of_nun_co_induct_spec {func, intros} =
+  str_of_tmty func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm intros);
+
 fun str_of_nun_rec_spec {func, eqs} =
   str_of_tmty func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm eqs);
 
@@ -441,13 +467,24 @@ fun str_of_nun_command (NTVal ty) =
       "val " ^ str_of_ident id ^ " : " ^
       fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
     | _ => raise Fail "non-NType")
-  | str_of_nun_command (NData specs) = "data " ^ str_of_and_list str_of_nun_co_data_spec specs
-  | str_of_nun_command (NCodata specs) = "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
-  | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
-  | str_of_nun_command (NRec specs) = "rec " ^ str_of_and_list str_of_nun_rec_spec specs
-  | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_spec_spec spec
-  | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_tm tm
-  | str_of_nun_command (NGoal tm) = "goal " ^ str_of_tm tm
+  | str_of_nun_command (NData specs) =
+    "data " ^ str_of_and_list str_of_nun_co_data_spec specs
+  | str_of_nun_command (NCodata specs) =
+    "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
+  | str_of_nun_command (NVal (tm, ty)) =
+    "val " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
+  | str_of_nun_command (NInduct specs) =
+    "induct " ^ str_of_and_list str_of_nun_co_induct_spec specs
+  | str_of_nun_command (NCoinduct specs) =
+    "coinduct " ^ str_of_and_list str_of_nun_co_induct_spec specs
+  | str_of_nun_command (NRec specs) =
+    "rec " ^ str_of_and_list str_of_nun_rec_spec specs
+  | str_of_nun_command (NSpec spec) =
+    "spec " ^ str_of_nun_spec_spec spec
+  | str_of_nun_command (NAxiom tm) =
+    "axiom " ^ str_of_tm tm
+  | str_of_nun_command (NGoal tm) =
+    "goal " ^ str_of_tm tm;
 
 val str_of_nun_problem =
   map (cat_lines o map (suffix "." o str_of_nun_command))
