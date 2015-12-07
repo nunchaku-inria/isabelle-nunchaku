@@ -116,6 +116,7 @@ fun nun_problem_of_isa ctxt =
       (case cmd of
         ITypedecl T => NTVal (nun_ty_of_isa T)
       | ICopy (T, pred) => NCopy (nun_ty_of_isa T, nun_tm_of_isa ctxt pred)
+      | IQuotient (T, rel) => NQuotient (nun_ty_of_isa T, nun_tm_of_isa ctxt rel)
       | ICoData (fp, specs) =>
         BNF_Util.case_fp fp NData NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
       | IConst t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
