@@ -14,8 +14,15 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-lemma "p (if x then y else z) \<Longrightarrow> p (if \<not> x then z else y)"
-nunchaku[debug,overlord]
+(*ind
+(co)uct ... and ...
+
+subtype
+
+quotient
+
+nonfree_(co)data?
+*)
 
 
 (*

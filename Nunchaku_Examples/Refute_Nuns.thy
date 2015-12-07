@@ -1286,7 +1286,7 @@ lemma "P (inverse (S :: 'a set))"
 nunchaku [expect = genuine]
 oops
 
-lemma "P (inverse (p :: 'a\<times>'b))"
+lemma "P (inverse (p :: 'a \<times> 'b))"
 nunchaku [expect = genuine]
 oops
 
