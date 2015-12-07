@@ -19,6 +19,12 @@ sig
   | NAbs of tm * tm
   | NApp of tm * tm
 
+  type nun_type_spec =
+    {ty: ty,
+     pred: tm,
+     abs: tm,
+     rep: tm}
+
   type nun_ctr_spec =
     {ctr: tm,
      arg_tys: ty list}
@@ -37,8 +43,8 @@ sig
 
   datatype nun_command =
     NTVal of ty
-  | NCopy of ty * tm
-  | NQuotient of ty * tm
+  | NCopy of nun_type_spec
+  | NQuotient of nun_type_spec
   | NData of nun_co_data_spec list
   | NCodata of nun_co_data_spec list
   | NVal of tm * ty
@@ -107,6 +113,12 @@ datatype tm =
 | NAbs of tm * tm
 | NApp of tm * tm;
 
+type nun_type_spec =
+  {ty: ty,
+   pred: tm,
+   abs: tm,
+   rep: tm};
+
 type nun_ctr_spec =
   {ctr: tm,
    arg_tys: ty list};
@@ -125,8 +137,8 @@ type nun_consts_spec =
 
 datatype nun_command =
   NTVal of ty
-| NCopy of ty * tm
-| NQuotient of ty * tm
+| NCopy of nun_type_spec
+| NQuotient of nun_type_spec
 | NData of nun_co_data_spec list
 | NCodata of nun_co_data_spec list
 | NVal of tm * ty
@@ -231,6 +243,13 @@ fun fold_map_tm_idents f (NConst (id, tys, ty)) =
     ##>> fold_map_tm_idents f arg
     #>> NApp;
 
+fun fold_map_nun_type_spec_idents f {ty, pred, abs, rep} =
+  fold_map_ty_idents f ty
+  ##>> fold_map_tm_idents f pred
+  ##>> fold_map_tm_idents f abs
+  ##>> fold_map_tm_idents f rep
+  #>> (fn (((ty, pred), abs), rep) => {ty = ty, pred = pred, abs = abs, rep = rep});
+
 fun fold_map_nun_ctr_spec_idents f {ctr, arg_tys} =
   fold_map_tm_idents f ctr
   ##>> fold_map (fold_map_ty_idents f) arg_tys
@@ -254,13 +273,11 @@ fun fold_map_nun_consts_spec_idents f {consts, props} =
 fun fold_map_nun_command_idents f (NTVal ty) =
     fold_map_ty_idents f ty
     #>> NTVal
-  | fold_map_nun_command_idents f (NCopy (ty, pred)) =
-    fold_map_ty_idents f ty
-    ##>> fold_map_tm_idents f pred
+  | fold_map_nun_command_idents f (NCopy spec) =
+    fold_map_nun_type_spec_idents f spec
     #>> NCopy
-  | fold_map_nun_command_idents f (NQuotient (ty, rel)) =
-    fold_map_ty_idents f ty
-    ##>> fold_map_tm_idents f rel
+  | fold_map_nun_command_idents f (NQuotient spec) =
+    fold_map_nun_type_spec_idents f spec
     #>> NQuotient
   | fold_map_nun_command_idents f (NData specs) =
     fold_map (fold_map_nun_co_data_spec_idents f) specs
@@ -448,6 +465,9 @@ fun str_of_tval (NType (id, tys)) =
     str_of_ident id ^ " : " ^ fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
   | str_of_tval _ = raise Fail "non-NType";
 
+fun str_of_nun_type_spec {ty, pred, abs, rep} =
+  str_of_ty ty ^ " := " ^ str_of_tm pred ^ "\n  abs " ^ str_of_tm abs ^ "\n  rep " ^ str_of_tm rep;
+
 fun str_of_nun_ctr_spec {ctr, arg_tys} =
   str_of_tm ctr ^ str_of_arg_list str_of_ty arg_tys;
 
@@ -462,8 +482,8 @@ fun str_of_nun_consts_spec {consts, props} =
   space_implode ";\n  " (map str_of_tm props);
 
 fun str_of_nun_command (NTVal ty) = "val " ^ str_of_tval ty
-  | str_of_nun_command (NCopy (ty, pred)) = "copy " ^ str_of_ty ty ^ " := " ^ str_of_tm pred
-  | str_of_nun_command (NQuotient (ty, rel)) = "quotient " ^ str_of_ty ty ^ " := " ^ str_of_tm rel
+  | str_of_nun_command (NCopy spec) = "copy " ^ str_of_nun_type_spec spec
+  | str_of_nun_command (NQuotient spec) = "quotient " ^ str_of_nun_type_spec spec
   | str_of_nun_command (NData specs) = "data " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NCodata specs) = "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_tm tm ^ " : " ^ str_of_ty ty

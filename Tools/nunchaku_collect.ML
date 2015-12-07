@@ -9,6 +9,12 @@ signature NUNCHAKU_COLLECT =
 sig
   type fp_kind = BNF_Util.fp_kind
 
+  type isa_type_spec =
+    {typ: typ,
+     pred: term,
+     abs: term,
+     rep: term}
+
   type isa_co_data_spec =
     {typ: typ,
      ctrs: term list}
@@ -23,8 +29,8 @@ sig
 
   datatype isa_command =
     ITypedecl of typ
-  | ICopy of typ * term
-  | IQuotient of typ * term
+  | ICopy of isa_type_spec
+  | IQuotient of isa_type_spec
   | ICoData of fp_kind * isa_co_data_spec list
   | IConst of term
   | ICoPred of fp_kind * isa_const_spec list
@@ -46,6 +52,12 @@ open Nunchaku_Util;
 
 type fp_kind = BNF_Util.fp_kind;
 
+type isa_type_spec =
+  {typ: typ,
+   pred: term,
+   abs: term,
+   rep: term};
+
 type isa_co_data_spec =
   {typ: typ,
    ctrs: term list};
@@ -60,8 +72,8 @@ type isa_consts_spec =
 
 datatype isa_command =
   ITypedecl of typ
-| ICopy of typ * term
-| IQuotient of typ * term
+| ICopy of isa_type_spec
+| IQuotient of isa_type_spec
 | ICoData of fp_kind * isa_co_data_spec list
 | IConst of term
 | ICoPred of fp_kind * isa_const_spec list
@@ -231,8 +243,8 @@ fun is_term_builtin (Const (s, _)) = is_const_builtin s
   | is_term_builtin _ = false;
 
 fun keys_of _ (ITypedecl T) = [key_of_typ T]
-  | keys_of _ (ICopy (T, _)) = [key_of_typ T]
-  | keys_of _ (IQuotient (T, _)) = [key_of_typ T]
+  | keys_of _ (ICopy {typ, ...}) = [key_of_typ typ]
+  | keys_of _ (IQuotient {typ, ...}) = [key_of_typ typ]
   | keys_of _ (ICoData (_, specs)) = map (key_of_typ o #typ) specs
   | keys_of ctxt (IConst const) = [key_of_const ctxt const]
   | keys_of ctxt (ICoPred (_, specs)) = map (key_of_const ctxt o #const) specs
@@ -249,8 +261,8 @@ fun consts_spec_deps_of ctxt {consts, props} =
   fold (add_const_keys ctxt) props [] |> subtract (op =) (map (key_of_const ctxt) consts);
 
 fun deps_of _ (ITypedecl _) = []
-  | deps_of ctxt (ICopy (_, pred)) = add_const_keys ctxt pred []
-  | deps_of ctxt (IQuotient (_, rel)) = add_const_keys ctxt rel []
+  | deps_of ctxt (ICopy {pred, ...}) = add_const_keys ctxt pred []
+  | deps_of ctxt (IQuotient {pred, ...}) = add_const_keys ctxt pred []
   | deps_of _ (ICoData (_, specs)) = maps co_data_spec_deps_of specs
   | deps_of _ (IConst const) = add_type_keys (fastype_of const) []
   | deps_of ctxt (ICoPred (_, specs)) =
@@ -480,8 +492,12 @@ fun isa_problem_of_goal ctxt goal0 =
 fun str_of_isa_term_with_type ctxt t =
   Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);
 
+fun str_of_isa_type_spec ctxt {typ, pred, abs, rep} =
+  Syntax.string_of_typ ctxt typ ^ " :=\n " ^ Syntax.string_of_term ctxt pred ^
+  "\n  abs " ^ Syntax.string_of_term ctxt abs ^ "\n  rep " ^ Syntax.string_of_term ctxt rep;
+
 fun str_of_isa_co_data_spec ctxt {typ, ctrs} =
-  Syntax.string_of_typ ctxt typ ^ " =\n  " ^
+  Syntax.string_of_typ ctxt typ ^ " :=\n  " ^
   space_implode "\n| " (map (str_of_isa_term_with_type ctxt) ctrs);
 
 fun str_of_isa_const_spec ctxt {const, props} =
@@ -493,10 +509,8 @@ fun str_of_isa_consts_spec ctxt {consts, props} =
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
 fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ ctxt T
-  | str_of_isa_command ctxt (ICopy (T, pred)) =
-    "copy " ^ Syntax.string_of_typ ctxt T ^ " := " ^ Syntax.string_of_term ctxt pred
-  | str_of_isa_command ctxt (IQuotient (T, rel)) =
-    "quotient " ^ Syntax.string_of_typ ctxt T ^ " := " ^ Syntax.string_of_term ctxt rel
+  | str_of_isa_command ctxt (ICopy spec) = "copy " ^ str_of_isa_type_spec ctxt spec
+  | str_of_isa_command ctxt (IQuotient spec) = "quotient " ^ str_of_isa_type_spec ctxt spec
   | str_of_isa_command ctxt (ICoData (fp, specs)) =
     BNF_Util.case_fp fp "data" "codata" ^ " " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
   | str_of_isa_command ctxt (IConst t) = "const " ^ str_of_isa_term_with_type ctxt t

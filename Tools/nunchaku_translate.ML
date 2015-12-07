@@ -95,6 +95,10 @@ fun nun_tm_of_isa ctxt t =
     |> beta_reduce_tm
   end;
 
+fun nun_type_spec_of_isa ctxt {typ, pred, abs, rep} =
+  {ty = nun_ty_of_isa typ, pred = nun_tm_of_isa ctxt pred, abs = nun_tm_of_isa ctxt abs,
+   rep = nun_tm_of_isa ctxt rep};
+
 fun nun_ctr_of_isa ctxt ctr =
   {ctr = nun_tm_of_isa ctxt ctr, arg_tys = map nun_ty_of_isa (binder_types (fastype_of ctr))};
 
@@ -112,8 +116,8 @@ fun nun_problem_of_isa ctxt =
     fun cmd_of cmd =
       (case cmd of
         ITypedecl T => NTVal (nun_ty_of_isa T)
-      | ICopy (T, pred) => NCopy (nun_ty_of_isa T, nun_tm_of_isa ctxt pred)
-      | IQuotient (T, rel) => NQuotient (nun_ty_of_isa T, nun_tm_of_isa ctxt rel)
+      | ICopy spec => NCopy (nun_type_spec_of_isa ctxt spec)
+      | IQuotient spec => NQuotient (nun_type_spec_of_isa ctxt spec)
       | ICoData (fp, specs) =>
         BNF_Util.case_fp fp NData NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
       | IConst t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))

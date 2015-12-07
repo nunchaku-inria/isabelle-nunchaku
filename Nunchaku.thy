@@ -14,14 +14,6 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-(*
-subtype
-
-quotient
-
-nonfree_(co)data?
-*)
-
 
 (*
 lemma "rev xs = ys \<and> rev ys = xs"
