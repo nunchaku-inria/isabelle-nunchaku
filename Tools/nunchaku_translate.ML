@@ -101,11 +101,11 @@ fun nun_ctr_of_isa ctxt ctr =
 fun nun_co_data_spec_of_isa ctxt {typ, ctrs} =
   {ty = nun_ty_of_isa typ, ctrs = map (nun_ctr_of_isa ctxt) ctrs};
 
-fun nun_func_spec_of_isa ctxt {func, props} =
-  {func = nun_tm_of_isa ctxt func, props = map (nun_tm_of_isa ctxt) props};
+fun nun_const_spec_of_isa ctxt {const, props} =
+  {const = nun_tm_of_isa ctxt const, props = map (nun_tm_of_isa ctxt) props};
 
-fun nun_funcs_spec_of_isa ctxt {funcs, props} =
-  {funcs = map (nun_tm_of_isa ctxt) funcs, props = map (nun_tm_of_isa ctxt) props};
+fun nun_consts_spec_of_isa ctxt {consts, props} =
+  {consts = map (nun_tm_of_isa ctxt) consts, props = map (nun_tm_of_isa ctxt) props};
 
 fun nun_problem_of_isa ctxt =
   let
@@ -118,9 +118,9 @@ fun nun_problem_of_isa ctxt =
         BNF_Util.case_fp fp NData NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
       | IConst t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
       | ICoPred (fp, specs) =>
-        BNF_Util.case_fp fp NPred NCopred (map (nun_func_spec_of_isa ctxt) specs)
-      | IRec specs => NRec (map (nun_func_spec_of_isa ctxt) specs)
-      | ISpec spec => NSpec (nun_funcs_spec_of_isa ctxt spec)
+        BNF_Util.case_fp fp NPred NCopred (map (nun_const_spec_of_isa ctxt) specs)
+      | IRec specs => NRec (map (nun_const_spec_of_isa ctxt) specs)
+      | ISpec spec => NSpec (nun_consts_spec_of_isa ctxt spec)
       | IAxiom prop => NAxiom (nun_tm_of_isa ctxt prop)
       | IGoal prop => NGoal (nun_tm_of_isa ctxt prop));
   in

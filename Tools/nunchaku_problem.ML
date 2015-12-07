@@ -27,12 +27,12 @@ sig
     {ty: ty,
      ctrs: nun_ctr_spec list}
 
-  type nun_func_spec =
-    {func: tm,
+  type nun_const_spec =
+    {const: tm,
      props: tm list}
 
-  type nun_funcs_spec =
-    {funcs: tm list,
+  type nun_consts_spec =
+    {consts: tm list,
      props: tm list}
 
   datatype nun_command =
@@ -42,10 +42,10 @@ sig
   | NData of nun_co_data_spec list
   | NCodata of nun_co_data_spec list
   | NVal of tm * ty
-  | NPred of nun_func_spec list
-  | NCopred of nun_func_spec list
-  | NRec of nun_func_spec list
-  | NSpec of nun_funcs_spec
+  | NPred of nun_const_spec list
+  | NCopred of nun_const_spec list
+  | NRec of nun_const_spec list
+  | NSpec of nun_consts_spec
   | NAxiom of tm
   | NGoal of tm
 
@@ -115,12 +115,12 @@ type nun_co_data_spec =
   {ty: ty,
    ctrs: nun_ctr_spec list};
 
-type nun_func_spec =
-  {func: tm,
+type nun_const_spec =
+  {const: tm,
    props: tm list};
 
-type nun_funcs_spec =
-  {funcs: tm list,
+type nun_consts_spec =
+  {consts: tm list,
    props: tm list};
 
 datatype nun_command =
@@ -130,10 +130,10 @@ datatype nun_command =
 | NData of nun_co_data_spec list
 | NCodata of nun_co_data_spec list
 | NVal of tm * ty
-| NPred of nun_func_spec list
-| NCopred of nun_func_spec list
-| NRec of nun_func_spec list
-| NSpec of nun_funcs_spec
+| NPred of nun_const_spec list
+| NCopred of nun_const_spec list
+| NRec of nun_const_spec list
+| NSpec of nun_consts_spec
 | NAxiom of tm
 | NGoal of tm;
 
@@ -195,7 +195,7 @@ fun nun_range_ty (NType (id, [_, ty])) = if id = nun_fun then ty else raise Fail
 fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NVar (_, ty)) = ty
   | nun_ty_of (NAbs (var, body)) = NType (nun_fun, [nun_ty_of var, nun_ty_of body])
-  | nun_ty_of (NApp (func, _)) = nun_range_ty (nun_ty_of func);
+  | nun_ty_of (NApp (const, _)) = nun_range_ty (nun_ty_of const);
 
 fun strip_nun_binders binder (app as NApp (NConst (id, _, _), NAbs (var, body))) =
     if id = binder then
@@ -226,8 +226,8 @@ fun fold_map_tm_idents f (NConst (id, tys, ty)) =
     fold_map_tm_idents f var
     ##>> fold_map_tm_idents f body
     #>> NAbs
-  | fold_map_tm_idents f (NApp (func, arg)) =
-    fold_map_tm_idents f func
+  | fold_map_tm_idents f (NApp (const, arg)) =
+    fold_map_tm_idents f const
     ##>> fold_map_tm_idents f arg
     #>> NApp;
 
@@ -241,15 +241,15 @@ fun fold_map_nun_co_data_spec_idents f {ty, ctrs} =
   ##>> fold_map (fold_map_nun_ctr_spec_idents f) ctrs
   #>> (fn (ty, ctrs) => {ty = ty, ctrs = ctrs});
 
-fun fold_map_nun_func_spec_idents f {func, props} =
-  fold_map_tm_idents f func
+fun fold_map_nun_const_spec_idents f {const, props} =
+  fold_map_tm_idents f const
   ##>> fold_map (fold_map_tm_idents f) props
-  #>> (fn (func, props) => {func = func, props = props});
+  #>> (fn (const, props) => {const = const, props = props});
 
-fun fold_map_nun_funcs_spec_idents f {funcs, props} =
-  fold_map (fold_map_tm_idents f) funcs
+fun fold_map_nun_consts_spec_idents f {consts, props} =
+  fold_map (fold_map_tm_idents f) consts
   ##>> fold_map (fold_map_tm_idents f) props
-  #>> (fn (funcs, props) => {funcs = funcs, props = props});
+  #>> (fn (consts, props) => {consts = consts, props = props});
 
 fun fold_map_nun_command_idents f (NTVal ty) =
     fold_map_ty_idents f ty
@@ -273,16 +273,16 @@ fun fold_map_nun_command_idents f (NTVal ty) =
     ##>> fold_map_ty_idents f ty
     #>> NVal
   | fold_map_nun_command_idents f (NPred specs) =
-    fold_map (fold_map_nun_func_spec_idents f) specs
+    fold_map (fold_map_nun_const_spec_idents f) specs
     #>> NPred
   | fold_map_nun_command_idents f (NCopred specs) =
-    fold_map (fold_map_nun_func_spec_idents f) specs
+    fold_map (fold_map_nun_const_spec_idents f) specs
     #>> NCopred
   | fold_map_nun_command_idents f (NRec specs) =
-    fold_map (fold_map_nun_func_spec_idents f) specs
+    fold_map (fold_map_nun_const_spec_idents f) specs
     #>> NRec
   | fold_map_nun_command_idents f (NSpec spec) =
-    fold_map_nun_funcs_spec_idents f spec
+    fold_map_nun_consts_spec_idents f spec
     #>> NSpec
   | fold_map_nun_command_idents f (NAxiom tm) =
     fold_map_tm_idents f tm
@@ -304,7 +304,7 @@ fun replace_tm from to =
   let
     (* This code assumes all enclosing binders bind distinct variables and bound variables are
        distinct from any other variables. *)
-    fun replace (NApp (func, arg)) = NApp (replace func, replace arg)
+    fun replace (NApp (const, arg)) = NApp (replace const, replace arg)
       | replace (NAbs (var, body)) = NAbs (var, replace body)
       | replace tm = if tm = from then to else tm;
   in
@@ -312,10 +312,10 @@ fun replace_tm from to =
   end;
 
 fun beta_reduce_tm (NApp (NAbs (var, body), arg)) = beta_reduce_tm (replace_tm var arg body)
-  | beta_reduce_tm (NApp (func, arg)) =
-    (case beta_reduce_tm func of
-      func' as NAbs _ => beta_reduce_tm (NApp (func', arg))
-    | func' => NApp (func', beta_reduce_tm arg))
+  | beta_reduce_tm (NApp (const, arg)) =
+    (case beta_reduce_tm const of
+      const' as NAbs _ => beta_reduce_tm (NApp (const', arg))
+    | const' => NApp (const', beta_reduce_tm arg))
   | beta_reduce_tm (NAbs (var, body)) = NAbs (var, beta_reduce_tm body)
   | beta_reduce_tm tm = tm;
 
@@ -340,19 +340,19 @@ val str_of_tm =
     fun is_triv_head (NConst (id, _, ty)) =
         is_non_builtin_ident id orelse is_nun_const_truth_value id
       | is_triv_head (NVar _) = true
-      | is_triv_head (NApp (func, _)) = is_triv_head func
+      | is_triv_head (NApp (const, _)) = is_triv_head const
       | is_triv_head (NAbs _) = false
 
     fun str_of_at_const id tys =
       "@" ^ str_of_ident id ^ str_of_arg_list str_of_ty tys;
 
-    fun str_of_app ty_opt func arg =
+    fun str_of_app ty_opt const arg =
       let
         val ty_opt' =
           try (Option.map (fn ty => NType (nun_fun, [nun_ty_of arg, ty]))) ty_opt
           |> the_default NONE;
       in
-        (str_of ty_opt' func |> (case func of NAbs _ => parens | _ => I)) ^
+        (str_of ty_opt' const |> (case const of NAbs _ => parens | _ => I)) ^
         str_of_arg_list (str_of NONE) [arg]
       end
     and str_of _ (NConst (id, [], _)) = str_of_ident id
@@ -364,8 +364,8 @@ val str_of_tm =
       | str_of ty_opt (NAbs (var, body)) =
         "fun " ^ str_of (Option.map nun_domain_ty ty_opt) var ^ ". " ^
         str_of (Option.map nun_range_ty ty_opt) body
-      | str_of ty_opt (app as NApp (func, argN)) =
-        (case (func, argN) of
+      | str_of ty_opt (app as NApp (const, argN)) =
+        (case (const, argN) of
           (NApp (oper as NConst (id, _, _), arg1), arg2) =>
           if id = nun_equals then
             (str_of NONE arg1 |> not (is_triv_head arg1) ? parens) ^ " " ^ id ^ " " ^
@@ -379,22 +379,22 @@ val str_of_tm =
                 (map (fn arg => str_of NONE arg |> not (is_triv_head arg) ? parens) args)
             end
           else
-            str_of_app ty_opt func argN
+            str_of_app ty_opt const argN
         | (NApp (NApp (oper as NConst (id, _, _), arg1), arg2), arg3) =>
           if id = nun_if then
             nun_if ^ " " ^ str_of NONE arg1 ^ " " ^ nun_then ^ " " ^ str_of NONE arg2 ^ " " ^
             nun_else ^ " " ^ str_of NONE arg3
             |> parens
           else
-            str_of_app ty_opt func argN
+            str_of_app ty_opt const argN
         | (NConst (id, _, _), NAbs _) =>
           if is_nun_const_quantifier id then
             let val (vars, body) = strip_nun_binders id app in
               id ^ " " ^ space_implode " " (map (str_of NONE) vars) ^ ". " ^ str_of NONE body
             end
           else
-            str_of_app ty_opt func argN
-        | _ => str_of_app ty_opt func argN);
+            str_of_app ty_opt const argN
+        | _ => str_of_app ty_opt const argN);
   in
     str_of NONE
   end;
@@ -454,11 +454,11 @@ fun str_of_nun_ctr_spec {ctr, arg_tys} =
 fun str_of_nun_co_data_spec {ty, ctrs} =
   str_of_ty ty ^ " :=\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
 
-fun str_of_nun_func_spec {func, props} =
-  str_of_tmty func ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm props);
+fun str_of_nun_const_spec {const, props} =
+  str_of_tmty const ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm props);
 
-fun str_of_nun_funcs_spec {funcs, props} =
-  space_implode " and\n     " (map str_of_tmty funcs) ^ " :=\n  " ^
+fun str_of_nun_consts_spec {consts, props} =
+  space_implode " and\n     " (map str_of_tmty consts) ^ " :=\n  " ^
   space_implode ";\n  " (map str_of_tm props);
 
 fun str_of_nun_command (NTVal ty) = "val " ^ str_of_tval ty
@@ -467,10 +467,10 @@ fun str_of_nun_command (NTVal ty) = "val " ^ str_of_tval ty
   | str_of_nun_command (NData specs) = "data " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NCodata specs) = "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
-  | str_of_nun_command (NPred specs) = "pred " ^ str_of_and_list str_of_nun_func_spec specs
-  | str_of_nun_command (NCopred specs) = "copred " ^ str_of_and_list str_of_nun_func_spec specs
-  | str_of_nun_command (NRec specs) = "rec " ^ str_of_and_list str_of_nun_func_spec specs
-  | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_funcs_spec spec
+  | str_of_nun_command (NPred specs) = "pred " ^ str_of_and_list str_of_nun_const_spec specs
+  | str_of_nun_command (NCopred specs) = "copred " ^ str_of_and_list str_of_nun_const_spec specs
+  | str_of_nun_command (NRec specs) = "rec " ^ str_of_and_list str_of_nun_const_spec specs
+  | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_consts_spec spec
   | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_tm tm
   | str_of_nun_command (NGoal tm) = "goal " ^ str_of_tm tm;
 
