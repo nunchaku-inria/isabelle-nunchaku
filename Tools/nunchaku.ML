@@ -128,7 +128,7 @@ val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, overlord, expect, ...},
     output_format_params = {debug, ...}, timeout_params = {timeout, ...}, ...}) mode i n step subst
-    def_assm_ts nondef_assm_ts original_goal =
+    def_assm_ts nondef_assm_ts goal =
   let
     val ctxt = Proof.context_of state;
 
@@ -153,9 +153,7 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, ove
 
         fun run () =
           let
-            val goal =
-              if falsify then Logic.mk_implies (original_goal, @{prop False}) else original_goal;
-            val isa_prob = isa_problem_of_goal ctxt goal;
+            val isa_prob = isa_problem_of_goal ctxt falsify goal;
 val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
             val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
             val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;

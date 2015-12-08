@@ -14,17 +14,17 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-inductive even where
+
+(*
+inductive even and odd where
   "even 0"
-| "even n \<Longrightarrow> even (n + 2)"
+| "even m \<Longrightarrow> odd (Suc m)"
+| "even n \<Longrightarrow> even (Suc (Suc n))"
 
 lemma "even n"
 nunchaku
+oops
 
-
-
-
-(*
 lemma "rev xs = ys \<and> rev ys = xs"
 nunchaku[debug,overlord,satisfy]
 oops

@@ -3,8 +3,8 @@ Isabelle frontend:
   * partially unapplied builtins (eta-expand)
   * leverage 'if then else', 'let', 'match with'
   * type classes
-  * (co)inductive predicates
   * quotient types
+  * numeric types
   * other definitional mechanisms?
   * BNF-style nesting (through functions, mixed FPs, etc.)?
   * parse models
@@ -19,6 +19,7 @@ Middleware:
   * heuristic inlining of definitions
   * (co)inductive predicates
   * quotient types
+  * numeric types
   * BNF-style nesting (through functions, mixed FPs, etc.)?
   * polarity for other predicates
   * description operators

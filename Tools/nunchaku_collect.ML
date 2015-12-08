@@ -41,7 +41,7 @@ sig
 
   type isa_problem = isa_command list list
 
-  val isa_problem_of_goal: Proof.context -> term -> isa_problem
+  val isa_problem_of_goal: Proof.context -> bool -> term -> isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -170,9 +170,6 @@ fun is_co_datatype_ctr ctxt (s, T) =
     end
   | _  => false);
 
-fun head_of_def_lhs (Const (@{const_name HOL.eq}, _) $ t $ _) = head_of t
-  | head_of_def_lhs t = head_of t;
-
 fun instantiate_constant_type_in_term ctxt const target =
   let
     val thy = Proof_Context.theory_of ctxt;
@@ -196,40 +193,41 @@ fun instantiate_constant_type_in_term ctxt const target =
     | NONE => raise Type.TYPE_MATCH)
   end;
 
-fun mutual_recs_or_spec_of ctxt const =
+fun int_of_classif Spec_Rules.Equational = 1
+  | int_of_classif Spec_Rules.Inductive = 2
+  | int_of_classif Spec_Rules.Co_Inductive = 3
+  | int_of_classif Spec_Rules.Unknown = 4;
+
+val classif_ord = int_ord o apply2 int_of_classif;
+
+fun spec_rules_of ctxt const =
   let
     val thy = Proof_Context.theory_of ctxt;
 
     val const_T = fastype_of const;
 
-    fun is_right_spec class (class', (ts, _)) =
-      class' = class andalso exists (fn t => Pattern.matches thy (t, const)) ts;
-
     fun subst_of t0 =
       try (Sign.typ_match thy (fastype_of t0, const_T)) Vartab.empty;
 
-    fun process_spec is_rec (ts0, ths) =
-      (case get_first subst_of ts0 of
-        SOME subst =>
-        (let
-           val ts = map (Envir.subst_term_types subst) ts0;
-           val props = map (instantiate_constant_type_in_term ctxt const o Thm.prop_of) ths;
-         in
-           if exists (exists (exists_type (exists_subtype is_TVar))) [ts, props] then NONE
-           else if null props then SOME (false, [const], [])
-           else SOME (is_rec, ts, props)
-         end
-         handle Type.TYPE_MATCH => NONE)
-      | NONE => NONE);
+    fun process_spec _ (res as SOME _) = res
+      | process_spec (classif, (ts0, ths)) NONE =
+        (case get_first subst_of ts0 of
+          SOME subst =>
+          (let
+             val ts = map (Envir.subst_term_types subst) ts0;
+             val props = map (instantiate_constant_type_in_term ctxt const o Thm.prop_of) ths;
+           in
+             if exists (exists (exists_type (exists_subtype is_TVar))) [ts, props] then NONE
+             else SOME (classif, ts, props)
+           end
+           handle Type.TYPE_MATCH => NONE)
+        | NONE => NONE);
 
-    val specs = Spec_Rules.retrieve ctxt const;
+    val specs =
+      Spec_Rules.retrieve ctxt const
+      |> sort (classif_ord o apply2 fst);
   in
-    (case find_first (is_right_spec Spec_Rules.Equational) specs of
-      SOME (_, spec) => process_spec true spec
-    | NONE =>
-      (case find_first (is_right_spec Spec_Rules.Unknown) specs of
-        SOME (_, spec) => process_spec false spec
-      | NONE => NONE))
+    fold process_spec specs NONE
   end;
 
 val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}, @{type_name set}];
@@ -361,24 +359,25 @@ fun group_isa_commands [] = []
         [cmd] :: (group :: groups)
     end;
 
-fun partition_props defined_of [const] props = SOME [props]
-  | partition_props defined_of consts props =
-    let
-      fun props_of_const const =
-        filter (fn prop => defined_of prop aconv const) props;
+fun defined_by (Const (@{const_name All}, _) $ t) = defined_by t
+  | defined_by (Abs (_, _, t)) = defined_by t
+  | defined_by (@{const implies} $ _ $ u) = defined_by u
+  | defined_by (Const (@{const_name HOL.eq}, _) $ t $ _) = head_of t
+  | defined_by t = head_of t;
 
-      val propss = map props_of_const consts;
+fun partition_props [const] props = SOME [props]
+  | partition_props consts props =
+    let
+      val propss = map (fn const => filter (fn prop => defined_by prop aconv const) props) consts;
     in
-      if eq_set (op aconv) (props, flat propss) andalso forall (not o null) propss then
-        SOME propss
-      else
-        NONE
+      if eq_set (op aconv) (props, flat propss) andalso forall (not o null) propss then SOME propss
+      else NONE
     end;
 
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
 val axioms_max_depth = 255
 
-fun isa_problem_of_goal ctxt goal0 =
+fun isa_problem_of_goal ctxt falsify goal0 =
   let
     fun consider_sort depth T S = I;
 
@@ -446,23 +445,33 @@ fun isa_problem_of_goal ctxt goal0 =
                    (seens, prob)
                  else
                    let val specs = Spec_Rules.retrieve ctxt t in
-                     (case mutual_recs_or_spec_of ctxt t of
-                       SOME (is_rec, consts, props0) =>
+                     (case spec_rules_of ctxt t of
+                       SOME (classif, consts, props0) =>
                        let
                          val props = map (preprocess_prop ctxt) props0;
+
+                         fun specs () = [ISpec {consts = consts, props = props}];
 
                          val cmds =
                            if null props then
                              map IConst consts
-                           else if is_rec then
-                             (case partition_props head_of_def_lhs consts props of
+                           else if classif = Spec_Rules.Equational then
+                             (case partition_props consts props of
                                SOME propss =>
                                [IRec (map2 (fn const => fn props => {const = const, props = props})
                                   consts propss)]
-                             | NONE => [ISpec {consts = consts, props = props}])
+                             | NONE => specs ())
+                           else if member (op =) [Spec_Rules.Inductive, Spec_Rules.Co_Inductive]
+                               classif then
+                             (case partition_props consts props of
+                               SOME propss =>
+                               [ICoPred (if classif = Spec_Rules.Inductive then BNF_Util.Least_FP
+                                    else BNF_Util.Greatest_FP,
+                                  map2 (fn const => fn props => {const = const, props = props})
+                                    consts propss)]
+                             | NONE => specs ())
                            else
-                             [ISpec {consts = consts, props = props}];
-
+                             specs ();
                          val prob = cmds @ prob;
                        in
                          ((seenS, seenT, union (op aconv) consts seen), prob)
@@ -477,7 +486,8 @@ fun isa_problem_of_goal ctxt goal0 =
                 |> consider_type depth T)
             end));
 
-    val goal = preprocess_prop ctxt goal0;
+    val goal = preprocess_prop ctxt goal0
+      |> falsify ? HOLogic.mk_not;
   in
     (([], [], []), [IGoal goal])
     |> consider_term 0 goal
