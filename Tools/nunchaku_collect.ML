@@ -108,9 +108,12 @@ fun key_of_const ctxt =
 
 val add_type_keys = fold_subtypes (insert (op =) o key_of_typ);
 
-fun add_const_keys ctxt =
-  fold_aterms (fn t =>
-    if is_Const t orelse is_Free t then insert (op =) (key_of_const ctxt t) else I);
+fun add_aterm_keys ctxt t =
+  if is_Const t orelse is_Free t then insert (op =) (key_of_const ctxt t) else I;
+
+fun add_keys ctxt t =
+  fold_aterms (add_aterm_keys ctxt) t
+  #> fold_types add_type_keys t;
 
 fun atomize_towards_False ctxt t =
   let
@@ -271,24 +274,24 @@ fun keys_of _ (IType T) = [key_of_typ T]
   | keys_of _ (IAxiom _) = []
   | keys_of _ (IGoal _) = [];
 
-fun co_data_spec_deps_of ({ctrs, ...} : isa_co_data_spec) =
-  fold (add_type_keys o fastype_of) ctrs [];
+fun co_data_spec_deps_of ctxt ({ctrs, ...} : isa_co_data_spec) =
+  fold (add_keys ctxt) ctrs [];
 fun const_spec_deps_of ctxt consts props =
-  fold (add_const_keys ctxt) props [] |> subtract (op =) (map (key_of_const ctxt) consts);
+  fold (add_keys ctxt) props [] |> subtract (op =) (map (key_of_const ctxt) consts);
 fun consts_spec_deps_of ctxt {consts, props} =
-  fold (add_const_keys ctxt) props [] |> subtract (op =) (map (key_of_const ctxt) consts);
+  fold (add_keys ctxt) props [] |> subtract (op =) (map (key_of_const ctxt) consts);
 
 fun deps_of _ (IType _) = []
-  | deps_of ctxt (ICopy {pred, ...}) = add_const_keys ctxt pred []
-  | deps_of ctxt (IQuotient {pred, ...}) = add_const_keys ctxt pred []
-  | deps_of _ (ICoData (_, specs)) = maps co_data_spec_deps_of specs
+  | deps_of ctxt (ICopy {pred, ...}) = add_keys ctxt pred []
+  | deps_of ctxt (IQuotient {pred, ...}) = add_keys ctxt pred []
+  | deps_of ctxt (ICoData (_, specs)) = maps (co_data_spec_deps_of ctxt) specs
   | deps_of _ (IVal const) = add_type_keys (fastype_of const) []
   | deps_of ctxt (ICoPred (_, specs)) =
     maps (const_spec_deps_of ctxt (map #const specs) o #props) specs
   | deps_of ctxt (IRec specs) = maps (const_spec_deps_of ctxt (map #const specs) o #props) specs
   | deps_of ctxt (ISpec spec) = consts_spec_deps_of ctxt spec
-  | deps_of ctxt (IAxiom prop) = add_const_keys ctxt prop []
-  | deps_of ctxt (IGoal prop) = add_const_keys ctxt prop [];
+  | deps_of ctxt (IAxiom prop) = add_keys ctxt prop []
+  | deps_of ctxt (IGoal prop) = add_keys ctxt prop [];
 
 fun consts_of_rec_or_spec (IRec specs) = map #const specs
   | consts_of_rec_or_spec (ISpec {consts, ...}) = consts;
