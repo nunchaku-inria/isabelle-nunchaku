@@ -342,8 +342,7 @@ val str_of_ty =
     fun str_of maybe_parens (NType (id, tys)) =
       if id = nun_fun then
         (case tys of
-          [ty, ty'] =>
-          maybe_parens (str_of parens ty ^ " " ^ nun_fun ^ " " ^ str_of I ty'))
+          [ty, ty'] => maybe_parens (str_of parens ty ^ " " ^ nun_fun ^ " " ^ str_of I ty'))
       else
         id ^ str_of_arg_list (str_of I) tys
     | str_of _ (NTVar id) = str_of_ident id

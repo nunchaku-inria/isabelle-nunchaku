@@ -115,12 +115,12 @@ fun nun_problem_of_isa ctxt =
   let
     fun cmd_of cmd =
       (case cmd of
-        ITypedecl T => NTVal (nun_ty_of_isa T)
+        IType T => NTVal (nun_ty_of_isa T)
       | ICopy spec => NCopy (nun_type_spec_of_isa ctxt spec)
       | IQuotient spec => NQuotient (nun_type_spec_of_isa ctxt spec)
       | ICoData (fp, specs) =>
         BNF_Util.case_fp fp NData NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
-      | IConst t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
+      | IVal t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
       | ICoPred (fp, specs) =>
         BNF_Util.case_fp fp NPred NCopred (map (nun_const_spec_of_isa ctxt) specs)
       | IRec specs => NRec (map (nun_const_spec_of_isa ctxt) specs)

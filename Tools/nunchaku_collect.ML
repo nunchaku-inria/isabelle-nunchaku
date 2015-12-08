@@ -28,11 +28,11 @@ sig
      props: term list}
 
   datatype isa_command =
-    ITypedecl of typ
+    IType of typ
   | ICopy of isa_type_spec
   | IQuotient of isa_type_spec
   | ICoData of fp_kind * isa_co_data_spec list
-  | IConst of term
+  | IVal of term
   | ICoPred of fp_kind * isa_const_spec list
   | IRec of isa_const_spec list
   | ISpec of isa_consts_spec
@@ -71,11 +71,11 @@ type isa_consts_spec =
    props: term list};
 
 datatype isa_command =
-  ITypedecl of typ
+  IType of typ
 | ICopy of isa_type_spec
 | IQuotient of isa_type_spec
 | ICoData of fp_kind * isa_co_data_spec list
-| IConst of term
+| IVal of term
 | ICoPred of fp_kind * isa_const_spec list
 | IRec of isa_const_spec list
 | ISpec of isa_consts_spec
@@ -136,6 +136,26 @@ fun unfold_basic_def ctxt =
 
 fun preprocess_prop ctxt =
   atomize_towards_False ctxt #> unfold_basic_def ctxt #> close_form;
+
+fun typedef_of ctxt s =
+  (case Typedef.get_info ctxt s of
+    (* When several entries are returned, it shouldn't matter much which one we take (according to
+       Florian Haftmann). The "Logic.varifyT_global" calls are a workaround because these types's
+       variables sometimes clash with locally fixed type variables. *)
+    ({abs_type, rep_type, Abs_name, Rep_name, ...}, {Rep, ...}) :: _ =>
+    let
+      val absT = Logic.varifyT_global abs_type;
+      val repT = Logic.varifyT_global rep_type;
+      val pred = Thm.prop_of Rep
+        |> HOLogic.dest_Trueprop
+        |> HOLogic.dest_mem
+        |> snd;
+      val abs = Const (Abs_name, repT --> absT);
+      val rep = Const (Rep_name, absT --> repT);
+    in
+      SOME (absT, repT, pred, abs, rep)
+    end
+  | _ => NONE);
 
 fun mutual_co_datatypes_of ctxt T_name =
   (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
@@ -240,11 +260,11 @@ val is_const_builtin =
 fun is_term_builtin (Const (s, _)) = is_const_builtin s
   | is_term_builtin _ = false;
 
-fun keys_of _ (ITypedecl T) = [key_of_typ T]
+fun keys_of _ (IType T) = [key_of_typ T]
   | keys_of _ (ICopy {typ, ...}) = [key_of_typ typ]
   | keys_of _ (IQuotient {typ, ...}) = [key_of_typ typ]
   | keys_of _ (ICoData (_, specs)) = map (key_of_typ o #typ) specs
-  | keys_of ctxt (IConst const) = [key_of_const ctxt const]
+  | keys_of ctxt (IVal const) = [key_of_const ctxt const]
   | keys_of ctxt (ICoPred (_, specs)) = map (key_of_const ctxt o #const) specs
   | keys_of ctxt (IRec specs) = map (key_of_const ctxt o #const) specs
   | keys_of ctxt (ISpec {consts, ...}) = map (key_of_const ctxt) consts
@@ -258,11 +278,11 @@ fun const_spec_deps_of ctxt consts props =
 fun consts_spec_deps_of ctxt {consts, props} =
   fold (add_const_keys ctxt) props [] |> subtract (op =) (map (key_of_const ctxt) consts);
 
-fun deps_of _ (ITypedecl _) = []
+fun deps_of _ (IType _) = []
   | deps_of ctxt (ICopy {pred, ...}) = add_const_keys ctxt pred []
   | deps_of ctxt (IQuotient {pred, ...}) = add_const_keys ctxt pred []
   | deps_of _ (ICoData (_, specs)) = maps co_data_spec_deps_of specs
-  | deps_of _ (IConst const) = add_type_keys (fastype_of const) []
+  | deps_of _ (IVal const) = add_type_keys (fastype_of const) []
   | deps_of ctxt (ICoPred (_, specs)) =
     maps (const_spec_deps_of ctxt (map #const specs) o #props) specs
   | deps_of ctxt (IRec specs) = maps (const_spec_deps_of ctxt (map #const specs) o #props) specs
@@ -327,9 +347,9 @@ fun sort_isa_problem_topologically ctxt cmds =
         else Graph.schedule (K snd) G
       end;
 
-    val typedecls = filter (can (fn ITypedecl _ => ())) cmds;
+    val typedecls = filter (can (fn IType _ => ())) cmds;
     val mixed =
-      filter (can (fn ICoData _ => () | IConst _ => () | ICoPred _ => () | IRec _ => ()
+      filter (can (fn ICoData _ => () | IVal _ => () | ICoPred _ => () | IRec _ => ()
         | ISpec _ => ())) cmds
       |> sort_prob;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
@@ -338,11 +358,11 @@ fun sort_isa_problem_topologically ctxt cmds =
     typedecls @ mixed @ axioms @ goals
   end;
 
-fun group_of (ITypedecl _) = 1
+fun group_of (IType _) = 1
   | group_of (ICopy _) = 2
   | group_of (IQuotient _) = 3
   | group_of (ICoData _) = 4
-  | group_of (IConst _) = 5
+  | group_of (IVal _) = 5
   | group_of (ICoPred _) = 6
   | group_of (IRec _) = 7
   | group_of (ISpec _) = 8
@@ -397,27 +417,33 @@ fun isa_problem_of_goal ctxt falsify goal0 =
         in
           (case T of
             TFree (_, S) =>
-            (fn (seen, prob) =>
-                (seen, ITypedecl T :: prob)
-                |> consider_sort depth T S)
+            apsnd (cons (IType T))
+            #> consider_sort depth T S
           | TVar (_, S) => consider_sort depth T S
           | Type (s, Ts) =>
             fold (consider_type depth) Ts
             #> (case mutual_co_datatypes_of ctxt s of
-                 SOME (fp, ctr_sugars) =>
-                 (fn ((seenS, seenT, seen), prob) =>
-                     let
-                       val dataTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars;
-                       val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars;
-                       val co_data = ICoData (fp,
-                         map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
-
-                       val prob = co_data :: prob;
-                     in
-                       ((seenS, union (op =) dataTs seenT, seen), prob)
-                       |> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
-                     end)
-               | NONE => (fn (seen, prob) => (seen, ITypedecl T :: prob))))
+                 SOME (fp, ctr_sugars0) => (fn ((seenS, seenT, seen), prob) =>
+                   let
+                     val dataTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars0;
+                     val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars0;
+                     val co_data = ICoData (fp,
+                       map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
+                   in
+                     ((seenS, union (op =) dataTs seenT, seen), co_data :: prob)
+                     |> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
+                   end)
+               | NONE =>
+                 (case typedef_of ctxt s of
+                   SOME (abs_T0, rep_T0, pred0, abs0, rep0) =>
+                   let
+                     val pred = pred0;
+                     val abs = abs0;
+                     val rep = rep0;
+                   in
+                     apsnd (cons (ICopy {typ = T, pred = pred, abs = abs, rep = rep}))
+                   end
+                 | NONE => apsnd (cons (IType T)))))
             (seens, prob)
         end;
 
@@ -454,7 +480,7 @@ fun isa_problem_of_goal ctxt falsify goal0 =
 
                          val cmds =
                            if null props then
-                             map IConst consts
+                             map IVal consts
                            else if classif = Spec_Rules.Equational then
                              (case partition_props consts props of
                                SOME propss =>
@@ -478,11 +504,11 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                          |> fold (consider_term (depth + 1)) props
                        end
                      | NONE =>
-                       (seens, IConst t :: prob))
+                       (seens, IVal t :: prob))
                    end)
                 |> consider_type depth T
               | Free (_, T) =>
-                (seens, IConst t :: prob)
+                (seens, IVal t :: prob)
                 |> consider_type depth T)
             end));
 
@@ -516,12 +542,12 @@ fun str_of_isa_consts_spec ctxt {consts, props} =
   space_implode " and\n     " (map (str_of_isa_term_with_type ctxt) consts) ^ " :=\n  " ^
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
-fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ ctxt T
+fun str_of_isa_command ctxt (IType T) = "type " ^ Syntax.string_of_typ ctxt T
   | str_of_isa_command ctxt (ICopy spec) = "copy " ^ str_of_isa_type_spec ctxt spec
   | str_of_isa_command ctxt (IQuotient spec) = "quotient " ^ str_of_isa_type_spec ctxt spec
   | str_of_isa_command ctxt (ICoData (fp, specs)) =
     BNF_Util.case_fp fp "data" "codata" ^ " " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
-  | str_of_isa_command ctxt (IConst t) = "const " ^ str_of_isa_term_with_type ctxt t
+  | str_of_isa_command ctxt (IVal t) = "val " ^ str_of_isa_term_with_type ctxt t
   | str_of_isa_command ctxt (ICoPred (fp, specs)) =
     BNF_Util.case_fp fp "pred" "copred" ^ " " ^
     str_of_and_list (str_of_isa_const_spec ctxt) specs

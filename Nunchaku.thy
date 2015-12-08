@@ -14,6 +14,14 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+typedef bit = "{1, 2::nat}"
+  by auto
+
+lemma
+  fixes b1 b2 b3 :: bit
+  shows "b1 \<noteq> b2 \<and> b2 \<noteq> b3 \<and> b1 \<noteq> b3"
+  nunchaku
+
 
 (*
 lemma "r a b \<Longrightarrow> rtranclp r a b"
