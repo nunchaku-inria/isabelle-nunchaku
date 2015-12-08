@@ -1,5 +1,6 @@
 Isabelle frontend:
 
+  * find out why 'bot', 'insert', etc., exist in several copies
   * partially unapplied builtins (eta-expand)
   * leverage 'if then else', 'let', 'match with'
   * type classes
