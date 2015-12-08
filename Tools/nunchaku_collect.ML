@@ -2,7 +2,7 @@
     Author:     Jasmin Blanchette, Inria Nancy, LORIA, MPII
     Copyright   2015
 
-Collection of Isabelle/HOL definitions etc. for Nunchaku.
+Collecting of Isabelle/HOL definitions etc. for Nunchaku.
 *)
 
 signature NUNCHAKU_COLLECT =
@@ -361,6 +361,20 @@ fun group_isa_commands [] = []
         [cmd] :: (group :: groups)
     end;
 
+fun partition_props defined_of [const] props = SOME [props]
+  | partition_props defined_of consts props =
+    let
+      fun props_of_const const =
+        filter (fn prop => defined_of prop aconv const) props;
+
+      val propss = map props_of_const consts;
+    in
+      if eq_set (op aconv) (props, flat propss) andalso forall (not o null) propss then
+        SOME propss
+      else
+        NONE
+    end;
+
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
 val axioms_max_depth = 255
 
@@ -437,28 +451,11 @@ fun isa_problem_of_goal ctxt goal0 =
                        let
                          val props = map (preprocess_prop ctxt) props0;
 
-                         fun partition_props props =
-                           if length consts = 1 then
-                             SOME [props]
-                           else
-                             let
-                               fun props_of_const const =
-                                 filter (fn prop => head_of_def_lhs prop aconv const) props;
-
-                               val propss = map props_of_const consts;
-                             in
-                               if eq_set (op aconv) (props, flat propss) andalso
-                                  forall (not o null) propss then
-                                SOME propss
-                              else
-                                NONE
-                             end;
-
                          val cmds =
                            if null props then
                              map IConst consts
                            else if is_rec then
-                             (case partition_props props of
+                             (case partition_props head_of_def_lhs consts props of
                                SOME propss =>
                                [IRec (map2 (fn const => fn props => {const = const, props = props})
                                   consts propss)]
@@ -471,7 +468,8 @@ fun isa_problem_of_goal ctxt goal0 =
                          ((seenS, seenT, union (op aconv) consts seen), prob)
                          |> fold (consider_term (depth + 1)) props
                        end
-                     | NONE => (seens, IConst t :: prob))
+                     | NONE =>
+                       (seens, IConst t :: prob))
                    end)
                 |> consider_type depth T
               | Free (_, T) =>

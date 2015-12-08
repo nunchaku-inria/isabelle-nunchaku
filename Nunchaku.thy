@@ -14,6 +14,15 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+inductive even where
+  "even 0"
+| "even n \<Longrightarrow> even (n + 2)"
+
+lemma "even n"
+nunchaku
+
+
+
 
 (*
 lemma "rev xs = ys \<and> rev ys = xs"
