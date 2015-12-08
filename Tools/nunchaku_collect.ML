@@ -10,7 +10,8 @@ sig
   type fp_kind = BNF_Util.fp_kind
 
   type isa_type_spec =
-    {typ: typ,
+    {abs_typ: typ,
+     rep_typ: typ,
      pred: term,
      abs: term,
      rep: term}
@@ -53,7 +54,8 @@ open Nunchaku_Util;
 type fp_kind = BNF_Util.fp_kind;
 
 type isa_type_spec =
-  {typ: typ,
+  {abs_typ: typ,
+   rep_typ: typ,
    pred: term,
    abs: term,
    rep: term};
@@ -264,8 +266,8 @@ fun is_term_builtin (Const (s, _)) = is_const_builtin s
   | is_term_builtin _ = false;
 
 fun keys_of _ (IType T) = [key_of_typ T]
-  | keys_of _ (ICopy {typ, ...}) = [key_of_typ typ]
-  | keys_of _ (IQuotient {typ, ...}) = [key_of_typ typ]
+  | keys_of _ (ICopy {abs_typ, ...}) = [key_of_typ abs_typ]
+  | keys_of _ (IQuotient {abs_typ, ...}) = [key_of_typ abs_typ]
   | keys_of _ (ICoData (_, specs)) = map (key_of_typ o #typ) specs
   | keys_of ctxt (IVal const) = [key_of_const ctxt const]
   | keys_of ctxt (ICoPred (_, specs)) = map (key_of_const ctxt o #const) specs
@@ -438,13 +440,15 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                    end)
                | NONE =>
                  (case typedef_of ctxt s of
-                   SOME (abs_T0, rep_T0, pred0, abs0, rep0) =>
+                   SOME (T0, repT0, pred0, abs0, rep0) =>
                    let
+                     val repT = repT0;
                      val pred = pred0;
                      val abs = abs0;
                      val rep = rep0;
                    in
-                     apsnd (cons (ICopy {typ = T, pred = pred, abs = abs, rep = rep}))
+                     apsnd (cons (ICopy {abs_typ = T, rep_typ = repT, pred = pred, abs = abs,
+                       rep = rep}))
                      #> consider_term (depth + 1) pred
                    end
                  | NONE => apsnd (cons (IType T)))))
@@ -529,9 +533,11 @@ fun isa_problem_of_goal ctxt falsify goal0 =
 fun str_of_isa_term_with_type ctxt t =
   Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);
 
-fun str_of_isa_type_spec ctxt {typ, pred, abs, rep} =
-  Syntax.string_of_typ ctxt typ ^ " :=\n " ^ Syntax.string_of_term ctxt pred ^
-  "\n  abs " ^ Syntax.string_of_term ctxt abs ^ "\n  rep " ^ Syntax.string_of_term ctxt rep;
+fun str_of_isa_type_spec ctxt {abs_typ, rep_typ, pred, abs, rep} =
+  Syntax.string_of_typ ctxt abs_typ ^ " := " ^ Syntax.string_of_typ ctxt rep_typ ^
+  "\n  wrt " ^ Syntax.string_of_term ctxt pred ^
+  "\n  abs " ^ Syntax.string_of_term ctxt abs ^
+  "\n  rep " ^ Syntax.string_of_term ctxt rep;
 
 fun str_of_isa_co_data_spec ctxt {typ, ctrs} =
   Syntax.string_of_typ ctxt typ ^ " :=\n  " ^

@@ -95,9 +95,9 @@ fun nun_tm_of_isa ctxt t =
     |> beta_reduce_tm
   end;
 
-fun nun_type_spec_of_isa ctxt {typ, pred, abs, rep} =
-  {ty = nun_ty_of_isa typ, pred = nun_tm_of_isa ctxt pred, abs = nun_tm_of_isa ctxt abs,
-   rep = nun_tm_of_isa ctxt rep};
+fun nun_type_spec_of_isa ctxt {abs_typ, rep_typ, pred, abs, rep} =
+  {abs_ty = nun_ty_of_isa abs_typ, rep_ty = nun_ty_of_isa rep_typ, pred = nun_tm_of_isa ctxt pred,
+   abs = nun_tm_of_isa ctxt abs, rep = nun_tm_of_isa ctxt rep};
 
 fun nun_ctr_of_isa ctxt ctr =
   {ctr = nun_tm_of_isa ctxt ctr, arg_tys = map nun_ty_of_isa (binder_types (fastype_of ctr))};
