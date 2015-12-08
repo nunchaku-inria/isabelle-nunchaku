@@ -16,6 +16,9 @@ ML_file "Tools/nunchaku_commands.ML"
 
 
 (*
+lemma "r a b \<Longrightarrow> rtranclp r a b"
+nunchaku
+
 inductive even and odd where
   "even 0"
 | "even m \<Longrightarrow> odd (Suc m)"

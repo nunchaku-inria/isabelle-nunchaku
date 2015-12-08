@@ -177,7 +177,6 @@ val nun_then = "then";
 val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
 val is_nun_const_truth_value = member (op =) [nun_false, nun_true];
 val is_nun_const_connective = member (op =) [nun_conj, nun_disj, nun_implies];
-val is_nun_const_infix = is_nun_const_connective orf curry (op =) nun_equals;
 
 fun gen_nun_const_of_str pre suf s =
   let val s' = ascii_of s ^ suf in
@@ -344,7 +343,7 @@ val str_of_ty =
       if id = nun_fun then
         (case tys of
           [ty, ty'] =>
-          maybe_parens (str_of parens ty ^ " " ^ nun_fun ^ " " ^ str_of maybe_parens ty'))
+          maybe_parens (str_of parens ty ^ " " ^ nun_fun ^ " " ^ str_of I ty'))
       else
         id ^ str_of_arg_list (str_of I) tys
     | str_of _ (NTVar id) = str_of_ident id

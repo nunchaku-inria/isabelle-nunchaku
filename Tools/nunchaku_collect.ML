@@ -523,7 +523,7 @@ fun str_of_isa_command ctxt (ITypedecl T) = "typedecl " ^ Syntax.string_of_typ c
     BNF_Util.case_fp fp "data" "codata" ^ " " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
   | str_of_isa_command ctxt (IConst t) = "const " ^ str_of_isa_term_with_type ctxt t
   | str_of_isa_command ctxt (ICoPred (fp, specs)) =
-    BNF_Util.case_fp fp "induct" "coinduct" ^ " " ^
+    BNF_Util.case_fp fp "pred" "copred" ^ " " ^
     str_of_and_list (str_of_isa_const_spec ctxt) specs
   | str_of_isa_command ctxt (IRec specs) =
     "rec " ^ str_of_and_list (str_of_isa_const_spec ctxt) specs
