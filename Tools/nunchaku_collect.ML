@@ -352,8 +352,8 @@ fun sort_isa_problem_topologically ctxt cmds =
 
     val typedecls = filter (can (fn IType _ => ())) cmds;
     val mixed =
-      filter (can (fn ICoData _ => () | IVal _ => () | ICoPred _ => () | IRec _ => ()
-        | ISpec _ => ())) cmds
+      filter (can (fn ICopy _ => () | IQuotient _ => () | ICoData _ => () | IVal _ => ()
+        | ICoPred _ => () | IRec _ => () | ISpec _ => ())) cmds
       |> sort_prob;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
@@ -445,12 +445,12 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                      val rep = rep0;
                    in
                      apsnd (cons (ICopy {typ = T, pred = pred, abs = abs, rep = rep}))
+                     #> consider_term (depth + 1) pred
                    end
                  | NONE => apsnd (cons (IType T)))))
             (seens, prob)
-        end;
-
-    fun consider_term depth t =
+        end
+    and consider_term depth t =
       (case t of
         t1 $ t2 => fold (consider_term depth) [t1, t2]
       | Var (_, T) => consider_type depth T

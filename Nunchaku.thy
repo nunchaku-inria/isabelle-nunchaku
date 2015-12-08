@@ -14,7 +14,7 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-typedef bit = "{1, 2::nat}"
+typedef bit = "{0, Suc 0}"
   by auto
 
 lemma
