@@ -95,8 +95,8 @@ fun nun_tm_of_isa ctxt t =
     |> beta_reduce_tm
   end;
 
-fun nun_type_spec_of_isa ctxt {abs_typ, rep_typ, pred, abs, rep} =
-  {abs_ty = nun_ty_of_isa abs_typ, rep_ty = nun_ty_of_isa rep_typ, pred = nun_tm_of_isa ctxt pred,
+fun nun_type_spec_of_isa ctxt {abs_typ, rep_typ, wrt, abs, rep} =
+  {abs_ty = nun_ty_of_isa abs_typ, rep_ty = nun_ty_of_isa rep_typ, wrt = nun_tm_of_isa ctxt wrt,
    abs = nun_tm_of_isa ctxt abs, rep = nun_tm_of_isa ctxt rep};
 
 fun nun_ctr_of_isa ctxt ctr =

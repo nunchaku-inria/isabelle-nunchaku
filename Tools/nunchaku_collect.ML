@@ -12,7 +12,7 @@ sig
   type isa_type_spec =
     {abs_typ: typ,
      rep_typ: typ,
-     pred: term,
+     wrt: term,
      abs: term,
      rep: term}
 
@@ -56,7 +56,7 @@ type fp_kind = BNF_Util.fp_kind;
 type isa_type_spec =
   {abs_typ: typ,
    rep_typ: typ,
-   pred: term,
+   wrt: term,
    abs: term,
    rep: term};
 
@@ -151,14 +151,14 @@ fun typedef_of ctxt s =
     let
       val absT = Logic.varifyT_global abs_type;
       val repT = Logic.varifyT_global rep_type;
-      val pred = Thm.prop_of Rep
+      val wrt = Thm.prop_of Rep
         |> HOLogic.dest_Trueprop
         |> HOLogic.dest_mem
         |> snd;
       val abs = Const (Abs_name, repT --> absT);
       val rep = Const (Rep_name, absT --> repT);
     in
-      SOME (absT, repT, pred, abs, rep)
+      SOME (absT, repT, wrt, abs, rep)
     end
   | _ => NONE);
 
@@ -284,8 +284,8 @@ fun consts_spec_deps_of ctxt {consts, props} =
   fold (add_keys ctxt) props [] |> subtract (op =) (map (key_of_const ctxt) consts);
 
 fun deps_of _ (IType _) = []
-  | deps_of ctxt (ICopy {pred, ...}) = add_keys ctxt pred []
-  | deps_of ctxt (IQuotient {pred, ...}) = add_keys ctxt pred []
+  | deps_of ctxt (ICopy {wrt, ...}) = add_keys ctxt wrt []
+  | deps_of ctxt (IQuotient {wrt, ...}) = add_keys ctxt wrt []
   | deps_of ctxt (ICoData (_, specs)) = maps (co_data_spec_deps_of ctxt) specs
   | deps_of _ (IVal const) = add_type_keys (fastype_of const) []
   | deps_of ctxt (ICoPred (_, specs)) =
@@ -440,16 +440,16 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                    end)
                | NONE =>
                  (case typedef_of ctxt s of
-                   SOME (T0, repT0, pred0, abs0, rep0) =>
+                   SOME (T0, repT0, wrt0, abs0, rep0) =>
                    let
                      val repT = repT0;
-                     val pred = pred0;
+                     val wrt = wrt0;
                      val abs = abs0;
                      val rep = rep0;
                    in
-                     apsnd (cons (ICopy {abs_typ = T, rep_typ = repT, pred = pred, abs = abs,
+                     apsnd (cons (ICopy {abs_typ = T, rep_typ = repT, wrt = wrt, abs = abs,
                        rep = rep}))
-                     #> consider_term (depth + 1) pred
+                     #> consider_term (depth + 1) wrt
                    end
                  | NONE => apsnd (cons (IType T)))))
             (seens, prob)
@@ -533,9 +533,9 @@ fun isa_problem_of_goal ctxt falsify goal0 =
 fun str_of_isa_term_with_type ctxt t =
   Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);
 
-fun str_of_isa_type_spec ctxt {abs_typ, rep_typ, pred, abs, rep} =
+fun str_of_isa_type_spec ctxt {abs_typ, rep_typ, wrt, abs, rep} =
   Syntax.string_of_typ ctxt abs_typ ^ " := " ^ Syntax.string_of_typ ctxt rep_typ ^
-  "\n  wrt " ^ Syntax.string_of_term ctxt pred ^
+  "\n  wrt " ^ Syntax.string_of_term ctxt wrt ^
   "\n  abs " ^ Syntax.string_of_term ctxt abs ^
   "\n  rep " ^ Syntax.string_of_term ctxt rep;
 
@@ -558,8 +558,7 @@ fun str_of_isa_command ctxt (IType T) = "type " ^ Syntax.string_of_typ ctxt T
     BNF_Util.case_fp fp "data" "codata" ^ " " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
   | str_of_isa_command ctxt (IVal t) = "val " ^ str_of_isa_term_with_type ctxt t
   | str_of_isa_command ctxt (ICoPred (fp, specs)) =
-    BNF_Util.case_fp fp "pred" "copred" ^ " " ^
-    str_of_and_list (str_of_isa_const_spec ctxt) specs
+    BNF_Util.case_fp fp "pred" "copred" ^ " " ^ str_of_and_list (str_of_isa_const_spec ctxt) specs
   | str_of_isa_command ctxt (IRec specs) =
     "rec " ^ str_of_and_list (str_of_isa_const_spec ctxt) specs
   | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_consts_spec ctxt spec

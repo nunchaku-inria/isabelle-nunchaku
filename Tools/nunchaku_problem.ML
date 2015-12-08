@@ -22,7 +22,7 @@ sig
   type nun_type_spec =
     {abs_ty: ty,
      rep_ty: ty,
-     pred: tm,
+     wrt: tm,
      abs: tm,
      rep: tm}
 
@@ -117,7 +117,7 @@ datatype tm =
 type nun_type_spec =
   {abs_ty: ty,
    rep_ty: ty,
-   pred: tm,
+   wrt: tm,
    abs: tm,
    rep: tm};
 
@@ -244,14 +244,14 @@ fun fold_map_tm_idents f (NConst (id, tys, ty)) =
     ##>> fold_map_tm_idents f arg
     #>> NApp;
 
-fun fold_map_nun_type_spec_idents f {abs_ty, rep_ty, pred, abs, rep} =
+fun fold_map_nun_type_spec_idents f {abs_ty, rep_ty, wrt, abs, rep} =
   fold_map_ty_idents f abs_ty
   ##>> fold_map_ty_idents f rep_ty
-  ##>> fold_map_tm_idents f pred
+  ##>> fold_map_tm_idents f wrt
   ##>> fold_map_tm_idents f abs
   ##>> fold_map_tm_idents f rep
-  #>> (fn ((((abs_ty, rep_ty), pred), abs), rep) =>
-    {abs_ty = abs_ty, rep_ty = rep_ty, pred = pred, abs = abs, rep = rep});
+  #>> (fn ((((abs_ty, rep_ty), wrt), abs), rep) =>
+    {abs_ty = abs_ty, rep_ty = rep_ty, wrt = wrt, abs = abs, rep = rep});
 
 fun fold_map_nun_ctr_spec_idents f {ctr, arg_tys} =
   fold_map_tm_idents f ctr
@@ -467,9 +467,9 @@ fun str_of_tval (NType (id, tys)) =
     str_of_ident id ^ " : " ^ fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
   | str_of_tval _ = raise Fail "non-NType";
 
-fun str_of_nun_type_spec {abs_ty, rep_ty, pred, abs, rep} =
+fun str_of_nun_type_spec {abs_ty, rep_ty, wrt, abs, rep} =
   str_of_ty abs_ty ^ " := " ^ str_of_ty rep_ty ^
-  "\n  wrt " ^ str_of_tm pred ^
+  "\n  wrt " ^ str_of_tm wrt ^
   "\n  abs " ^ str_of_tm abs ^
   "\n  rep " ^ str_of_tm rep;
 
