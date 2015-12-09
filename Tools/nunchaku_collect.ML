@@ -154,9 +154,12 @@ fun classify_type_name ctxt T_name =
     (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
       SOME {kind, ...} => Co_Datatype (fp_kind_of_ctr_sugar_kind kind)
     | NONE =>
-      (case Typedef.get_info ctxt T_name of
-        _ :: _ => Typedef
-      | [] => Typedecl)));
+      (case Quotient_Info.lookup_quotients ctxt T_name of
+        SOME _ => Quotient_Type
+      | NONE =>
+        (case Typedef.get_info ctxt T_name of
+          _ :: _ => Typedef
+        | [] => Typedecl))));
 
 fun mutual_co_datatypes_of ctxt T_name =
   (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
@@ -189,6 +192,14 @@ fun is_co_datatype_ctr ctxt (s, T) =
       exists is_right_ctr ctrs
     end
   | _  => false);
+
+fun quotient_type_of ctxt T_name =
+  (case Quotient_Info.lookup_quotients ctxt T_name of
+    SOME {equiv_rel, qtyp, rtyp, quot_thm, ...} =>
+    let val _ $ (_ $ _ $ abs $ rep) = Thm.prop_of quot_thm in
+      SOME (qtyp, rtyp, equiv_rel, abs, rep)
+    end
+  | NONE => NONE);
 
 fun typedef_of ctxt T_name =
   (case Typedef.get_info ctxt T_name of
@@ -436,6 +447,22 @@ fun isa_problem_of_goal ctxt falsify goal0 =
         let
           val seenT = T :: seenT;
           val seens = (seenS, seenT, seen);
+
+          fun consider_quotient_type_or_typedef tuple_of s =
+            let
+              val SOME (T0, repT0, wrt0, abs0, rep0) = tuple_of ctxt s;
+              val tyenv = Sign.typ_match thy (T0, T) Vartab.empty;
+              val substT = Envir.subst_type tyenv;
+              val subst = Envir.subst_term_types tyenv;
+              val repT = substT repT0;
+              val wrt = subst wrt0;
+              val abs = subst abs0;
+              val rep = subst rep0;
+            in
+              apsnd (cons (ICopy {abs_typ = T, rep_typ = repT, wrt = wrt, abs = abs,
+                rep = rep}))
+              #> consider_term (depth + 1) wrt
+            end;
         in
           (seens, prob)
           |> (case T of
@@ -458,21 +485,8 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                           ((seenS, union (op =) dataTs seenT, seen), co_data :: prob))
                       #> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
                     end
-                  | Typedef =>
-                    let
-                      val SOME (T0, repT0, wrt0, abs0, rep0) = typedef_of ctxt s;
-                      val tyenv = Sign.typ_match thy (T0, T) Vartab.empty;
-                      val substT = Envir.subst_type tyenv;
-                      val subst = Envir.subst_term_types tyenv;
-                      val repT = substT repT0;
-                      val wrt = subst wrt0;
-                      val abs = subst abs0;
-                      val rep = subst rep0;
-                    in
-                      apsnd (cons (ICopy {abs_typ = T, rep_typ = repT, wrt = wrt, abs = abs,
-                        rep = rep}))
-                      #> consider_term (depth + 1) wrt
-                    end
+                  | Quotient_Type => consider_quotient_type_or_typedef quotient_type_of s
+                  | Typedef => consider_quotient_type_or_typedef typedef_of s
                   | Typedecl => apsnd (cons (IType T))))
         end
     and consider_term depth t =
