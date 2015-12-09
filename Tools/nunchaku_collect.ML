@@ -138,21 +138,14 @@ fun unfold_basic_def ctxt =
 fun preprocess_prop ctxt =
   atomize_towards_False ctxt #> unfold_basic_def ctxt #> close_form;
 
-datatype type_classification =
-  Co_Datatype of BNF_Util.fp_kind
-| Quotient_Type
-| Typedef
-| Typedecl;
-
-fun fp_kind_of_ctr_sugar_kind Ctr_Sugar.Codatatype = BNF_Util.Greatest_FP
-  | fp_kind_of_ctr_sugar_kind _ = BNF_Util.Least_FP;
+datatype type_classification = Co_Datatype | Quotient_Type | Typedef | Typedecl;
 
 fun classify_type_name ctxt T_name =
   (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
-    SOME {fp, ...} => Co_Datatype fp
+    SOME _ => Co_Datatype
   | NONE =>
     (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
-      SOME {kind, ...} => Co_Datatype (fp_kind_of_ctr_sugar_kind kind)
+      SOME _ => Co_Datatype
     | NONE =>
       (case Quotient_Info.lookup_quotients ctxt T_name of
         SOME _ => Quotient_Type
@@ -161,48 +154,30 @@ fun classify_type_name ctxt T_name =
           _ :: _ => Typedef
         | [] => Typedecl))));
 
+fun fp_kind_of_ctr_sugar_kind Ctr_Sugar.Codatatype = BNF_Util.Greatest_FP
+  | fp_kind_of_ctr_sugar_kind _ = BNF_Util.Least_FP;
+
 fun mutual_co_datatypes_of ctxt T_name =
   (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
     SOME (fp_sugar as {fp, fp_res = {Ts, ...}, ...}) =>
-    SOME (fp,
-      (case Ts of
-        [_] => [fp_sugar]
-      | _ => map (the o BNF_FP_Def_Sugar.fp_sugar_of ctxt o fst o dest_Type) Ts)
-      |> map (#ctr_sugar o #fp_ctr_sugar))
+    (fp,
+     (case Ts of
+       [_] => [fp_sugar]
+     | _ => map (the o BNF_FP_Def_Sugar.fp_sugar_of ctxt o fst o dest_Type) Ts)
+     |> map (#ctr_sugar o #fp_ctr_sugar))
   | NONE =>
     (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
       SOME (ctr_sugar as {kind, ...}) =>
       (* Any freely constructed type that is not a codatatype is considered a datatype. This is
          sound (but incomplete) for model finding. *)
-      SOME (fp_kind_of_ctr_sugar_kind kind, [ctr_sugar])
-    | NONE => NONE));
-
-fun is_co_datatype_ctr ctxt (s, T) =
-  (case body_type T of
-    fpT as Type (fpT_name, Ts) =>
-    let
-      val ctrs =
-        (case BNF_FP_Def_Sugar.fp_sugar_of ctxt fpT_name of
-          SOME {fp_ctr_sugar = {ctr_sugar = {ctrs, ...}, ...}, ...} => ctrs
-        | NONE =>
-          (case Ctr_Sugar.ctr_sugar_of ctxt fpT_name of
-            SOME {ctrs, ...} => ctrs
-          | _ => []));
-
-      fun is_right_ctr (t' as Const (s', T')) =
-        s = s' andalso fastype_of (Ctr_Sugar.mk_ctr Ts t') = T;
-    in
-      exists is_right_ctr ctrs
-    end
-  | _  => false);
+      (fp_kind_of_ctr_sugar_kind kind, [ctr_sugar])));
 
 fun quotient_type_of ctxt T_name =
   (case Quotient_Info.lookup_quotients ctxt T_name of
     SOME {equiv_rel, qtyp, rtyp, quot_thm, ...} =>
     let val _ $ (_ $ _ $ abs $ rep) = Thm.prop_of quot_thm in
-      SOME (qtyp, rtyp, equiv_rel, abs, rep)
-    end
-  | NONE => NONE);
+      (qtyp, rtyp, equiv_rel, abs, rep)
+    end);
 
 fun typedef_of ctxt T_name =
   (case Typedef.get_info ctxt T_name of
@@ -220,9 +195,63 @@ fun typedef_of ctxt T_name =
       val abs = Const (Abs_name, repT --> absT);
       val rep = Const (Rep_name, absT --> repT);
     in
-      SOME (absT, repT, wrt, abs, rep)
+      (absT, repT, wrt, abs, rep)
+    end);
+
+fun is_co_datatype_ctr ctxt (s, T) =
+  (case body_type T of
+    fpT as Type (fpT_name, Ts) =>
+    (* Currently redundant:
+       classify_type_name ctxt fpT_name = Co_Datatype andalso *)
+    let
+      val ctrs =
+        (case BNF_FP_Def_Sugar.fp_sugar_of ctxt fpT_name of
+          SOME {fp_ctr_sugar = {ctr_sugar = {ctrs, ...}, ...}, ...} => ctrs
+        | NONE =>
+          (case Ctr_Sugar.ctr_sugar_of ctxt fpT_name of
+            SOME {ctrs, ...} => ctrs
+          | _ => []));
+
+      fun is_right_ctr (t' as Const (s', T')) =
+        s = s' andalso fastype_of (Ctr_Sugar.mk_ctr Ts t') = T;
+    in
+      exists is_right_ctr ctrs
     end
-  | _ => NONE);
+  | _  => false);
+
+fun is_quotient_type_abs ctxt (s, T) =
+  (case T of
+    Type (@{type_name fun}, [_, absT as Type (absT_name, _)]) =>
+    classify_type_name ctxt absT_name = Quotient_Type andalso
+    (case quotient_type_of ctxt absT_name of
+      (_, _, _, Const (s', _), _) => s' = s)
+  | _ => false);
+
+fun is_quotient_type_rep ctxt (s, T) =
+  (case T of
+    Type (@{type_name fun}, [absT as Type (absT_name, _), _]) =>
+    classify_type_name ctxt absT_name = Quotient_Type andalso
+    (case quotient_type_of ctxt absT_name of
+      (_, _, _, _, Const (s', _)) => s' = s)
+  | _ => false);
+
+fun is_stale_typedef_abs ctxt (s, T) =
+  (case T of
+    Type (@{type_name fun}, [_, absT as Type (absT_name, _)]) =>
+    classify_type_name ctxt absT_name <> Typedef andalso
+    (case try (typedef_of ctxt) absT_name of
+      SOME (_, _, _, Const (s', _), _) => s' = s
+    | NONE => false)
+  | _ => false);
+
+fun is_stale_typedef_rep ctxt (s, T) =
+  (case T of
+    Type (@{type_name fun}, [absT as Type (absT_name, _), _]) =>
+    classify_type_name ctxt absT_name <> Typedef andalso
+    (case try (typedef_of ctxt) absT_name of
+      SOME (_, _, _, _, Const (s', _)) => s' = s
+    | NONE => false)
+  | _ => false);
 
 fun instantiate_constant_type_in_term ctxt const target =
   let
@@ -453,7 +482,7 @@ fun isa_problem_of_goal ctxt falsify goal0 =
 
           fun consider_quotient_type_or_typedef tuple_of s =
             let
-              val SOME (T0, repT0, wrt0, abs0, rep0) = tuple_of ctxt s;
+              val (T0, repT0, wrt0, abs0, rep0) = tuple_of ctxt s;
               val tyenv = Sign.typ_match thy (T0, T) Vartab.empty;
               val substT = Envir.subst_type tyenv;
               val subst = Envir.subst_term_types tyenv;
@@ -476,9 +505,9 @@ fun isa_problem_of_goal ctxt falsify goal0 =
              | Type (s, Ts) =>
                fold (consider_type depth) Ts
                #> (case classify_type_name ctxt s of
-                    Co_Datatype _ =>
+                    Co_Datatype =>
                     let
-                      val SOME (fp, ctr_sugars0) = mutual_co_datatypes_of ctxt s;
+                      val (fp, ctr_sugars0) = mutual_co_datatypes_of ctxt s;
                       val fpTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars0;
                       val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars0;
                       val co_data = ICoData (fp,
@@ -512,8 +541,11 @@ fun isa_problem_of_goal ctxt falsify goal0 =
             in
               (case t of
                 Const (x as (s, T)) =>
-                (if is_const_builtin s orelse is_co_datatype_ctr ctxt x then
+                (if is_const_builtin s orelse is_co_datatype_ctr ctxt x orelse
+                    is_quotient_type_abs ctxt x orelse is_quotient_type_rep ctxt x then
                    (seens, prob)
+                 else if is_stale_typedef_abs ctxt x orelse is_stale_typedef_rep ctxt x then
+                   raise Fail "stale abs or rep function"
                  else
                    let val specs = Spec_Rules.retrieve ctxt t in
                      (case spec_rules_of ctxt t of
