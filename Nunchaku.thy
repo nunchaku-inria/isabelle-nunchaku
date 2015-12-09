@@ -14,12 +14,12 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-typedef bit = "{0, Suc 0}"
+typedef 'a bit = "{undefined :: 'a}"
   by auto
 
 lemma
-  fixes b1 b2 b3 :: bit
-  shows "b1 \<noteq> b2 \<and> b2 \<noteq> b3 \<and> b1 \<noteq> b3"
+  fixes b1 b2 b3 :: "nat bit"
+  shows "b1 \<noteq> b2 \<and> b2 \<noteq> b3 \<and> b1 \<noteq> b3 \<and> Abs_bit r \<noteq> b3"
   nunchaku
 
 

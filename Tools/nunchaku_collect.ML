@@ -7,8 +7,6 @@ Collecting of Isabelle/HOL definitions etc. for Nunchaku.
 
 signature NUNCHAKU_COLLECT =
 sig
-  type fp_kind = BNF_Util.fp_kind
-
   type isa_type_spec =
     {abs_typ: typ,
      rep_typ: typ,
@@ -32,9 +30,9 @@ sig
     IType of typ
   | ICopy of isa_type_spec
   | IQuotient of isa_type_spec
-  | ICoData of fp_kind * isa_co_data_spec list
+  | ICoData of BNF_Util.fp_kind * isa_co_data_spec list
   | IVal of term
-  | ICoPred of fp_kind * isa_const_spec list
+  | ICoPred of BNF_Util.fp_kind * isa_const_spec list
   | IRec of isa_const_spec list
   | ISpec of isa_consts_spec
   | IAxiom of term
@@ -50,8 +48,6 @@ structure Nunchaku_Collect : NUNCHAKU_COLLECT =
 struct
 
 open Nunchaku_Util;
-
-type fp_kind = BNF_Util.fp_kind;
 
 type isa_type_spec =
   {abs_typ: typ,
@@ -76,9 +72,9 @@ datatype isa_command =
   IType of typ
 | ICopy of isa_type_spec
 | IQuotient of isa_type_spec
-| ICoData of fp_kind * isa_co_data_spec list
+| ICoData of BNF_Util.fp_kind * isa_co_data_spec list
 | IVal of term
-| ICoPred of fp_kind * isa_const_spec list
+| ICoPred of BNF_Util.fp_kind * isa_const_spec list
 | IRec of isa_const_spec list
 | ISpec of isa_consts_spec
 | IAxiom of term
@@ -142,25 +138,25 @@ fun unfold_basic_def ctxt =
 fun preprocess_prop ctxt =
   atomize_towards_False ctxt #> unfold_basic_def ctxt #> close_form;
 
-fun typedef_of ctxt s =
-  (case Typedef.get_info ctxt s of
-    (* When several entries are returned, it shouldn't matter much which one we take (according to
-       Florian Haftmann). The "Logic.varifyT_global" calls are a workaround because these types's
-       variables sometimes clash with locally fixed type variables. *)
-    ({abs_type, rep_type, Abs_name, Rep_name, ...}, {Rep, ...}) :: _ =>
-    let
-      val absT = Logic.varifyT_global abs_type;
-      val repT = Logic.varifyT_global rep_type;
-      val wrt = Thm.prop_of Rep
-        |> HOLogic.dest_Trueprop
-        |> HOLogic.dest_mem
-        |> snd;
-      val abs = Const (Abs_name, repT --> absT);
-      val rep = Const (Rep_name, absT --> repT);
-    in
-      SOME (absT, repT, wrt, abs, rep)
-    end
-  | _ => NONE);
+datatype type_classification =
+  Co_Datatype of BNF_Util.fp_kind
+| Quotient_Type
+| Typedef
+| Typedecl;
+
+fun fp_kind_of_ctr_sugar_kind Ctr_Sugar.Codatatype = BNF_Util.Greatest_FP
+  | fp_kind_of_ctr_sugar_kind _ = BNF_Util.Least_FP;
+
+fun classify_type_name ctxt T_name =
+  (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
+    SOME {fp, ...} => Co_Datatype fp
+  | NONE =>
+    (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
+      SOME {kind, ...} => Co_Datatype (fp_kind_of_ctr_sugar_kind kind)
+    | NONE =>
+      (case Typedef.get_info ctxt T_name of
+        _ :: _ => Typedef
+      | [] => Typedecl)));
 
 fun mutual_co_datatypes_of ctxt T_name =
   (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
@@ -175,8 +171,7 @@ fun mutual_co_datatypes_of ctxt T_name =
       SOME (ctr_sugar as {kind, ...}) =>
       (* Any freely constructed type that is not a codatatype is considered a datatype. This is
          sound (but incomplete) for model finding. *)
-      SOME (if kind = Ctr_Sugar.Codatatype then BNF_Util.Greatest_FP else BNF_Util.Least_FP,
-        [ctr_sugar])
+      SOME (fp_kind_of_ctr_sugar_kind kind, [ctr_sugar])
     | NONE => NONE));
 
 fun is_co_datatype_ctr ctxt (s, T) =
@@ -194,6 +189,26 @@ fun is_co_datatype_ctr ctxt (s, T) =
       exists is_right_ctr ctrs
     end
   | _  => false);
+
+fun typedef_of ctxt T_name =
+  (case Typedef.get_info ctxt T_name of
+    (* When several entries are returned, it shouldn't matter much which one we take (according to
+       Florian Haftmann). The "Logic.varifyT_global" calls are a workaround because these types'
+       variables sometimes clash with locally fixed type variables. *)
+    ({abs_type, rep_type, Abs_name, Rep_name, ...}, {Rep, ...}) :: _ =>
+    let
+      val absT = Logic.varifyT_global abs_type;
+      val repT = Logic.varifyT_global rep_type;
+      val wrt = Thm.prop_of Rep
+        |> HOLogic.dest_Trueprop
+        |> HOLogic.dest_mem
+        |> snd;
+      val abs = Const (Abs_name, repT --> absT);
+      val rep = Const (Rep_name, absT --> repT);
+    in
+      SOME (absT, repT, wrt, abs, rep)
+    end
+  | _ => NONE);
 
 fun instantiate_constant_type_in_term ctxt const target =
   let
@@ -404,6 +419,8 @@ val axioms_max_depth = 255
 
 fun isa_problem_of_goal ctxt falsify goal0 =
   let
+    val thy = Proof_Context.theory_of ctxt;
+
     fun consider_sort depth T S = I;
 
     fun consider_type depth T =
@@ -420,39 +437,43 @@ fun isa_problem_of_goal ctxt falsify goal0 =
           val seenT = T :: seenT;
           val seens = (seenS, seenT, seen);
         in
-          (case T of
-            TFree (_, S) =>
-            apsnd (cons (IType T))
-            #> consider_sort depth T S
-          | TVar (_, S) => consider_sort depth T S
-          | Type (s, Ts) =>
-            fold (consider_type depth) Ts
-            #> (case mutual_co_datatypes_of ctxt s of
-                 SOME (fp, ctr_sugars0) => (fn ((seenS, seenT, seen), prob) =>
-                   let
-                     val dataTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars0;
-                     val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars0;
-                     val co_data = ICoData (fp,
-                       map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
-                   in
-                     ((seenS, union (op =) dataTs seenT, seen), co_data :: prob)
-                     |> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
-                   end)
-               | NONE =>
-                 (case typedef_of ctxt s of
-                   SOME (T0, repT0, wrt0, abs0, rep0) =>
-                   let
-                     val repT = repT0;
-                     val wrt = wrt0;
-                     val abs = abs0;
-                     val rep = rep0;
-                   in
-                     apsnd (cons (ICopy {abs_typ = T, rep_typ = repT, wrt = wrt, abs = abs,
-                       rep = rep}))
-                     #> consider_term (depth + 1) wrt
-                   end
-                 | NONE => apsnd (cons (IType T)))))
-            (seens, prob)
+          (seens, prob)
+          |> (case T of
+               TFree (_, S) =>
+               apsnd (cons (IType T))
+               #> consider_sort depth T S
+             | TVar (_, S) => consider_sort depth T S
+             | Type (s, Ts) =>
+               fold (consider_type depth) Ts
+               #> (case classify_type_name ctxt s of
+                    Co_Datatype _ =>
+                    let
+                      val SOME (fp, ctr_sugars0) = mutual_co_datatypes_of ctxt s;
+                      val dataTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars0;
+                      val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars0;
+                      val co_data = ICoData (fp,
+                        map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
+                    in
+                      (fn ((seenS, seenT, seen), prob) =>
+                          ((seenS, union (op =) dataTs seenT, seen), co_data :: prob))
+                      #> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
+                    end
+                  | Typedef =>
+                    let
+                      val SOME (T0, repT0, wrt0, abs0, rep0) = typedef_of ctxt s;
+                      val tyenv = Sign.typ_match thy (T0, T) Vartab.empty;
+                      val substT = Envir.subst_type tyenv;
+                      val subst = Envir.subst_term_types tyenv;
+                      val repT = substT repT0;
+                      val wrt = subst wrt0;
+                      val abs = subst abs0;
+                      val rep = subst rep0;
+                    in
+                      apsnd (cons (ICopy {abs_typ = T, rep_typ = repT, wrt = wrt, abs = abs,
+                        rep = rep}))
+                      #> consider_term (depth + 1) wrt
+                    end
+                  | Typedecl => apsnd (cons (IType T))))
         end
     and consider_term depth t =
       (case t of
