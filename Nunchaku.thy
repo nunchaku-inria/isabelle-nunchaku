@@ -14,8 +14,11 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+lemma "Abs_Integ i \<noteq> j"
+oops
+
 lemma "Abs_int i \<noteq> j"
-nunchaku
+oops
 
 
 typedef 'a bit = "{undefined :: 'a}"
