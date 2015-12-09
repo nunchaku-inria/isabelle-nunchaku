@@ -14,12 +14,16 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+lemma "Abs_int i \<noteq> j"
+nunchaku
+
+
 typedef 'a bit = "{undefined :: 'a}"
   by auto
 
 lemma
   fixes b1 b2 b3 :: "int"
-  shows "b1 \<noteq> b2 \<and> b2 \<noteq> b3 \<and> b1 \<noteq> b3"
+  shows "b1 \<noteq> b2 \<and> b2 \<noteq> b3 \<and> b1 \<noteq> b3 \<and> b1 \<noteq> Abs_Integ d"
   nunchaku
 
 

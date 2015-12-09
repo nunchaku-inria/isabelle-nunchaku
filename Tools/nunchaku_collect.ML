@@ -179,15 +179,18 @@ fun mutual_co_datatypes_of ctxt T_name =
 
 fun is_co_datatype_ctr ctxt (s, T) =
   (case body_type T of
-    dataT as Type (dataT_name, Ts) =>
+    fpT as Type (fpT_name, Ts) =>
     let
+      val ctrs =
+        (case BNF_FP_Def_Sugar.fp_sugar_of ctxt fpT_name of
+          SOME {fp_ctr_sugar = {ctr_sugar = {ctrs, ...}, ...}, ...} => ctrs
+        | NONE =>
+          (case Ctr_Sugar.ctr_sugar_of ctxt fpT_name of
+            SOME {ctrs, ...} => ctrs
+          | _ => []));
+
       fun is_right_ctr (t' as Const (s', T')) =
         s = s' andalso fastype_of (Ctr_Sugar.mk_ctr Ts t') = T;
-
-      val ctrs =
-        (case Ctr_Sugar.ctr_sugar_of ctxt dataT_name of
-          SOME {ctrs, ...} => ctrs
-        | _ => []);
     in
       exists is_right_ctr ctrs
     end
@@ -476,13 +479,13 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                     Co_Datatype _ =>
                     let
                       val SOME (fp, ctr_sugars0) = mutual_co_datatypes_of ctxt s;
-                      val dataTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars0;
+                      val fpTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars0;
                       val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars0;
                       val co_data = ICoData (fp,
-                        map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) dataTs ctrss);
+                        map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) fpTs ctrss);
                     in
                       (fn ((seenS, seenT, seen), prob) =>
-                          ((seenS, union (op =) dataTs seenT, seen), co_data :: prob))
+                          ((seenS, union (op =) fpTs seenT, seen), co_data :: prob))
                       #> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
                     end
                   | Quotient_Type => consider_quotient_type_or_typedef quotient_type_of s
