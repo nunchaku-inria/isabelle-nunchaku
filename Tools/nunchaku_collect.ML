@@ -7,7 +7,7 @@ Collecting of Isabelle/HOL definitions etc. for Nunchaku.
 
 signature NUNCHAKU_COLLECT =
 sig
-  val dest_co_datatype_case: Proof.context -> string * typ -> int list
+  val dest_co_datatype_case: Proof.context -> string * typ -> (string * typ) list
 
   type isa_type_spec =
     {abs_typ: typ,
@@ -220,22 +220,24 @@ fun is_co_datatype_ctr ctxt (s, T) =
     end
   | _  => false);
 
-fun dest_co_datatype_case ctxt (s, _) =
+fun dest_co_datatype_case ctxt (s, T) =
   let val thy = Proof_Context.theory_of ctxt in
     (case strip_fun_type (Sign.the_const_type thy s) of
       (gen_branch_Ts, gen_body_fun_T) =>
       (case gen_body_fun_T of
-        Type (_, [Type (fpT_name, _), _]) =>
+        Type (@{type_name fun}, [Type (fpT_name, _), _]) =>
         if classify_type_name ctxt fpT_name = Co_Datatype then
           let
-            val Const (case_name, _) =
+            val Type (_, fpTs) = domain_type (funpow (length gen_branch_Ts) range_type T);
+            val (ctrs0, Const (case_name, _)) =
               (case BNF_FP_Def_Sugar.fp_sugar_of ctxt fpT_name of
-                SOME {fp_ctr_sugar = {ctr_sugar = {casex, ...}, ...}, ...} => casex
+                SOME {fp_ctr_sugar = {ctr_sugar = {ctrs, casex, ...}, ...}, ...} => (ctrs, casex)
               | NONE =>
                 (case Ctr_Sugar.ctr_sugar_of ctxt fpT_name of
-                  SOME {casex, ...} => casex));
+                  SOME {ctrs, casex, ...} => (ctrs, casex)));
           in
-            if s = case_name then map num_binder_types gen_branch_Ts else raise Fail "non-case"
+            if s = case_name then map (dest_Const o Ctr_Sugar.mk_ctr fpTs) ctrs0
+            else raise Fail "non-case"
           end
         else
           raise Fail "non-case"))

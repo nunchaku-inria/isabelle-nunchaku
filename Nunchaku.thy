@@ -17,8 +17,8 @@ ML_file "Tools/nunchaku_commands.ML"
 declare [[ML_exception_trace]]
 declare [[ML_print_depth = 100]]
 
-lemma "P (case xs of [] \<Rightarrow> a | y # ys \<Rightarrow> b)"
-nunchakxu
+lemma "P a \<Longrightarrow> P b \<Longrightarrow> P (case xs of [] \<Rightarrow> a | y # ys \<Rightarrow> b)"
+nunchaku
 
 (*
 lemma "P (op \<and>)"

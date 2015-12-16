@@ -89,6 +89,7 @@ sig
     nun_problem * 'a
 
   val rcomb_tms: tm list -> tm -> tm
+  val abs_tms: tm list -> tm -> tm
   val beta_reduce_tm: tm -> tm
   val eta_expandN_tm: int -> tm -> tm
   val eta_expand_builtin_tm: tm -> tm
@@ -479,8 +480,9 @@ val str_of_tm =
         (str_of ty_opt' const |> (case const of NAbs _ => parens | _ => I)) ^
         str_of_arg_list (str_of NONE) [arg]
       end
-    and str_of_br (id, vars, body) =
-        " | " ^ id ^ " " ^ space_implode " " (map (str_of NONE) vars) ^ " -> "
+    and str_of_br ty_opt (id, vars, body) =
+        " | " ^ id ^ space_implode "" (map (prefix " " o str_of NONE) vars) ^ " -> " ^
+        str_of ty_opt body
     and str_of _ (NConst (id, [], _)) = str_of_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
         if ty = ty0 then str_of_ident id else str_of_at_const id tys
@@ -491,8 +493,8 @@ val str_of_tm =
         "fun " ^ str_of (Option.map nun_domain_ty ty_opt) var ^ ". " ^
         str_of (Option.map nun_range_ty ty_opt) body
       | str_of ty_opt (NMatch (obj, branches)) =
-        nun_match ^ " " ^ str_of NONE obj ^ " with" ^ space_implode "" (map str_of_br branches) ^
-        " end"
+        nun_match ^ " " ^ str_of NONE obj ^ " with" ^
+        space_implode "" (map (str_of_br ty_opt) branches) ^ " end"
       | str_of ty_opt (app as NApp (func, argN)) =
         (case (func, argN) of
           (NApp (oper as NConst (id, _, _), arg1), arg2) =>

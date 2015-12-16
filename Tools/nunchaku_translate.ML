@@ -60,6 +60,17 @@ fun nun_tm_of_isa ctxt t =
   let
     val thy = Proof_Context.theory_of ctxt;
 
+    fun id'_of_const (x as (s, _)) =
+      let
+        val Ts = Sign.const_typargs thy x;
+
+        val id = nun_const_of_str s;
+        val tys = map nun_ty_of_isa Ts;
+        val args' = space_implode (ascii_of ",") (map str_of_ty tys);
+      in
+        ascii_of "(" ^ args' ^ ascii_of ")." ^ id
+      end;
+
     fun tm_of_branch ctr_id var_count f_arg_tm =
       let val (vars, body) = strip_nun_abs var_count f_arg_tm in
         (ctr_id, vars, body)
@@ -70,21 +81,25 @@ fun nun_tm_of_isa ctxt t =
       | tm_of bounds (Const (@{const_name Set.member}, T)) =
         tm_of bounds (Abs (Name.uu, domain_type T,
           Abs (Name.uu, domain_type (range_type T), Bound 0 $ Bound 1)))
-      | tm_of bounds (t as Const (x as (s, T))) =
+      | tm_of bounds (Const (x as (s, T))) =
         (case try (dest_co_datatype_case ctxt) x of
-          SOME var_counts =>
+          SOME ctrs =>
           let
-            val num_f_args = length var_counts;
-            val tm = tm_of bounds t;
-            val tm' = eta_expandN_tm (num_f_args + 1) tm;
+            val num_f_args = length ctrs;
+            val min_args = num_f_args + 1;
+            val var_counts = map (num_binder_types o snd) ctrs;
 
-            val (_, (f_args, obj :: other_args)) = strip_nun_comb tm' ||> chop num_f_args;
+            val tm = tm_of bounds (Free (Name.uu, T)) (* dummy *);
+            val tm' = eta_expandN_tm min_args tm;
+            val (vars, body) = strip_nun_abs min_args tm'
+            val (_, (f_args, obj :: other_args)) = strip_nun_comb body ||> chop num_f_args;
             val f_args' = map2 eta_expandN_tm var_counts f_args;
 
-            val ctr_ids = []; (* FIXME *)
+            val ctr_ids = map id'_of_const ctrs;
           in
             NMatch (obj, @{map 3} tm_of_branch ctr_ids var_counts f_args')
             |> rcomb_tms other_args
+            |> abs_tms vars
           end
         | NONE =>
           let
@@ -100,16 +115,7 @@ fun nun_tm_of_isa ctxt t =
               | @{const_name implies} => nun_implies
               | @{const_name Not} => nun_not
               | @{const_name True} => nun_true
-              | _ =>
-                let
-                  val Ts = Sign.const_typargs thy x;
-
-                  val id = nun_const_of_str s;
-                  val tys = map nun_ty_of_isa Ts;
-                  val args' = space_implode (ascii_of ",") (map str_of_ty tys);
-                in
-                  ascii_of "(" ^ args' ^ ascii_of ")." ^ id
-                end);
+              | _ => id'_of_const x);
           in
             NConst (id', [], nun_ty_of_isa T)
           end)
