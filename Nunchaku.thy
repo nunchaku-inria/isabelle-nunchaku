@@ -14,13 +14,13 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+(*
 declare [[ML_exception_trace]]
 declare [[ML_print_depth = 100]]
 
 lemma "P a \<Longrightarrow> P b \<Longrightarrow> P (case xs of [] \<Rightarrow> a | y # ys \<Rightarrow> b)"
 nunchaku
 
-(*
 lemma "P (op \<and>)"
 nunchaku
 oops
