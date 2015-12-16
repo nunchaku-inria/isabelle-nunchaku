@@ -21,6 +21,7 @@ sig
   val num_binder_types: typ -> int
   val strip_fun_type: typ -> typ list * typ
   val attach_typeS: term -> term
+  val eta_expand: typ list -> term -> int -> term
 end;
 
 structure Nunchaku_Util : NUNCHAKU_UTIL =
@@ -60,5 +61,7 @@ val attach_typeS =
     (fn TFree (s, []) => TFree (s, @{sort type})
       | TVar (ixn, []) => TVar (ixn, @{sort type})
       | T => T));
+
+val eta_expand = ATP_Util.eta_expand;
 
 end;

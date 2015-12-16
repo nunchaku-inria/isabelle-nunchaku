@@ -561,7 +561,8 @@ fun isa_problem_of_goal ctxt falsify goal0 =
               (case t of
                 Const (x as (s, T)) =>
                 (if is_const_builtin s orelse is_co_datatype_ctr ctxt x orelse
-                    is_quotient_abs ctxt x orelse is_quotient_rep ctxt x then
+                    is_co_datatype_case ctxt x orelse is_quotient_abs ctxt x orelse
+                    is_quotient_rep ctxt x then
                    (seens, prob)
                  else if is_stale_copy_abs ctxt x orelse is_stale_copy_rep ctxt x then
                    raise Fail "stale abs or rep function"
