@@ -174,6 +174,7 @@ val nun_implies = "=>";
 val nun_not = "~";
 val nun_true = "true";
 
+val nun_abs = "fun";
 val nun_else = "else";
 val nun_then = "then";
 
@@ -366,10 +367,8 @@ fun replace_tm from to =
     replace
   end;
 
-fun comb_tms func args =
-  fold_rev (fn arg => fn func => NApp (func, arg)) args func;
-
-val abs_tms = fold (curry NAbs);
+fun comb_tms func args = fold (fn arg => fn func => NApp (func, arg)) args func;
+val abs_tms = fold_rev (curry NAbs);
 
 fun fresh_var_names_wrt_tm n tm =
   let
@@ -465,10 +464,10 @@ val str_of_tm =
         str_of_at_const id tys
       | str_of _ (NVar (id, _)) = str_of_ident id
       | str_of ty_opt (NAbs (var, body)) =
-        "fun " ^ str_of (Option.map nun_domain_ty ty_opt) var ^ ". " ^
+        nun_abs ^ " " ^ str_of (Option.map nun_domain_ty ty_opt) var ^ ". " ^
         str_of (Option.map nun_range_ty ty_opt) body
-      | str_of ty_opt (app as NApp (const, argN)) =
-        (case (const, argN) of
+      | str_of ty_opt (app as NApp (func, argN)) =
+        (case (func, argN) of
           (NApp (oper as NConst (id, _, _), arg1), arg2) =>
           if id = nun_equals then
             (str_of NONE arg1 |> not (is_triv_head arg1) ? parens) ^ " " ^ id ^ " " ^
@@ -482,22 +481,22 @@ val str_of_tm =
                 (map (fn arg => str_of NONE arg |> not (is_triv_head arg) ? parens) args)
             end
           else
-            str_of_app ty_opt const argN
+            str_of_app ty_opt func argN
         | (NApp (NApp (oper as NConst (id, _, _), arg1), arg2), arg3) =>
           if id = nun_if then
             nun_if ^ " " ^ str_of NONE arg1 ^ " " ^ nun_then ^ " " ^ str_of NONE arg2 ^ " " ^
             nun_else ^ " " ^ str_of NONE arg3
             |> parens
           else
-            str_of_app ty_opt const argN
+            str_of_app ty_opt func argN
         | (NConst (id, _, _), NAbs _) =>
           if is_nun_const_quantifier id then
             let val (vars, body) = strip_nun_binders id app in
               id ^ " " ^ space_implode " " (map (str_of NONE) vars) ^ ". " ^ str_of NONE body
             end
           else
-            str_of_app ty_opt const argN
-        | _ => str_of_app ty_opt const argN);
+            str_of_app ty_opt func argN
+        | _ => str_of_app ty_opt func argN);
   in
     str_of NONE
   end;
