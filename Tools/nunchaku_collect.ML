@@ -200,7 +200,7 @@ fun copy_of ctxt T_name =
 
 fun is_co_datatype_ctr ctxt (s, T) =
   (case body_type T of
-    fpT as Type (fpT_name, Ts) =>
+    Type (fpT_name, Ts) =>
     classify_type_name ctxt fpT_name = Co_Datatype andalso
     let
       val ctrs =
@@ -211,16 +211,39 @@ fun is_co_datatype_ctr ctxt (s, T) =
             SOME {ctrs, ...} => ctrs
           | _ => []));
 
-      fun is_right_ctr (t' as Const (s', T')) =
+      fun is_right_ctr (t' as Const (s', _)) =
         s = s' andalso fastype_of (Ctr_Sugar.mk_ctr Ts t') = T;
     in
       exists is_right_ctr ctrs
     end
   | _  => false);
 
+fun dest_co_datatype_case ctxt (s, _) =
+  let val thy = Proof_Context.theory_of ctxt in
+    (case strip_fun_type (Sign.the_const_type thy s) of
+      (gen_branch_Ts, gen_body_fun_T) =>
+      (case gen_body_fun_T of
+        Type (_, [Type (fpT_name, _), _]) =>
+        if classify_type_name ctxt fpT_name = Co_Datatype then
+          let
+            val Const (case_name, _) =
+              (case BNF_FP_Def_Sugar.fp_sugar_of ctxt fpT_name of
+                SOME {fp_ctr_sugar = {ctr_sugar = {casex, ...}, ...}, ...} => casex
+              | NONE =>
+                (case Ctr_Sugar.ctr_sugar_of ctxt fpT_name of
+                  SOME {casex, ...} => casex));
+          in
+            if s = case_name then map num_binder_types gen_branch_Ts else raise Fail "non-case"
+          end
+        else
+          raise Fail "non-case"))
+  end;
+
+val is_co_datatype_case = can o dest_co_datatype_case;
+
 fun is_quotient_abs ctxt (s, T) =
   (case T of
-    Type (@{type_name fun}, [_, absT as Type (absT_name, _)]) =>
+    Type (@{type_name fun}, [_, Type (absT_name, _)]) =>
     classify_type_name ctxt absT_name = Quotient andalso
     (case quotient_of ctxt absT_name of
       (_, _, _, Const (s', _), _) => s' = s)
@@ -228,7 +251,7 @@ fun is_quotient_abs ctxt (s, T) =
 
 fun is_quotient_rep ctxt (s, T) =
   (case T of
-    Type (@{type_name fun}, [absT as Type (absT_name, _), _]) =>
+    Type (@{type_name fun}, [Type (absT_name, _), _]) =>
     classify_type_name ctxt absT_name = Quotient andalso
     (case quotient_of ctxt absT_name of
       (_, _, _, _, Const (s', _)) => s' = s)
@@ -236,7 +259,7 @@ fun is_quotient_rep ctxt (s, T) =
 
 fun is_stale_copy_abs ctxt (s, T) =
   (case T of
-    Type (@{type_name fun}, [_, absT as Type (absT_name, _)]) =>
+    Type (@{type_name fun}, [_, Type (absT_name, _)]) =>
     classify_type_name ctxt absT_name <> Copy andalso
     (case try (copy_of ctxt) absT_name of
       SOME (_, _, _, Const (s', _), _) => s' = s
@@ -245,7 +268,7 @@ fun is_stale_copy_abs ctxt (s, T) =
 
 fun is_stale_copy_rep ctxt (s, T) =
   (case T of
-    Type (@{type_name fun}, [absT as Type (absT_name, _), _]) =>
+    Type (@{type_name fun}, [Type (absT_name, _), _]) =>
     classify_type_name ctxt absT_name <> Copy andalso
     (case try (copy_of ctxt) absT_name of
       SOME (_, _, _, _, Const (s', _)) => s' = s
@@ -319,9 +342,6 @@ val is_const_builtin =
     @{const_name HOL.eq}, @{const_name Ex}, @{const_name False}, @{const_name If},
     @{const_name implies}, @{const_name Set.member}, @{const_name Not}, @{const_name True}];
 
-fun is_term_builtin (Const (s, _)) = is_const_builtin s
-  | is_term_builtin _ = false;
-
 fun keys_of _ (ITVal T) = [key_of_typ T]
   | keys_of _ (ICopy {abs_typ, ...}) = [key_of_typ abs_typ]
   | keys_of _ (IQuotient {abs_typ, ...}) = [key_of_typ abs_typ]
@@ -368,12 +388,12 @@ fun merge_two (ICoData (fp, specs)) (ICoData (fp', specs')) =
   | merge_two (cmd as IRec _) (cmd' as ISpec _) = merge_two_rec_or_spec cmd cmd'
   | merge_two (cmd as ISpec _) (cmd' as IRec _) = merge_two_rec_or_spec cmd cmd'
   | merge_two (cmd as ISpec _) (cmd' as ISpec _) = merge_two_rec_or_spec cmd cmd'
-  | merge_two cmd cmd' = raise Fail "cannot merge mutually dependent commands";
+  | merge_two _ _ = raise Fail "cannot merge mutually dependent commands";
 
 fun sort_isa_problem_topologically ctxt cmds =
   let
     fun normal_pairs [] = []
-      | normal_pairs (all as normal :: others) = map (rpair normal) all;
+      | normal_pairs (all as normal :: _) = map (rpair normal) all;
 
     fun add_node [] _ = I
       | add_node (normal :: _) cmd = Graph.new_node (normal, cmd);
@@ -447,7 +467,7 @@ fun defined_by (Const (@{const_name All}, _) $ t) = defined_by t
   | defined_by (Const (@{const_name HOL.eq}, _) $ t $ _) = head_of t
   | defined_by t = head_of t;
 
-fun partition_props [const] props = SOME [props]
+fun partition_props [_] props = SOME [props]
   | partition_props consts props =
     let
       val propss = map (fn const => filter (fn prop => defined_by prop aconv const) props) consts;
@@ -463,7 +483,7 @@ fun isa_problem_of_goal ctxt falsify goal0 =
   let
     val thy = Proof_Context.theory_of ctxt;
 
-    fun consider_sort depth T S = I;
+    fun consider_sort depth T S = I; (* FIXME *)
 
     fun consider_type depth T =
       (case T of
@@ -546,42 +566,40 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                  else if is_stale_copy_abs ctxt x orelse is_stale_copy_rep ctxt x then
                    raise Fail "stale abs or rep function"
                  else
-                   let val specs = Spec_Rules.retrieve ctxt t in
-                     (case spec_rules_of ctxt t of
-                       SOME (classif, consts, props0) =>
-                       let
-                         val props = map (preprocess_prop ctxt) props0;
+                   (case spec_rules_of ctxt t of
+                     SOME (classif, consts, props0) =>
+                     let
+                       val props = map (preprocess_prop ctxt) props0;
 
-                         fun specs () = [ISpec {consts = consts, props = props}];
+                       fun specs () = [ISpec {consts = consts, props = props}];
 
-                         val cmds =
-                           if null props then
-                             map IVal consts
-                           else if classif = Spec_Rules.Equational then
-                             (case partition_props consts props of
-                               SOME propss =>
-                               [IRec (map2 (fn const => fn props => {const = const, props = props})
+                       val cmds =
+                         if null props then
+                           map IVal consts
+                         else if classif = Spec_Rules.Equational then
+                           (case partition_props consts props of
+                             SOME propss =>
+                             [IRec (map2 (fn const => fn props => {const = const, props = props})
+                                consts propss)]
+                           | NONE => specs ())
+                         else if member (op =) [Spec_Rules.Inductive, Spec_Rules.Co_Inductive]
+                             classif then
+                           (case partition_props consts props of
+                             SOME propss =>
+                             [ICoPred (if classif = Spec_Rules.Inductive then BNF_Util.Least_FP
+                                  else BNF_Util.Greatest_FP,
+                                map2 (fn const => fn props => {const = const, props = props})
                                   consts propss)]
-                             | NONE => specs ())
-                           else if member (op =) [Spec_Rules.Inductive, Spec_Rules.Co_Inductive]
-                               classif then
-                             (case partition_props consts props of
-                               SOME propss =>
-                               [ICoPred (if classif = Spec_Rules.Inductive then BNF_Util.Least_FP
-                                    else BNF_Util.Greatest_FP,
-                                  map2 (fn const => fn props => {const = const, props = props})
-                                    consts propss)]
-                             | NONE => specs ())
-                           else
-                             specs ();
-                         val prob = cmds @ prob;
-                       in
-                         ((seenS, seenT, union (op aconv) consts seen), prob)
-                         |> fold (consider_term (depth + 1)) props
-                       end
-                     | NONE =>
-                       (seens, IVal t :: prob))
-                   end)
+                           | NONE => specs ())
+                         else
+                           specs ();
+                       val prob = cmds @ prob;
+                     in
+                       ((seenS, seenT, union (op aconv) consts seen), prob)
+                       |> fold (consider_term (depth + 1)) props
+                     end
+                   | NONE =>
+                     (seens, IVal t :: prob)))
                 |> consider_type depth T
               | Free (_, T) =>
                 (seens, IVal t :: prob)

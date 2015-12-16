@@ -18,6 +18,8 @@ sig
   val unascii_of: string -> string
   val with_overlord_file: string -> string -> (Path.T -> 'a) -> 'a
   val with_tmp_or_overlord_file: bool -> string -> string -> (Path.T -> 'a) -> 'a
+  val num_binder_types: typ -> int
+  val strip_fun_type: typ -> typ list * typ
   val attach_typeS: term -> term
 end;
 
@@ -48,6 +50,9 @@ fun with_overlord_file name ext f =
 
 fun with_tmp_or_overlord_file overlord =
   if overlord then with_overlord_file else Isabelle_System.with_tmp_file;
+
+val num_binder_types = BNF_Util.num_binder_types
+val strip_fun_type = BNF_Util.strip_fun_type;
 
 (* Clone from "HOL/Tools/inductive_realizer.ML" *)
 val attach_typeS =
