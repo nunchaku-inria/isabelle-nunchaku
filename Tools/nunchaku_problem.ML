@@ -179,7 +179,6 @@ val nun_not = "~";
 val nun_true = "true";
 
 val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
-val is_nun_const_truth_value = member (op =) [nun_false, nun_true];
 val is_nun_const_connective = member (op =) [nun_conj, nun_disj, nun_implies];
 
 val nun_builtin_arity =
