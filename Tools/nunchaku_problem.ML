@@ -17,6 +17,7 @@ sig
     NConst of ident * ty list * ty
   | NVar of ident * ty
   | NAbs of tm * tm
+  | NMatch of tm * (ident * tm list * tm) list
   | NApp of tm * tm
 
   type nun_type_spec =
@@ -73,6 +74,7 @@ sig
   val nun_forall: ident
   val nun_if: ident
   val nun_implies: ident
+  val nun_match: ident
   val nun_not: ident
   val nun_true: ident
 
@@ -113,6 +115,7 @@ datatype tm =
   NConst of ident * ty list * ty
 | NVar of ident * ty
 | NAbs of tm * tm
+| NMatch of tm * (ident * tm list * tm) list
 | NApp of tm * tm;
 
 type nun_type_spec =
@@ -171,12 +174,9 @@ val nun_false = "false";
 val nun_forall = "forall";
 val nun_if = "if";
 val nun_implies = "=>";
+val nun_match = "match";
 val nun_not = "~";
 val nun_true = "true";
-
-val nun_abs = "fun";
-val nun_else = "else";
-val nun_then = "then";
 
 val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
 val is_nun_const_truth_value = member (op =) [nun_false, nun_true];
@@ -244,6 +244,7 @@ fun nun_domain_tys 0 _ = []
 fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NVar (_, ty)) = ty
   | nun_ty_of (NAbs (var, body)) = NType (nun_fun, [nun_ty_of var, nun_ty_of body])
+  | nun_ty_of (NMatch (obj, (_, _, body1) :: _)) = nun_ty_of body1
   | nun_ty_of (NApp (const, _)) = nun_range_ty (nun_ty_of const);
 
 fun strip_nun_binders binder (app as NApp (NConst (id, _, _), NAbs (var, body))) =
@@ -262,7 +263,12 @@ fun fold_map_ty_idents f (NType (id, tys)) =
     f id
     #>> NTVar;
 
-fun fold_map_tm_idents f (NConst (id, tys, ty)) =
+fun fold_map_match_branch_idents f (id, vars, body) =
+    f id
+    ##>> fold_map (fold_map_tm_idents f) vars
+    ##>> fold_map_tm_idents f body
+    #>> Scan.triple1
+and fold_map_tm_idents f (NConst (id, tys, ty)) =
     f id
     ##>> fold_map (fold_map_ty_idents f) tys
     ##>> fold_map_ty_idents f ty
@@ -275,6 +281,10 @@ fun fold_map_tm_idents f (NConst (id, tys, ty)) =
     fold_map_tm_idents f var
     ##>> fold_map_tm_idents f body
     #>> NAbs
+  | fold_map_tm_idents f (NMatch (obj, branches)) =
+    fold_map_tm_idents f obj
+    ##>> fold_map (fold_map_match_branch_idents f) branches
+    #>> NMatch
   | fold_map_tm_idents f (NApp (const, arg)) =
     fold_map_tm_idents f const
     ##>> fold_map_tm_idents f arg
@@ -360,11 +370,13 @@ fun replace_tm from to =
   let
     (* This code assumes all enclosing binders bind distinct variables and bound variables are
        distinct from any other variables. *)
-    fun replace (NApp (const, arg)) = NApp (replace const, replace arg)
-      | replace (NAbs (var, body)) = NAbs (var, replace body)
-      | replace tm = if tm = from then to else tm;
+    fun repl_br (id, vars, body) = (id, map repl vars, repl body)
+    and repl (NApp (const, arg)) = NApp (repl const, repl arg)
+      | repl (NAbs (var, body)) = NAbs (var, repl body)
+      | repl (NMatch (obj, branches)) = NMatch (repl obj, map repl_br branches)
+      | repl tm = if tm = from then to else tm;
   in
-    replace
+    repl
   end;
 
 val rcomb_tms = fold (fn arg => fn func => NApp (func, arg));
@@ -372,10 +384,12 @@ val abs_tms = fold_rev (curry NAbs);
 
 fun fresh_var_names_wrt_tm n tm =
   let
-    fun max_var (NApp (func, arg)) = fold max_var [func, arg]
+    fun max_var_br (_, vars, body) = fold max_var (body :: vars)
+    and max_var (NConst _) = I
+      | max_var (NVar (id, _)) = (fn max => if size id > size max then id else max)
+      | max_var (NApp (func, arg)) = fold max_var [func, arg]
       | max_var (NAbs (var, body)) = fold max_var [var, body]
-      | max_var (NConst _) = I
-      | max_var (NVar (id, _)) = (fn max => if size id > size max then id else max);
+      | max_var (NMatch (obj, branches)) = max_var obj #> fold max_var_br branches;
 
     val dummy_name = nun_var_of_str Name.uu;
     val max_name = max_var tm dummy_name;
@@ -391,6 +405,8 @@ fun beta_reduce_tm (NApp (NAbs (var, body), arg)) = beta_reduce_tm (replace_tm v
       const' as NAbs _ => beta_reduce_tm (NApp (const', arg))
     | const' => NApp (const', beta_reduce_tm arg))
   | beta_reduce_tm (NAbs (var, body)) = NAbs (var, beta_reduce_tm body)
+  | beta_reduce_tm (NMatch (obj, branches)) =
+    NMatch (beta_reduce_tm obj, map (@{apply 3(3)} beta_reduce_tm) branches)
   | beta_reduce_tm tm = tm;
 
 fun eta_expandN_tm 0 tm = tm
@@ -406,6 +422,8 @@ fun eta_expandN_tm 0 tm = tm
 val eta_expand_builtin_tm =
   let
     fun expand_quant_arg (NAbs (var, body)) = NAbs (var, expand_quant_arg body)
+      | expand_quant_arg (NMatch (obj, branches)) =
+        NMatch (obj, map (@{apply 3(3)} expand_quant_arg) branches)
       | expand_quant_arg (tm as NApp (_, NAbs _)) = tm
       | expand_quant_arg (NApp (quant, arg)) = NApp (quant, eta_expandN_tm 1 arg)
       | expand_quant_arg tm = tm;
@@ -418,7 +436,9 @@ val eta_expand_builtin_tm =
           |> is_nun_const_quantifier id ? expand_quant_arg
         end
       | expand args (func as NVar _) = rcomb_tms args func
-      | expand args (NAbs (var, body)) = rcomb_tms args (NAbs (var, expand [] body));
+      | expand args (NAbs (var, body)) = rcomb_tms args (NAbs (var, expand [] body))
+      | expand args (NMatch (obj, branches)) =
+        rcomb_tms args (NMatch (obj, map (@{apply 3(3)} (expand [])) branches));
   in
     expand []
   end;
@@ -444,6 +464,7 @@ val str_of_tm =
       | is_triv_head (NVar _) = true
       | is_triv_head (NApp (const, _)) = is_triv_head const
       | is_triv_head (NAbs _) = false
+      | is_triv_head (NMatch _) = true;
 
     fun str_of_at_const id tys =
       "@" ^ str_of_ident id ^ str_of_arg_list str_of_ty tys;
@@ -457,6 +478,8 @@ val str_of_tm =
         (str_of ty_opt' const |> (case const of NAbs _ => parens | _ => I)) ^
         str_of_arg_list (str_of NONE) [arg]
       end
+    and str_of_br (id, vars, body) =
+        " | " ^ id ^ " " ^ space_implode " " (map (str_of NONE) vars) ^ " -> "
     and str_of _ (NConst (id, [], _)) = str_of_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
         if ty = ty0 then str_of_ident id else str_of_at_const id tys
@@ -464,8 +487,11 @@ val str_of_tm =
         str_of_at_const id tys
       | str_of _ (NVar (id, _)) = str_of_ident id
       | str_of ty_opt (NAbs (var, body)) =
-        nun_abs ^ " " ^ str_of (Option.map nun_domain_ty ty_opt) var ^ ". " ^
+        "fun " ^ str_of (Option.map nun_domain_ty ty_opt) var ^ ". " ^
         str_of (Option.map nun_range_ty ty_opt) body
+      | str_of ty_opt (NMatch (obj, branches)) =
+        nun_match ^ " " ^ str_of NONE obj ^ " with" ^ space_implode "" (map str_of_br branches) ^
+        " end"
       | str_of ty_opt (app as NApp (func, argN)) =
         (case (func, argN) of
           (NApp (oper as NConst (id, _, _), arg1), arg2) =>
@@ -484,8 +510,8 @@ val str_of_tm =
             str_of_app ty_opt func argN
         | (NApp (NApp (oper as NConst (id, _, _), arg1), arg2), arg3) =>
           if id = nun_if then
-            nun_if ^ " " ^ str_of NONE arg1 ^ " " ^ nun_then ^ " " ^ str_of NONE arg2 ^ " " ^
-            nun_else ^ " " ^ str_of NONE arg3
+            nun_if ^ " " ^ str_of NONE arg1 ^ " then " ^ str_of NONE arg2 ^ " else " ^
+            str_of NONE arg3
             |> parens
           else
             str_of_app ty_opt func argN
