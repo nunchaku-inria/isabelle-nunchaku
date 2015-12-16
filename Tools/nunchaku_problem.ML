@@ -220,7 +220,7 @@ val nun_tvar_of_str = gen_nun_var_of_str nun_tvar_prefix nun_type_suffix;
 val nun_const_of_str = gen_nun_const_of_str nun_const_prefix nun_const_suffix;
 val nun_var_of_str = gen_nun_var_of_str nun_var_prefix nun_const_suffix;
 
-fun index_name s 1 = s
+fun index_name s 0 = s
   | index_name s j =
     let
       val n = size s;
@@ -406,10 +406,17 @@ fun eta_expandN_tm 0 tm = tm
 
 val eta_expand_builtin_tm =
   let
+    fun expand_quant_arg (NAbs (var, body)) = NAbs (var, expand_quant_arg body)
+      | expand_quant_arg (tm as NApp (_, NAbs _)) = tm
+      | expand_quant_arg (NApp (quant, arg)) = NApp (quant, eta_expandN_tm 1 arg)
+      | expand_quant_arg tm = tm;
+
     fun expand args (NApp (func, arg)) = expand (expand [] arg :: args) func
       | expand args (func as NConst (id, _, _)) =
         let val missing = Int.max (0, arity_of_nun_builtin id - length args) in
-          comb_tms func args |> eta_expandN_tm missing
+          comb_tms func args
+          |> eta_expandN_tm missing
+          |> is_nun_const_quantifier id ? expand_quant_arg
         end
       | expand args (func as NVar _) = comb_tms func args
       | expand args (NAbs (var, body)) = comb_tms (NAbs (var, expand [] body)) args;
@@ -516,7 +523,7 @@ fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
         | SOME () => alloc (j + 1))
       end;
   in
-    alloc 1
+    alloc 0
   end;
 
 fun nice_ident ugly (pool as {nice_of_ugly, ...}) =

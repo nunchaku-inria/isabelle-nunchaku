@@ -16,10 +16,18 @@ ML_file "Tools/nunchaku_commands.ML"
 
 declare [[ML_exception_trace]]
 
+(*
+lemma "P (op \<and>)"
+nunchaku
+oops
+
+lemma "P (Ex)"
+nunchaku
+oops
+
 lemma "{a, b} \<noteq> {}"
 nunchaku[debug]
 
-(*
 lemma "Abs_Integ i \<noteq> j"
 oops
 
