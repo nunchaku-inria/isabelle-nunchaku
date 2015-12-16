@@ -87,6 +87,7 @@ sig
     nun_problem * 'a
 
   val beta_reduce_tm: tm -> tm
+  val eta_expand_builtin_tm: tm -> tm
 
   val str_of_ident: ident -> string
   val str_of_ty: ty -> string
@@ -180,6 +181,22 @@ val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
 val is_nun_const_truth_value = member (op =) [nun_false, nun_true];
 val is_nun_const_connective = member (op =) [nun_conj, nun_disj, nun_implies];
 
+val nun_builtin_arity =
+  [(nun_conj, 2),
+   (nun_disj, 2),
+   (nun_equals, 2),
+   (nun_exists, 1),
+   (nun_false, 0),
+   (nun_forall, 1),
+   (nun_if, 3),
+   (nun_implies, 2),
+   (nun_not, 1),
+   (nun_true, 0)];
+
+val arity_of_nun_builtin = AList.lookup (op =) nun_builtin_arity #> the_default 0;
+
+val is_nun_builtin = AList.defined (op =) nun_builtin_arity;
+
 fun gen_nun_const_of_str pre suf s =
   let val s' = ascii_of s ^ suf in
     if Char.isLower (String.sub (s', 0)) then s' else pre ^ s'
@@ -190,12 +207,27 @@ fun gen_nun_var_of_str pre suf s =
     if Char.isUpper (String.sub (s', 0)) then s' else pre ^ s'
   end;
 
-fun is_non_builtin_ident s = String.isSuffix "_" s;
+val nun_tconst_prefix = "y.";
+val nun_tvar_prefix = "A.";
+val nun_const_prefix = "c.";
+val nun_var_prefix = "V.";
 
-val nun_tconst_of_str = gen_nun_const_of_str "y." "__";
-val nun_tvar_of_str = gen_nun_var_of_str "A." "__";
-val nun_const_of_str = gen_nun_const_of_str "c." "_";
-val nun_var_of_str = gen_nun_var_of_str "V." "_";
+val nun_type_suffix = "__";
+val nun_const_suffix = "_";
+
+val nun_tconst_of_str = gen_nun_const_of_str nun_tconst_prefix nun_type_suffix;
+val nun_tvar_of_str = gen_nun_var_of_str nun_tvar_prefix nun_type_suffix;
+val nun_const_of_str = gen_nun_const_of_str nun_const_prefix nun_const_suffix;
+val nun_var_of_str = gen_nun_var_of_str nun_var_prefix nun_const_suffix;
+
+fun index_name s 1 = s
+  | index_name s j =
+    let
+      val n = size s;
+      val m = n - 1;
+    in
+      String.substring (s, 0, m) ^ string_of_int j ^ String.substring (s, m, n - m)
+    end;
 
 val nun_prop_ty = NType (nun_prop, []);
 
@@ -204,6 +236,9 @@ fun nun_domain_ty (NType (id, [ty, _])) = if id = nun_fun then ty else raise Fai
 
 fun nun_range_ty (NType (id, [_, ty])) = if id = nun_fun then ty else raise Fail "non-fun"
   | nun_range_ty _ = raise Fail "non-fun";
+
+fun nun_domain_tys 0 _ = []
+  | nun_domain_tys n ty = nun_domain_ty ty :: nun_domain_tys (n - 1) (nun_range_ty ty);
 
 fun nun_ty_of (NConst (_, _, ty)) = ty
   | nun_ty_of (NVar (_, ty)) = ty
@@ -331,6 +366,26 @@ fun replace_tm from to =
     replace
   end;
 
+fun comb_tms func args =
+  fold_rev (fn arg => fn func => NApp (func, arg)) args func;
+
+val abs_tms = fold (curry NAbs);
+
+fun fresh_var_names_wrt_tm n tm =
+  let
+    fun max_var (NApp (func, arg)) = fold max_var [func, arg]
+      | max_var (NAbs (var, body)) = fold max_var [var, body]
+      | max_var (NConst _) = I
+      | max_var (NVar (id, _)) = (fn max => if size id > size max then id else max);
+
+    val dummy_name = nun_var_of_str Name.uu;
+    val max_name = max_var tm dummy_name;
+  in
+    map (index_name max_name) (1 upto n)
+  end;
+
+val fresh_var_name_wrt_tm = the_single o fresh_var_names_wrt_tm 1;
+
 fun beta_reduce_tm (NApp (NAbs (var, body), arg)) = beta_reduce_tm (replace_tm var arg body)
   | beta_reduce_tm (NApp (const, arg)) =
     (case beta_reduce_tm const of
@@ -338,6 +393,29 @@ fun beta_reduce_tm (NApp (NAbs (var, body), arg)) = beta_reduce_tm (replace_tm v
     | const' => NApp (const', beta_reduce_tm arg))
   | beta_reduce_tm (NAbs (var, body)) = NAbs (var, beta_reduce_tm body)
   | beta_reduce_tm tm = tm;
+
+fun eta_expandN_tm 0 tm = tm
+  | eta_expandN_tm n tm =
+    let
+      val var_names = fresh_var_names_wrt_tm n tm;
+      val arg_tys = nun_domain_tys n (nun_ty_of tm);
+      val vars = map2 (curry NVar) var_names arg_tys;
+    in
+      abs_tms vars (comb_tms tm vars)
+    end;
+
+val eta_expand_builtin_tm =
+  let
+    fun expand args (NApp (func, arg)) = expand (expand [] arg :: args) func
+      | expand args (func as NConst (id, _, _)) =
+        let val missing = Int.max (0, arity_of_nun_builtin id - length args) in
+          comb_tms func args |> eta_expandN_tm missing
+        end
+      | expand args (func as NVar _) = comb_tms func args
+      | expand args (NAbs (var, body)) = comb_tms (NAbs (var, expand [] body)) args;
+  in
+    expand []
+  end;
 
 fun str_of_ident id = id;
 
@@ -356,8 +434,7 @@ val str_of_ty =
 
 val str_of_tm =
   let
-    fun is_triv_head (NConst (id, _, ty)) =
-        is_non_builtin_ident id orelse is_nun_const_truth_value id
+    fun is_triv_head (NConst (id, _, ty)) = (arity_of_nun_builtin id = 0)
       | is_triv_head (NVar _) = true
       | is_triv_head (NApp (const, _)) = is_triv_head const
       | is_triv_head (NAbs _) = false
@@ -422,22 +499,15 @@ fun str_of_tmty tm = str_of_tm tm ^ " : " ^ str_of_ty (nun_ty_of tm);
 
 val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
 
+val nicifiable = String.isSuffix "_";
+
 val nice_of_ugly_suggestion =
   unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
-
-fun index_name 1 s = s
-  | index_name j s =
-    let
-      val n = size s;
-      val m = n - 1;
-    in
-      String.substring (s, 0, m) ^ string_of_int j ^ String.substring (s, m, n - m)
-    end;
 
 fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
   let
     fun alloc j =
-      let val nice_sugg = index_name j nice_sugg0 in
+      let val nice_sugg = index_name nice_sugg0 j in
         (case Symtab.lookup nice_but_taken nice_sugg of
           NONE =>
           (nice_sugg,
@@ -450,7 +520,7 @@ fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
   end;
 
 fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
-  if is_non_builtin_ident ugly then
+  if nicifiable ugly then
     (case Symtab.lookup nice_of_ugly ugly of
       NONE =>
       let val nice_sugg = nice_of_ugly_suggestion ugly in

@@ -1,7 +1,5 @@
 Isabelle frontend:
 
-  * typedef/quotient abs/rep functions (esp. stale ones)
-  * find out why 'bot', 'insert', etc., exist in several copies
   * partially unapplied builtins (eta-expand)
   * leverage 'if then else', 'let', 'match with'
   * type classes (in axiom selector)

@@ -14,6 +14,12 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+declare [[ML_exception_trace]]
+
+lemma "{a, b} \<noteq> {}"
+nunchaku[debug]
+
+(*
 lemma "Abs_Integ i \<noteq> j"
 oops
 
@@ -29,8 +35,6 @@ lemma
   shows "b1 \<noteq> b2 \<and> b2 \<noteq> b3 \<and> b1 \<noteq> b3 \<and> b1 \<noteq> Abs_Integ d"
   nunchaku
 
-
-(*
 lemma "r a b \<Longrightarrow> rtranclp r a b"
 nunchaku
 

@@ -93,6 +93,7 @@ fun nun_tm_of_isa ctxt t =
     t
     |> tm_of Name.context
     |> beta_reduce_tm
+    |> eta_expand_builtin_tm
   end;
 
 fun nun_type_spec_of_isa ctxt {abs_typ, rep_typ, wrt, abs, rep} =
