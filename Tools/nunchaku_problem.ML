@@ -367,7 +367,7 @@ fun replace_tm from to =
     replace
   end;
 
-fun comb_tms func args = fold (fn arg => fn func => NApp (func, arg)) args func;
+val rcomb_tms = fold (fn arg => fn func => NApp (func, arg));
 val abs_tms = fold_rev (curry NAbs);
 
 fun fresh_var_names_wrt_tm n tm =
@@ -400,7 +400,7 @@ fun eta_expandN_tm 0 tm = tm
       val arg_tys = nun_domain_tys n (nun_ty_of tm);
       val vars = map2 (curry NVar) var_names arg_tys;
     in
-      abs_tms vars (comb_tms tm vars)
+      abs_tms vars (rcomb_tms vars tm)
     end;
 
 val eta_expand_builtin_tm =
@@ -413,12 +413,12 @@ val eta_expand_builtin_tm =
     fun expand args (NApp (func, arg)) = expand (expand [] arg :: args) func
       | expand args (func as NConst (id, _, _)) =
         let val missing = Int.max (0, arity_of_nun_builtin id - length args) in
-          comb_tms func args
+          rcomb_tms args func
           |> eta_expandN_tm missing
           |> is_nun_const_quantifier id ? expand_quant_arg
         end
-      | expand args (func as NVar _) = comb_tms func args
-      | expand args (NAbs (var, body)) = comb_tms (NAbs (var, expand [] body)) args;
+      | expand args (func as NVar _) = rcomb_tms args func
+      | expand args (NAbs (var, body)) = rcomb_tms args (NAbs (var, expand [] body));
   in
     expand []
   end;
