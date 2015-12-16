@@ -89,6 +89,7 @@ sig
     nun_problem * 'a
 
   val beta_reduce_tm: tm -> tm
+  val eta_expandN_tm
   val eta_expand_builtin_tm: tm -> tm
 
   val str_of_ident: ident -> string

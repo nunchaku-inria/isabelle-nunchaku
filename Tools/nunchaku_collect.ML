@@ -7,6 +7,8 @@ Collecting of Isabelle/HOL definitions etc. for Nunchaku.
 
 signature NUNCHAKU_COLLECT =
 sig
+  val dest_co_datatype_case: Proof.context -> string * typ -> int list
+
   type isa_type_spec =
     {abs_typ: typ,
      rep_typ: typ,
