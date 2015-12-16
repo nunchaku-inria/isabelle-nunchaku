@@ -1,6 +1,5 @@
 Isabelle frontend:
 
-  * partially unapplied builtins (eta-expand)
   * leverage 'if then else', 'let', 'match with'
   * type classes (in axiom selector)
 
