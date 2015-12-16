@@ -466,7 +466,7 @@ val str_of_tm =
       | is_triv_head (NVar _) = true
       | is_triv_head (NApp (const, _)) = is_triv_head const
       | is_triv_head (NAbs _) = false
-      | is_triv_head (NMatch _) = true;
+      | is_triv_head (NMatch _) = false;
 
     fun str_of_at_const id tys =
       "@" ^ str_of_ident id ^ str_of_arg_list str_of_ty tys;
