@@ -1,6 +1,6 @@
 Isabelle frontend:
 
-  * leverage 'let', 'match with'
+  * leverage 'match with'
   * type classes (in axiom selector)
 
   * parse models

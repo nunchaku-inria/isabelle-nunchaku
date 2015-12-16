@@ -201,8 +201,7 @@ fun copy_of ctxt T_name =
 fun is_co_datatype_ctr ctxt (s, T) =
   (case body_type T of
     fpT as Type (fpT_name, Ts) =>
-    (* Currently redundant:
-       classify_type_name ctxt fpT_name = Co_Datatype andalso *)
+    classify_type_name ctxt fpT_name = Co_Datatype andalso
     let
       val ctrs =
         (case BNF_FP_Def_Sugar.fp_sugar_of ctxt fpT_name of
