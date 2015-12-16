@@ -25,10 +25,18 @@ fun flip_quote s =
     SOME s' => s'
   | NONE => prefix "'" s);
 
-fun dest_nun_abss 0 tm = ([], tm)
-  | dest_nun_abss n (NAbs (var, body)) =
-    dest_nun_abss (n - 1) body
+fun strip_nun_abs 0 tm = ([], tm)
+  | strip_nun_abs n (NAbs (var, body)) =
+    strip_nun_abs (n - 1) body
     |>> cons var;
+
+val strip_nun_comb =
+  let
+    fun strip args (NApp (func, arg)) = strip (arg :: args) func
+      | strip args tm = (tm, args);
+  in
+    strip []
+  end;
 
 fun nun_ty_of_isa (Type (s, Ts)) =
     let val tys = map nun_ty_of_isa Ts in
@@ -52,6 +60,11 @@ fun nun_tm_of_isa ctxt t =
   let
     val thy = Proof_Context.theory_of ctxt;
 
+    fun tm_of_branch ctr_id var_count f_arg_tm =
+      let val (vars, body) = strip_nun_abs var_count f_arg_tm in
+        (ctr_id, vars, body)
+      end;
+
     fun tm_of bounds (Const (@{const_name Collect}, T)) =
         tm_of bounds (Abs (Name.uu, domain_type T, Bound 0))
       | tm_of bounds (Const (@{const_name Set.member}, T)) =
@@ -62,20 +75,16 @@ fun nun_tm_of_isa ctxt t =
           SOME var_counts =>
           let
             val num_f_args = length var_counts;
-            val t' = eta_expand bounds t (num_f_args + 1);
-            val (_, (f_args, obj :: rest)) = strip_comb t' ||> chop num_f_args;
-            val f_args' = map2 (eta_expand bounds) f_args var_counts;
+            val tm = tm_of bounds t;
+            val tm' = eta_expandN_tm (num_f_args + 1) tm;
 
-            val obj_tm = tm_of bounds obj;
+            val (_, (f_args, obj :: other_args)) = strip_nun_comb tm' ||> chop num_f_args;
+            val f_args' = map2 eta_expandN_tm var_counts f_args;
+
             val ctr_ids = []; (* FIXME *)
-            val f_arg_tms = map (tm_of bounds) f_args';
-
-            fun do_branch ctr_id var_count f_arg_tm =
-              let val (vars, body) = dest_nun_abss var_count f_arg_tm in
-                (ctr_id, vars, body)
-              end;
           in
-            NMatch (obj_tm, @{map 3} do_branch ctr_ids var_counts f_arg_tms)
+            NMatch (obj, @{map 3} tm_of_branch ctr_ids var_counts f_args')
+            |> rcomb_tms other_args
           end
         | NONE =>
           let

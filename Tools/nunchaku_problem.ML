@@ -88,8 +88,9 @@ sig
   val fold_map_nun_problem_idents: (string -> 'a -> string * 'a) -> nun_problem -> 'a ->
     nun_problem * 'a
 
+  val rcomb_tms: tm list -> tm -> tm
   val beta_reduce_tm: tm -> tm
-  val eta_expandN_tm
+  val eta_expandN_tm: int -> tm -> tm
   val eta_expand_builtin_tm: tm -> tm
 
   val str_of_ident: ident -> string
