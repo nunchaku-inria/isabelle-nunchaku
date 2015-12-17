@@ -17,21 +17,25 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-
-lemma "P (TYPE('a))"
-nunchaku
-oops
-
-class classA
-
-lemma "P (x :: 'a :: classA)"
-nunchaku [expect = genuine]
-oops
-
 text {* An axiom with a type variable (denoting types which have at least two elements): *}
 
 class classC =
   assumes classC_ax: "\<exists>x y. x \<noteq> y"
+
+ML {* @{const class.classC('a)} *}
+
+ML {*
+Defs.specifications_of (Theory.defs_of @{theory})
+  (Defs.Const, @{const_name List.hd})
+|> map_filter #def
+*}
+
+ML {* Thm.axiom @{theory} "List.list.hd_def_raw" *}
+
+ML {*
+Defs.all_specifications_of (Theory.defs_of @{theory})
+|> maps snd
+*}
 
 lemma "P (x :: 'a :: classC)"
 nunchaku [expect = genuine]

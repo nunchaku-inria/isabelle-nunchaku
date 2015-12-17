@@ -393,6 +393,12 @@ fun spec_rules_of ctxt const =
     fold process_spec specs NONE
   end;
 
+fun definition_of thy (x as (s, _)) =
+  Defs.specifications_of (Theory.defs_of thy) (Defs.Const, s)
+  |> map_filter #def
+  |> map_filter (try (specialize_type thy x o Thm.prop_of o Thm.axiom thy))
+  |> try hd;
+
 val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 
 val is_const_builtin =
@@ -562,12 +568,9 @@ fun isa_problem_of_goal ctxt falsify goal0 =
 
           val supers = Sign.complete_sort thy S;
           val axioms0 = maps (map Thm.prop_of o axioms_of_class) supers;
-          val axioms = map (monomorphize_class_axiom T) axioms0;
-
-          val cmds = map IAxiom axioms;
-          val prob = cmds @ prob;
+          val axioms = map (preprocess_prop false ctxt o monomorphize_class_axiom T) axioms0;
         in
-          (seens, prob)
+          (seens, map IAxiom axioms @ prob)
           |> fold (consider_term (depth + 1)) axioms
         end
     and consider_type depth T =
@@ -614,11 +617,10 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                       val (fp, fpTs0, ctrss0) = mutual_co_datatypes_of ctxt s;
                       val fpTs = map ((fn Type (s, _) => Type (s, Ts))) fpTs0;
                       val ctrss = map (map (Ctr_Sugar.mk_ctr Ts)) ctrss0;
-                      val co_data = ICoData (fp,
-                        map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) fpTs ctrss);
+                      val specs = map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) fpTs ctrss;
                     in
                       (fn ((seenS, seenT, seen), prob) =>
-                          ((seenS, union (op =) fpTs seenT, seen), co_data :: prob))
+                          ((seenS, union (op =) fpTs seenT, seen), ICoData (fp, specs) :: prob))
                       #> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
                     end
                   | Quotient => consider_quotient_or_copy quotient_of s
@@ -680,13 +682,15 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                            | NONE => specs ())
                          else
                            specs ();
-                       val prob = cmds @ prob;
                      in
-                       ((seenS, seenT, union (op aconv) consts seen), prob)
+                       ((seenS, seenT, union (op aconv) consts seen), cmds @ prob)
                        |> fold (consider_term (depth + 1)) props
                      end
                    | NONE =>
-                     (seens, IVal t :: prob)))
+                     (case definition_of thy x of
+                       SOME eq =>
+                       (seens, IRec [{const = t, props = [preprocess_prop false ctxt eq]}] :: prob)
+                     | NONE => (seens, IVal t :: prob))))
                 |> consider_type depth T
               | Free (_, T) =>
                 (seens, IVal t :: prob)

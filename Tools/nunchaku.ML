@@ -127,7 +127,7 @@ val no_nunchakuN = "no_nunchaku";
 val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, overlord, expect, ...},
-    output_format_params = {debug, ...}, timeout_params = {timeout, ...}, ...}) mode i n step subst
+    output_format_params = {debug, ...}, timeout_params = {timeout, ...}, ...}) mode i n step
     def_assm_ts nondef_assm_ts goal =
   let
     val ctxt = Proof.context_of state;
@@ -188,15 +188,6 @@ fun is_fixed_equation ctxt (Const (@{const_name Pure.eq}, _) $ Free (s, _) $ Con
     Variable.is_fixed ctxt s
   | is_fixed_equation _ _ = false;
 
-fun extract_fixed_frees ctxt (assms, t) =
-  let
-    val (subst, other_assms) =
-      List.partition (is_fixed_equation ctxt) assms
-      |>> map Logic.dest_equals;
-  in
-    (subst, other_assms, subst_atomic subst t)
-  end;
-
 fun run_chaku_on_subgoal state params mode i step =
   let
     val ctxt = Proof.context_of state;
@@ -208,9 +199,8 @@ fun run_chaku_on_subgoal state params mode i step =
       let
         val t = Logic.goal_params t i |> fst;
         val assms = map Thm.term_of (Assumption.all_assms_of ctxt);
-        val (subst, assms, t) = extract_fixed_frees ctxt (assms, t);
       in
-        run_chaku_on_prop state params mode i n step subst [] assms t
+        run_chaku_on_prop state params mode i n step [] assms t
       end)
   end;
 
