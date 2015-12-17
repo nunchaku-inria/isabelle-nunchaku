@@ -146,39 +146,45 @@ fun preprocess_prop falsify ctxt =
 datatype type_classification = TVal | Copy | Quotient | Co_Datatype;
 
 fun classify_type_name ctxt T_name =
-  (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
-    SOME _ => Co_Datatype
-  | NONE =>
-    (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
+  if T_name = @{type_name itself} then
+    Co_Datatype
+  else
+    (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
       SOME _ => Co_Datatype
     | NONE =>
-      (case Quotient_Info.lookup_quotients ctxt T_name of
-        SOME _ => Quotient
+      (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
+        SOME _ => Co_Datatype
       | NONE =>
-        if T_name = @{type_name set} then
-          Copy
-        else
-          (case Typedef.get_info ctxt T_name of
-            _ :: _ => Copy
-          | [] => TVal))));
+        (case Quotient_Info.lookup_quotients ctxt T_name of
+          SOME _ => Quotient
+        | NONE =>
+          if T_name = @{type_name set} then
+            Copy
+          else
+            (case Typedef.get_info ctxt T_name of
+              _ :: _ => Copy
+            | [] => TVal))));
 
 fun fp_kind_of_ctr_sugar_kind Ctr_Sugar.Codatatype = BNF_Util.Greatest_FP
   | fp_kind_of_ctr_sugar_kind _ = BNF_Util.Least_FP;
 
 fun mutual_co_datatypes_of ctxt T_name =
-  (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
-    SOME (fp_sugar as {fp, fp_res = {Ts, ...}, ...}) =>
-    (fp,
-     (case Ts of
-       [_] => [fp_sugar]
-     | _ => map (the o BNF_FP_Def_Sugar.fp_sugar_of ctxt o fst o dest_Type) Ts)
-     |> map (#ctr_sugar o #fp_ctr_sugar))
-  | NONE =>
-    (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
-      SOME (ctr_sugar as {kind, ...}) =>
-      (* Any freely constructed type that is not a codatatype is considered a datatype. This is
-         sound (but incomplete) for model finding. *)
-      (fp_kind_of_ctr_sugar_kind kind, [ctr_sugar])));
+  if T_name = @{type_name itself} then
+    raise Fail "not implemented yet" (*###*)
+  else
+    (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
+      SOME (fp_sugar as {fp, fp_res = {Ts, ...}, ...}) =>
+      (fp,
+       (case Ts of
+         [_] => [fp_sugar]
+       | _ => map (the o BNF_FP_Def_Sugar.fp_sugar_of ctxt o fst o dest_Type) Ts)
+       |> map (#ctr_sugar o #fp_ctr_sugar))
+    | NONE =>
+      (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
+        SOME (ctr_sugar as {kind, ...}) =>
+        (* Any freely constructed type that is not a codatatype is considered a datatype. This is
+           sound (but incomplete) for model finding. *)
+        (fp_kind_of_ctr_sugar_kind kind, [ctr_sugar])));
 
 fun quotient_of ctxt T_name =
   (case Quotient_Info.lookup_quotients ctxt T_name of
@@ -224,12 +230,15 @@ fun is_co_datatype_ctr ctxt (s, T) =
     classify_type_name ctxt fpT_name = Co_Datatype andalso
     let
       val ctrs =
-        (case BNF_FP_Def_Sugar.fp_sugar_of ctxt fpT_name of
-          SOME {fp_ctr_sugar = {ctr_sugar = {ctrs, ...}, ...}, ...} => ctrs
-        | NONE =>
-          (case Ctr_Sugar.ctr_sugar_of ctxt fpT_name of
-            SOME {ctrs, ...} => ctrs
-          | _ => []));
+        if fpT_name = @{type_name itself} then
+          [Const (@{const_name Pure.type}, @{typ "'a itself"})]
+        else
+          (case BNF_FP_Def_Sugar.fp_sugar_of ctxt fpT_name of
+            SOME {fp_ctr_sugar = {ctr_sugar = {ctrs, ...}, ...}, ...} => ctrs
+          | NONE =>
+            (case Ctr_Sugar.ctr_sugar_of ctxt fpT_name of
+              SOME {ctrs, ...} => ctrs
+            | _ => []));
 
       fun is_right_ctr (t' as Const (s', _)) =
         s = s' andalso fastype_of (Ctr_Sugar.mk_ctr Ts t') = T;
@@ -527,9 +536,36 @@ fun isa_problem_of_goal ctxt falsify goal0 =
   let
     val thy = Proof_Context.theory_of ctxt;
 
-    fun consider_sort depth T S = I; (* FIXME *)
+    fun axioms_of_class class =
+      #axioms (Axclass.get_info thy class)
+      handle ERROR _ => [];
 
-    fun consider_type depth T =
+    fun monomorphize_class_axiom T t =
+      (case Term.add_tvars t [] of
+        [] => t
+      | [(x, S)] => Envir.subst_term_types (Vartab.make [(x, (S, T))]) t);
+
+    fun consider_sort depth T S (seens as (seenS, seenT, seen), prob) =
+      if member (op =) seenS S then
+        (seens, prob)
+      else if depth > axioms_max_depth then
+        raise Fail "too many nested axioms"
+      else
+        let
+          val seenS = S :: seenS;
+          val seens = (seenS, seenT, seen);
+
+          val supers = Sign.complete_sort thy S;
+          val axioms0 = maps (map Thm.prop_of o axioms_of_class) supers;
+          val axioms = map (monomorphize_class_axiom T) axioms0;
+
+          val cmds = map IAxiom axioms;
+          val prob = cmds @ prob;
+        in
+          (seens, prob)
+          |> fold (consider_term (depth + 1)) axioms
+        end
+    and consider_type depth T =
       (case T of
         Type (s, Ts) =>
         if is_type_builtin s then fold (consider_type depth) Ts

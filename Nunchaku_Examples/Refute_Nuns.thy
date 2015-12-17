@@ -392,11 +392,11 @@ lemma "P Collect"
 nunchaku [expect = genuine]
 oops
 
-lemma "A Un B = A Int B"
+lemma "A \<union> B = A \<inter> B"
 nunchaku [expect = genuine]
 oops
 
-lemma "(A Int B) Un C = (A Un C) Int B"
+lemma "(A \<inter> B) \<union> C = (A \<union> C) \<inter> B"
 nunchaku [expect = genuine]
 oops
 

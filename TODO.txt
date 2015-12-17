@@ -1,6 +1,7 @@
 Isabelle frontend:
 
   * type classes (in axiom selector) and other TODOs / FIXMEs
+  * test records
   * cleanup in options and main driver
 
   * parse models
