@@ -22,21 +22,6 @@ text {* An axiom with a type variable (denoting types which have at least two el
 class classC =
   assumes classC_ax: "\<exists>x y. x \<noteq> y"
 
-ML {* @{const class.classC('a)} *}
-
-ML {*
-Defs.specifications_of (Theory.defs_of @{theory})
-  (Defs.Const, @{const_name List.hd})
-|> map_filter #def
-*}
-
-ML {* Thm.axiom @{theory} "List.list.hd_def_raw" *}
-
-ML {*
-Defs.all_specifications_of (Theory.defs_of @{theory})
-|> maps snd
-*}
-
 lemma "P (x :: 'a :: classC)"
 nunchaku [expect = genuine]
 oops

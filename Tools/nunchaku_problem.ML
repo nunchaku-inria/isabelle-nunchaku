@@ -460,7 +460,7 @@ val str_of_ty =
     str_of I
   end;
 
-val str_of_tm =
+val (str_of_tmty, str_of_tm) =
   let
     fun is_triv_head (NConst (id, _, ty)) = (arity_of_nun_builtin id = 0)
       | is_triv_head (NVar _) = true
@@ -481,8 +481,12 @@ val str_of_tm =
         str_of_arg_list (str_of NONE) [arg]
       end
     and str_of_br ty_opt (id, vars, body) =
-        " | " ^ id ^ space_implode "" (map (prefix " " o str_of NONE) vars) ^ " -> " ^
-        str_of ty_opt body
+      " | " ^ id ^ space_implode "" (map (prefix " " o str_of NONE) vars) ^ " -> " ^
+      str_of ty_opt body
+    and str_of_tmty tm =
+      let val ty = nun_ty_of tm in
+        str_of (SOME ty) tm ^ " : " ^ str_of_ty ty
+      end
     and str_of _ (NConst (id, [], _)) = str_of_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
         if ty = ty0 then str_of_ident id else str_of_at_const id tys
@@ -521,16 +525,15 @@ val str_of_tm =
         | (NConst (id, _, _), NAbs _) =>
           if is_nun_const_quantifier id then
             let val (vars, body) = strip_nun_binders id app in
-              id ^ " " ^ space_implode " " (map (str_of NONE) vars) ^ ". " ^ str_of NONE body
+              id ^ " " ^ space_implode " " (map (parens o str_of_tmty) vars) ^ ". " ^
+              str_of NONE body
             end
           else
             str_of_app ty_opt func argN
         | _ => str_of_app ty_opt func argN);
   in
-    str_of NONE
+    (str_of_tmty, str_of NONE)
   end;
-
-fun str_of_tmty tm = str_of_tm tm ^ " : " ^ str_of_ty (nun_ty_of tm);
 
 val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
 
