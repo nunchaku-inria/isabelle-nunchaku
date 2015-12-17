@@ -14,6 +14,9 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+lemma "x \<in> {y. y = x}"
+nunchaku
+
 (*
 schematic_goal "x = ?y"
 nunchaku [expect = none]

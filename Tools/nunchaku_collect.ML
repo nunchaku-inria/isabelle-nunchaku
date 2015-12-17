@@ -341,12 +341,12 @@ fun spec_rules_of ctxt const =
     fold process_spec specs NONE
   end;
 
-val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}, @{type_name set}];
+val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 
 val is_const_builtin =
-  member (op =) [@{const_name All}, @{const_name Collect}, @{const_name conj}, @{const_name disj},
-    @{const_name HOL.eq}, @{const_name Ex}, @{const_name False}, @{const_name If},
-    @{const_name implies}, @{const_name Set.member}, @{const_name Not}, @{const_name True}];
+  member (op =) [@{const_name All}, @{const_name conj}, @{const_name disj}, @{const_name HOL.eq},
+    @{const_name Ex}, @{const_name False}, @{const_name If}, @{const_name implies},
+    @{const_name Not}, @{const_name True}];
 
 fun keys_of _ (ITVal T) = [key_of_typ T]
   | keys_of _ (ICopy {abs_typ, ...}) = [key_of_typ abs_typ]

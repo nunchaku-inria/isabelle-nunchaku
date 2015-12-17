@@ -43,7 +43,6 @@ fun nun_ty_of_isa (Type (s, Ts)) =
       (case s of
         @{type_name bool} => nun_prop_ty
       | @{type_name fun} => NType (nun_fun, tys)
-      | @{type_name set} => NType (nun_fun, tys @ [nun_prop_ty])
       | _ =>
         let
           val id = nun_tconst_of_str s;
@@ -76,12 +75,7 @@ fun nun_tm_of_isa ctxt t =
         (ctr_id, vars, body)
       end;
 
-    fun tm_of bounds (Const (@{const_name Collect}, T)) =
-        tm_of bounds (Abs (Name.uu, domain_type T, Bound 0))
-      | tm_of bounds (Const (@{const_name Set.member}, T)) =
-        tm_of bounds (Abs (Name.uu, domain_type T,
-          Abs (Name.uu, domain_type (range_type T), Bound 0 $ Bound 1)))
-      | tm_of bounds (Const (x as (s, T))) =
+    fun tm_of bounds (Const (x as (s, T))) =
         (case try (dest_co_datatype_case ctxt) x of
           SOME ctrs =>
           let
