@@ -170,21 +170,26 @@ fun fp_kind_of_ctr_sugar_kind Ctr_Sugar.Codatatype = BNF_Util.Greatest_FP
 
 fun mutual_co_datatypes_of ctxt T_name =
   if T_name = @{type_name itself} then
-    raise Fail "not implemented yet" (*###*)
+    (BNF_Util.Least_FP, [@{typ "'a itself"}], [[@{const Pure.type ('a)}]])
   else
-    (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
-      SOME (fp_sugar as {fp, fp_res = {Ts, ...}, ...}) =>
-      (fp,
-       (case Ts of
-         [_] => [fp_sugar]
-       | _ => map (the o BNF_FP_Def_Sugar.fp_sugar_of ctxt o fst o dest_Type) Ts)
-       |> map (#ctr_sugar o #fp_ctr_sugar))
-    | NONE =>
-      (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
-        SOME (ctr_sugar as {kind, ...}) =>
-        (* Any freely constructed type that is not a codatatype is considered a datatype. This is
-           sound (but incomplete) for model finding. *)
-        (fp_kind_of_ctr_sugar_kind kind, [ctr_sugar])));
+    let
+      val (fp, ctr_sugars) =
+        (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
+          SOME (fp_sugar as {fp, fp_res = {Ts, ...}, ...}) =>
+          (fp,
+           (case Ts of
+             [_] => [fp_sugar]
+           | _ => map (the o BNF_FP_Def_Sugar.fp_sugar_of ctxt o fst o dest_Type) Ts)
+           |> map (#ctr_sugar o #fp_ctr_sugar))
+        | NONE =>
+          (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
+            SOME (ctr_sugar as {kind, ...}) =>
+            (* Any freely constructed type that is not a codatatype is considered a datatype. This
+               is sound (but incomplete) for model finding. *)
+            (fp_kind_of_ctr_sugar_kind kind, [ctr_sugar])));
+    in
+      (fp, map #T ctr_sugars, map #ctrs ctr_sugars)
+    end;
 
 fun quotient_of ctxt T_name =
   (case Quotient_Info.lookup_quotients ctxt T_name of
@@ -606,9 +611,9 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                #> (case classify_type_name ctxt s of
                     Co_Datatype =>
                     let
-                      val (fp, ctr_sugars0) = mutual_co_datatypes_of ctxt s;
-                      val fpTs = map ((fn Type (s, _) => Type (s, Ts)) o #T) ctr_sugars0;
-                      val ctrss = map (map (Ctr_Sugar.mk_ctr Ts) o #ctrs) ctr_sugars0;
+                      val (fp, fpTs0, ctrss0) = mutual_co_datatypes_of ctxt s;
+                      val fpTs = map ((fn Type (s, _) => Type (s, Ts))) fpTs0;
+                      val ctrss = map (map (Ctr_Sugar.mk_ctr Ts)) ctrss0;
                       val co_data = ICoData (fp,
                         map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) fpTs ctrss);
                     in
