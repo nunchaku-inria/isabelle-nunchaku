@@ -665,9 +665,13 @@ fun isa_problem_of_goal ctxt falsify goal0 =
 fun str_of_isa_term_with_type ctxt t =
   Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);
 
+fun is_triv_wrt (Abs (_, _, body)) = is_triv_wrt body
+  | is_triv_wrt @{const True} = true
+  | is_triv_wrt _ = false;
+
 fun str_of_isa_type_spec ctxt {abs_typ, rep_typ, wrt, abs, rep} =
   Syntax.string_of_typ ctxt abs_typ ^ " := " ^ Syntax.string_of_typ ctxt rep_typ ^
-  "\n  wrt " ^ Syntax.string_of_term ctxt wrt ^
+  (if is_triv_wrt wrt then "" else "\n  wrt " ^ Syntax.string_of_term ctxt wrt) ^
   "\n  abs " ^ Syntax.string_of_term ctxt abs ^
   "\n  rep " ^ Syntax.string_of_term ctxt rep;
 
