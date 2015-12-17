@@ -19,6 +19,7 @@ Middleware:
   * heuristic inlining of definitions
   * (co)inductive predicates
   * quotient types
+    * and "inline" trivial quotient types?
   * numeric types
   * BNF-style nesting (through functions, mixed FPs, etc.)?
   * polarity for other predicates
