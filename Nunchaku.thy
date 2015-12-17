@@ -15,6 +15,9 @@ ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
 (*
+schematic_goal "x = ?y"
+nunchaku [expect = none]
+
 declare [[ML_exception_trace]]
 declare [[ML_print_depth = 100]]
 

@@ -301,7 +301,7 @@ lemma "(\<forall>x. \<exists>!y. P x y) \<longrightarrow> (\<exists>!f. \<forall
 nunchaku [card = 1-3, expect = none]
 apply auto
  apply (simp add: ex1_implies_ex choice)
-apply (fast intro: ext)
+apply fast
 done
 
 subsubsection {* Metalogic *}

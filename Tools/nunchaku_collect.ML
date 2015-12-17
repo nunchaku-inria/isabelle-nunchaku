@@ -115,13 +115,13 @@ fun add_keys ctxt t =
   fold_aterms (add_aterm_keys ctxt) t
   #> fold_types add_type_keys t;
 
-fun atomize_towards_False ctxt t =
+fun atomize_and_maybe_falsify ctxt falsify t =
   let
     val t' = t
       |> attach_typeS
       |> Object_Logic.atomize_term ctxt;
   in
-    if fastype_of t' = HOLogic.boolT then t' else @{const False}
+    if fastype_of t' = HOLogic.boolT then t' |> falsify ? HOLogic.mk_not else @{const False}
   end;
 
 fun close_form t =
@@ -137,8 +137,10 @@ fun unfold_basic_def ctxt =
     Pattern.rewrite_term thy (map (Logic.dest_equals o Thm.prop_of) basic_defs) []
   end;
 
-fun preprocess_prop ctxt =
-  atomize_towards_False ctxt #> unfold_basic_def ctxt #> close_form;
+fun preprocess_prop falsify ctxt =
+  atomize_and_maybe_falsify ctxt falsify
+  #> unfold_basic_def ctxt
+  #> close_form;
 
 datatype type_classification = TVal | Copy | Quotient | Co_Datatype;
 
@@ -574,7 +576,7 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                    (case spec_rules_of ctxt t of
                      SOME (classif, consts, props0) =>
                      let
-                       val props = map (preprocess_prop ctxt) props0;
+                       val props = map (preprocess_prop false ctxt) props0;
 
                        fun specs () = [ISpec {consts = consts, props = props}];
 
@@ -611,8 +613,7 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                 |> consider_type depth T)
             end));
 
-    val goal = preprocess_prop ctxt goal0
-      |> falsify ? HOLogic.mk_not;
+    val goal = preprocess_prop falsify ctxt goal0;
   in
     (([], [], []), [IGoal goal])
     |> consider_term 0 goal
