@@ -393,10 +393,21 @@ fun spec_rules_of ctxt const =
     fold process_spec specs NONE
   end;
 
+fun lhs_of_definition (Const (@{const_name Pure.eq}, _) $ t $ _) = t
+  | lhs_of_definition (@{const Trueprop} $ (Const (@{const_name HOL.eq}, _) $ t $ _)) = t;
+
+fun specialize_definition_type thy x def0 =
+  let
+    val def = specialize_type thy x def0;
+    val lhs = lhs_of_definition def;
+  in
+    if exists_Const (curry (op =) x) lhs then def else raise Fail "cannot specialize"
+  end;
+
 fun definition_of thy (x as (s, _)) =
   Defs.specifications_of (Theory.defs_of thy) (Defs.Const, s)
   |> map_filter #def
-  |> map_filter (try (specialize_type thy x o Thm.prop_of o Thm.axiom thy))
+  |> map_filter (try (specialize_definition_type thy x o Thm.prop_of o Thm.axiom thy))
   |> try hd;
 
 val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
@@ -688,8 +699,11 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                      end
                    | NONE =>
                      (case definition_of thy x of
-                       SOME eq =>
-                       (seens, IRec [{const = t, props = [preprocess_prop false ctxt eq]}] :: prob)
+                       SOME eq0 =>
+                       let val eq = preprocess_prop false ctxt eq0 in
+                         (seens, IRec [{const = t, props = [eq]}] :: prob)
+                         |> consider_term (depth + 1) eq
+                       end
                      | NONE => (seens, IVal t :: prob))))
                 |> consider_type depth T
               | Free (_, T) =>
