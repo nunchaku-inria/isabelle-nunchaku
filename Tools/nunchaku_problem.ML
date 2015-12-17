@@ -494,8 +494,11 @@ val (str_of_tmty, str_of_tm) =
         str_of_at_const id tys
       | str_of _ (NVar (id, _)) = str_of_ident id
       | str_of ty_opt (NAbs (var, body)) =
-        "fun " ^ str_of (Option.map nun_domain_ty ty_opt) var ^ ". " ^
-        str_of (Option.map nun_range_ty ty_opt) body
+        "fun " ^
+        (case ty_opt of
+          SOME ty => str_of (SOME (nun_domain_ty ty))
+        | NONE => parens o str_of_tmty) var ^
+        ". " ^ str_of (Option.map nun_range_ty ty_opt) body
       | str_of ty_opt (NMatch (obj, branches)) =
         nun_match ^ " " ^ str_of NONE obj ^ " with" ^
         space_implode "" (map (str_of_br ty_opt) branches) ^ " end"

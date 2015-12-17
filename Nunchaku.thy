@@ -22,7 +22,7 @@ text {* An axiom with a type variable (denoting types which have at least two el
 class classC =
   assumes classC_ax: "\<exists>x y. x \<noteq> y"
 
-lemma "P (x :: 'a :: classC)"
+lemma "P (%x. f x x) (x :: 'a :: classC)"
 nunchaku [expect = genuine]
 oops
 
