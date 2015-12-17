@@ -572,9 +572,13 @@ fun str_of_tval (NType (id, tys)) =
     str_of_ident id ^ " : " ^ fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
   | str_of_tval _ = raise Fail "non-NType";
 
+fun is_triv_wrt (NAbs (_, body)) = is_triv_wrt body
+  | is_triv_wrt (NConst (id, _, _)) = (id = nun_true)
+  | is_triv_wrt _ = false;
+
 fun str_of_nun_type_spec {abs_ty, rep_ty, wrt, abs, rep} =
   str_of_ty abs_ty ^ " := " ^ str_of_ty rep_ty ^
-  "\n  wrt " ^ str_of_tm wrt ^
+  (if is_triv_wrt wrt then "" else "\n  wrt " ^ str_of_tm wrt) ^
   "\n  abs " ^ str_of_tm abs ^
   "\n  rep " ^ str_of_tm rep;
 

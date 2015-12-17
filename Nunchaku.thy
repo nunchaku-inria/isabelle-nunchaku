@@ -5,6 +5,9 @@ keywords
   "nunchaku_params" :: thy_decl
 begin
 
+definition rmember :: "'a set \<Rightarrow> 'a \<Rightarrow> bool" where
+  "rmember A x \<longleftrightarrow> x \<in> A"
+
 ML_file "Tools/nunchaku_util.ML"
 ML_file "Tools/nunchaku_collect.ML"
 ML_file "Tools/nunchaku_problem.ML"
@@ -16,8 +19,10 @@ ML_file "Tools/nunchaku_commands.ML"
 
 lemma "x \<in> {y. y = x}"
 nunchaku
+oops
 
 (*
+
 schematic_goal "x = ?y"
 nunchaku [expect = none]
 
@@ -83,5 +88,7 @@ lemma "[x] @ ys = x # ys"
 nunchaku[overlord]
 oops
 *)
+
+hide_const (open) rmember
 
 end

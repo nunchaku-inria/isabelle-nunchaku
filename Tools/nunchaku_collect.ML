@@ -130,7 +130,8 @@ fun close_form t =
     (Term.add_vars t []) t;
 
 val basic_defs =
-  @{thms Ex1_def Let_def} @ map (fn th => th RS @{thm eq_reflection}) @{thms Ball_def Bex_def};
+  @{thms Ex1_def Let_def} @
+  map (fn th => th RS @{thm eq_reflection}) @{thms Ball_def Bex_def rmember_def[symmetric]};
 
 fun unfold_basic_def ctxt =
   let val thy = Proof_Context.theory_of ctxt in
@@ -154,9 +155,12 @@ fun classify_type_name ctxt T_name =
       (case Quotient_Info.lookup_quotients ctxt T_name of
         SOME _ => Quotient
       | NONE =>
-        (case Typedef.get_info ctxt T_name of
-          _ :: _ => Copy
-        | [] => TVal))));
+        if T_name = @{type_name set} then
+          Copy
+        else
+          (case Typedef.get_info ctxt T_name of
+            _ :: _ => Copy
+          | [] => TVal))));
 
 fun fp_kind_of_ctr_sugar_kind Ctr_Sugar.Codatatype = BNF_Util.Greatest_FP
   | fp_kind_of_ctr_sugar_kind _ = BNF_Util.Least_FP;
@@ -184,23 +188,35 @@ fun quotient_of ctxt T_name =
     end);
 
 fun copy_of ctxt T_name =
-  (case Typedef.get_info ctxt T_name of
-    (* When several entries are returned, it shouldn't matter much which one we take (according to
-       Florian Haftmann). The "Logic.varifyT_global" calls are a workaround because these types'
-       variables sometimes clash with locally fixed type variables. *)
-    ({abs_type, rep_type, Abs_name, Rep_name, ...}, {Rep, ...}) :: _ =>
+  if T_name = @{type_name set} then
     let
-      val absT = Logic.varifyT_global abs_type;
-      val repT = Logic.varifyT_global rep_type;
-      val wrt = Thm.prop_of Rep
-        |> HOLogic.dest_Trueprop
-        |> HOLogic.dest_mem
-        |> snd;
-      val abs = Const (Abs_name, repT --> absT);
-      val rep = Const (Rep_name, absT --> repT);
+      val A = Logic.varifyT_global @{typ 'a};
+      val absT = Type (@{type_name set}, [A]);
+      val repT = A --> HOLogic.boolT;
+      val wrt = Abs (Name.uu, repT, @{const True});
+      val abs = Const (@{const_name Collect}, repT --> absT);
+      val rep = Const (@{const_name rmember}, absT --> repT);
     in
       (absT, repT, wrt, abs, rep)
-    end);
+    end
+  else
+    (case Typedef.get_info ctxt T_name of
+      (* When several entries are returned, it shouldn't matter much which one we take (according to
+         Florian Haftmann). The "Logic.varifyT_global" calls are a workaround because these types'
+         variables sometimes clash with locally fixed type variables. *)
+      ({abs_type, rep_type, Abs_name, Rep_name, ...}, {Rep, ...}) :: _ =>
+      let
+        val absT = Logic.varifyT_global abs_type;
+        val repT = Logic.varifyT_global rep_type;
+        val wrt = Thm.prop_of Rep
+          |> HOLogic.dest_Trueprop
+          |> HOLogic.dest_mem
+          |> snd;
+        val abs = Const (Abs_name, repT --> absT);
+        val rep = Const (Rep_name, absT --> repT);
+      in
+        (absT, repT, wrt, abs, rep)
+      end);
 
 fun is_co_datatype_ctr ctxt (s, T) =
   (case body_type T of
@@ -263,22 +279,44 @@ fun is_quotient_rep ctxt (s, T) =
       (_, _, _, _, Const (s', _)) => s' = s)
   | _ => false);
 
+fun is_maybe_copy_abs ctxt absT_name s =
+  if absT_name = @{type_name set} then
+    s = @{const_name Collect}
+  else
+    (case try (copy_of ctxt) absT_name of
+      SOME (_, _, _, Const (s', _), _) => s' = s
+    | NONE => false);
+
+fun is_maybe_copy_rep ctxt absT_name s =
+  if absT_name = @{type_name set} then
+    s = @{const_name rmember}
+  else
+    (case try (copy_of ctxt) absT_name of
+      SOME (_, _, _, _, Const (s', _)) => s' = s
+    | NONE => false);
+
+fun is_copy_abs ctxt (s, T) =
+  (case T of
+    Type (@{type_name fun}, [_, Type (absT_name, _)]) =>
+    classify_type_name ctxt absT_name = Copy andalso is_maybe_copy_abs ctxt absT_name s
+  | _ => false);
+
+fun is_copy_rep ctxt (s, T) =
+  (case T of
+    Type (@{type_name fun}, [Type (absT_name, _), _]) =>
+    classify_type_name ctxt absT_name = Copy andalso is_maybe_copy_rep ctxt absT_name s
+  | _ => false);
+
 fun is_stale_copy_abs ctxt (s, T) =
   (case T of
     Type (@{type_name fun}, [_, Type (absT_name, _)]) =>
-    classify_type_name ctxt absT_name <> Copy andalso
-    (case try (copy_of ctxt) absT_name of
-      SOME (_, _, _, Const (s', _), _) => s' = s
-    | NONE => false)
+    classify_type_name ctxt absT_name <> Copy andalso is_maybe_copy_abs ctxt absT_name s
   | _ => false);
 
 fun is_stale_copy_rep ctxt (s, T) =
   (case T of
     Type (@{type_name fun}, [Type (absT_name, _), _]) =>
-    classify_type_name ctxt absT_name <> Copy andalso
-    (case try (copy_of ctxt) absT_name of
-      SOME (_, _, _, _, Const (s', _)) => s' = s
-    | NONE => false)
+    classify_type_name ctxt absT_name <> Copy andalso is_maybe_copy_rep ctxt absT_name s
   | _ => false);
 
 fun instantiate_constant_type_in_term ctxt const target =
@@ -568,7 +606,8 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                 Const (x as (s, T)) =>
                 (if is_const_builtin s orelse is_co_datatype_ctr ctxt x orelse
                     is_co_datatype_case ctxt x orelse is_quotient_abs ctxt x orelse
-                    is_quotient_rep ctxt x then
+                    is_quotient_rep ctxt x orelse is_copy_abs ctxt x orelse
+                    is_copy_rep ctxt x then
                    (seens, prob)
                  else if is_stale_copy_abs ctxt x orelse is_stale_copy_rep ctxt x then
                    raise Fail "stale abs or rep function"
