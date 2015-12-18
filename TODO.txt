@@ -1,7 +1,7 @@
 Isabelle frontend:
 
-  * test records
-  * cleanup in options and main driver
+  * implement 'spy'
+  * port other Nitpick tests
 
   * parse models
 
