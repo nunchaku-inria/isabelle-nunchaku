@@ -17,10 +17,14 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-lemma "rev xs = xs \<and> rev ys = ys"
+schematic_goal "x \<noteq> (y :: ?'a)"
 nunchaku[card = 6]
 
+
 (*
+schematic_goal "rev (xs :: ?'a list) = xs \<and> rev ys = ys"
+nunchaku[card = 6]
+
 lemma "x \<in> {y. y = x}"
 nunchaku
 oops

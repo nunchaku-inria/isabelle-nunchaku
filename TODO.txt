@@ -1,6 +1,5 @@
 Isabelle frontend:
 
-  * test caching
   * test schematic type vars
   * axioms
   * test records

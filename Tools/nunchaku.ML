@@ -155,26 +155,32 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, ove
           let
             val (too_meta, isa_prob) = isa_problem_of_goal ctxt falsify goal;
 val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
-            val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
-            val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
-val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
-            val nun_outcome = solve_nun_problem tool_params nice_nun_prob;
 
             val outcome as (outcome_code, _) =
-              (case nun_outcome of
-                Unsat =>
-                if too_meta then (print_nt "Goal too meta for Nunchaku"; (unknownN, []))
-                else (print_nt ("Nunchaku found no " ^ das_wort_model); (noneN, []))
-              | Sat (output, _) =>
-                (print ("Nunchaku found a " ^ das_wort_model ^ ":\n" ^ output); (genuineN, []))
-              | Timed_Out =>
-                (print_nt "Nunchaku ran out of time"; (unknownN, []))
-              | Nunchaku_Not_Found =>
-                (print_nt "External tool \"nunchaku\" not installed"; (unknownN, []))
-              | CVC4_Not_Found =>
-                (print_nt "External tool \"cvc4\" not installed"; (unknownN, []))
-              | Unknown_Error msg =>
-                (print_nt ("Unknown error: " ^ msg); (unknownN, [])));
+              (case too_meta of
+                SOME t =>
+                (print_nt ("Problem too meta for Nunchaku (because of proposition " ^
+                   Syntax.string_of_term ctxt t ^ ")"); (unknownN, []))
+              | NONE =>
+                let
+                  val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
+                  val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
+val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
+                in
+                  (case solve_nun_problem tool_params nice_nun_prob of
+                    Unsat =>
+                    (print_nt ("Nunchaku found no " ^ das_wort_model); (noneN, []))
+                  | Sat (output, _) =>
+                    (print ("Nunchaku found a " ^ das_wort_model ^ ":\n" ^ output); (genuineN, []))
+                  | Timed_Out =>
+                    (print_nt "Nunchaku ran out of time"; (unknownN, []))
+                  | Nunchaku_Not_Found =>
+                    (print_nt "External tool \"nunchaku\" not installed"; (unknownN, []))
+                  | CVC4_Not_Found =>
+                    (print_nt "External tool \"cvc4\" not installed"; (unknownN, []))
+                  | Unknown_Error msg =>
+                    (print_nt ("Unknown error: " ^ msg); (unknownN, [])))
+                end);
           in
             if expect = "" orelse outcome_code = expect then outcome
             else error ("Unexpected outcome: " ^ quote outcome_code)
@@ -188,10 +194,6 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
         else error ("Unexpected outcome: " ^ quote outcome_code)
       end
   end;
-
-fun is_fixed_equation ctxt (Const (@{const_name Pure.eq}, _) $ Free (s, _) $ Const _) =
-    Variable.is_fixed ctxt s
-  | is_fixed_equation _ _ = false;
 
 fun run_chaku_on_subgoal state params mode i step =
   let

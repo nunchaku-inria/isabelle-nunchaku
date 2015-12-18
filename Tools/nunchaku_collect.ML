@@ -42,7 +42,7 @@ sig
 
   type isa_problem = isa_command list list
 
-  val isa_problem_of_goal: Proof.context -> bool -> term -> bool * isa_problem
+  val isa_problem_of_goal: Proof.context -> bool -> term -> term option * isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -115,17 +115,6 @@ fun add_keys ctxt t =
   fold_aterms (add_aterm_keys ctxt) t
   #> fold_types add_type_keys t;
 
-exception TOO_META of unit;
-
-fun atomize_or_fail ctxt t =
-  let
-    val t' = t
-      |> attach_typeS
-      |> Object_Logic.atomize_term ctxt;
-  in
-    if fastype_of t' = HOLogic.boolT then t' else raise TOO_META ()
-  end;
-
 fun close_form t =
   fold (fn ((s, i), T) => fn t' =>
       HOLogic.all_const T $ Abs (s, T, abstract_over (Var ((s, i), T), t')))
@@ -140,11 +129,19 @@ fun unfold_basic_def ctxt =
     Pattern.rewrite_term thy (map (Logic.dest_equals o Thm.prop_of) basic_defs) []
   end;
 
-fun preprocess_prop falsify ctxt =
-  atomize_or_fail ctxt
-  #> falsify ? HOLogic.mk_not
-  #> unfold_basic_def ctxt
-  #> close_form;
+exception TOO_META of term;
+
+fun preprocess_prop falsify ctxt t =
+  if exists_type (exists_subtype is_TVar) t then
+    raise TOO_META t
+  else
+    t
+    |> attach_typeS
+    |> Object_Logic.atomize_term ctxt
+    |> tap (fn t' => fastype_of t' = HOLogic.boolT orelse raise TOO_META t)
+    |> falsify ? HOLogic.mk_not
+    |> unfold_basic_def ctxt
+    |> close_form;
 
 datatype type_classification = TVal | Copy | Quotient | Co_Datatype;
 
@@ -716,7 +713,7 @@ fun isa_problem_of_goal ctxt falsify goal0 =
 
     val goal = preprocess_prop falsify ctxt goal0;
   in
-    (false,
+    (NONE,
      (([], [], []), [IGoal goal])
      |> consider_term 0 goal
      |> snd
@@ -724,7 +721,7 @@ fun isa_problem_of_goal ctxt falsify goal0 =
      |> sort_isa_problem_topologically ctxt
      |> group_isa_commands)
   end
-  handle TOO_META () => (true, [[IGoal @{const False}]]);
+  handle TOO_META t => (SOME t, [[IGoal @{const False}]]);
 
 fun str_of_isa_term_with_type ctxt t =
   Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);
