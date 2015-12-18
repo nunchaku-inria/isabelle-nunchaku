@@ -17,12 +17,15 @@ sig
   val parse_time: string -> string -> Time.time
   val ascii_of: string -> string
   val unascii_of: string -> string
+  val double_lookup: ('a * 'a -> bool) -> ('a option * 'b) list -> 'a -> 'b option
+  val triple_lookup: (''a * ''a -> bool) -> (''a option * 'b) list -> ''a -> 'b option
   val with_overlord_file: string -> string -> (Path.T -> 'a) -> 'a
   val with_tmp_or_overlord_file: bool -> string -> string -> (Path.T -> 'a) -> 'a
   val num_binder_types: typ -> int
   val strip_fun_type: typ -> typ list * typ
   val attach_typeS: term -> term
   val specialize_type: theory -> string * typ -> term -> term
+  val DETERM_TIMEOUT: Time.time -> tactic -> tactic
   val spying: bool -> (unit -> Proof.state * int * string) -> unit
 end;
 
@@ -46,6 +49,8 @@ val parse_bool_option = Sledgehammer_Util.parse_bool_option;
 val parse_time = Sledgehammer_Util.parse_time;
 val ascii_of = ATP_Problem_Generate.ascii_of;
 val unascii_of = ATP_Problem_Generate.unascii_of;
+val double_lookup = Nitpick_Util.double_lookup;
+val triple_lookup = Nitpick_Util.triple_lookup;
 
 fun with_overlord_file name ext f =
   let val path = Path.explode ("$ISABELLE_HOME_USER/" ^ name ^ "." ^ ext) in
@@ -66,6 +71,8 @@ val attach_typeS =
       | T => T));
 
 val specialize_type = ATP_Util.specialize_type;
+
+val DETERM_TIMEOUT = Nitpick_Util.DETERM_TIMEOUT;
 
 val spying_version = "a"
 

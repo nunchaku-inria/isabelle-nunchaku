@@ -17,18 +17,21 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+(*
+
 fun rev' where
   "rev' [] = []"
 | "rev' (x # xs) = rev' xs @ [x]"
 
+coinductive even :: "'a \<Rightarrow> nat \<Rightarrow> bool" where
+  "even x 0"
+| "even x n \<Longrightarrow> even x (Suc (Suc n))"
+
 lemma
-  assumes "xs = ys"
+  assumes "xs = ys" and "even (y::'b) n"
   shows "rev xs ~= rev ys"
-nunchaku[overlord, timeout = 1, satisfy, spy]
+nunchaku[overlord, debug, wf "even :: 'c \<Rightarrow> _", wf_timeout = 2, timeout = 1, satisfy, spy]
 oops
-
-
-
 
 axiomatization nonzero where
   nz: "nonzero \<noteq> (0 :: nat)"
@@ -39,8 +42,6 @@ axiomatization where
 lemma "x \<noteq> y"
 nunchaku[]
 
-
-(*
 schematic_goal "rev (xs :: ?'a list) = xs \<and> rev ys = ys"
 nunchaku[card = 6]
 

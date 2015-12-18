@@ -121,7 +121,8 @@ val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state
     (params as {mode_of_operation_params = {falsify, assms, spy, overlord, expect},
-       output_format_params = {debug, ...}, timeout_params = {timeout, ...}, ...})
+       scope_of_search_params = {wfs, ...}, output_format_params = {debug, ...},
+       timeout_params = {timeout, wf_timeout}, ...})
     mode i all_assms subgoal =
   let
     val ctxt = Proof.context_of state;
@@ -140,7 +141,8 @@ fun run_chaku_on_prop state
     fun run () =
       let
         val (too_meta, poly_axioms, isa_prob) =
-          isa_problem_of_subgoal ctxt falsify (if assms then all_assms else []) subgoal;
+          isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout (if assms then all_assms else [])
+            subgoal;
 val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
 
         val outcome as (outcome_code, _) =

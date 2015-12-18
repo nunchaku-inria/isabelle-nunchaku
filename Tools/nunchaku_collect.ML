@@ -42,8 +42,8 @@ sig
 
   type isa_problem = isa_command list list
 
-  val isa_problem_of_subgoal: Proof.context -> bool -> term list -> term ->
-    term option * term list * isa_problem
+  val isa_problem_of_subgoal: Proof.context -> bool -> ((string * typ) option * bool option) list ->
+    bool -> Time.time -> term list -> term -> term option * term list * isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -384,7 +384,7 @@ fun spec_rules_of ctxt const =
              val props = map (instantiate_constant_type_in_term ctxt const o Thm.prop_of) ths;
            in
              if exists (exists (exists_type (exists_subtype is_TVar))) [ts, props] then NONE
-             else SOME (classif, ts, props)
+             else SOME (classif, ts, props, ths)
            end
            handle Type.TYPE_MATCH => NONE)
         | NONE => NONE);
@@ -566,10 +566,102 @@ fun partition_props [_] props = SOME [props]
       else NONE
     end;
 
+exception NO_TRIPLE of unit;
+
+fun triple_for_intro_rule ctxt x rule =
+  let
+    val (prems, concl) = Logic.strip_horn rule
+      |>> map (Object_Logic.atomize_term ctxt)
+      ||> Object_Logic.atomize_term ctxt;
+
+    val (main, side) = List.partition (exists_Const (curry (op =) x)) prems;
+
+    val is_right_head = curry (op aconv) (Const x) o head_of;
+  in
+    if forall is_right_head main then (side, main, concl) else raise NO_TRIPLE ()
+  end;
+
+val tuple_for_args = HOLogic.mk_tuple o snd o strip_comb;
+
+fun wf_constraint_for rel side concl main =
+  let
+    val core = HOLogic.mk_mem (HOLogic.mk_prod (apply2 tuple_for_args (main, concl)), Var rel);
+    val t = List.foldl HOLogic.mk_imp core side;
+    val vars = remove (op =) rel (Term.add_vars t []);
+  in
+    Library.foldl (fn (t', ((x, j), T)) =>
+        HOLogic.all_const T $ Abs (x, T, abstract_over (Var ((x, j), T), t')))
+      (t, vars)
+  end;
+
+fun wf_constraint_for_triple rel (side, main, concl) =
+  map (wf_constraint_for rel side concl) main
+  |> foldr1 HOLogic.mk_conj;
+
+fun terminates_by ctxt timeout goal tac =
+  can (SINGLE (Classical.safe_tac ctxt) #> the
+    #> SINGLE (DETERM_TIMEOUT timeout (tac ctxt (auto_tac ctxt))) #> the
+    #> Goal.finish ctxt) goal;
+
+val max_cached_wfs = 50;
+val cached_timeout = Synchronized.var "Nunchaku_Collect.cached_timeout" Time.zeroTime;
+val cached_wf_props = Synchronized.var "Nunchaku_Collect.cached_wf_props" ([] : (term * bool) list);
+
+val termination_tacs = [Lexicographic_Order.lex_order_tac true, ScnpReconstruct.sizechange_tac];
+
+fun const_match thy xx =
+  can (Pattern.match thy (apply2 Const xx)) (Vartab.empty, Vartab.empty);
+
+fun is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout const intros =
+  let
+    val thy = Proof_Context.theory_of ctxt;
+
+    val Const (x as (s, T)) = head_of (HOLogic.dest_Trueprop (Logic.strip_imp_concl (hd intros)));
+  in
+    (case triple_lookup (const_match thy o swap) wfs (dest_Const const) of
+      SOME (SOME wf) => wf
+    | _ =>
+      (case map (triple_for_intro_rule ctxt x) intros |> filter_out (null o #2) of
+        [] => true
+      | triples =>
+        let
+          val binders_T = HOLogic.mk_tupleT (binder_types T);
+          val rel_T = HOLogic.mk_setT (HOLogic.mk_prodT (binders_T, binders_T));
+          val j = fold (Integer.max o maxidx_of_term) intros 0 + 1;
+          val rel = (("R", j), rel_T);
+          val prop =
+            Const (@{const_name wf}, rel_T --> HOLogic.boolT) $ Var rel ::
+            map (wf_constraint_for_triple rel) triples
+            |> foldr1 HOLogic.mk_conj
+            |> HOLogic.mk_Trueprop;
+        in
+          if debug then writeln ("Wellfoundedness goal: " ^ Syntax.string_of_term ctxt prop)
+          else ();
+          if wf_timeout = Synchronized.value cached_timeout andalso
+             length (Synchronized.value cached_wf_props) < max_cached_wfs then
+            ()
+          else
+            (Synchronized.change cached_wf_props (K []);
+             Synchronized.change cached_timeout (K wf_timeout));
+          (case AList.lookup (op =) (Synchronized.value cached_wf_props) prop of
+            SOME wf => wf
+          | NONE =>
+            let
+              val goal = Goal.init (Thm.cterm_of ctxt prop);
+              val wf = exists (terminates_by ctxt wf_timeout goal) termination_tacs;
+            in
+              Synchronized.change cached_wf_props (cons (prop, wf)); wf
+            end)
+        end)
+      handle
+        List.Empty => false
+      | NO_TRIPLE () => false)
+  end;
+
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
 val axioms_max_depth = 255
 
-fun isa_problem_of_subgoal ctxt falsify assms0 subgoal0 =
+fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal0 =
   let
     val thy = Proof_Context.theory_of ctxt;
 
@@ -682,7 +774,7 @@ fun isa_problem_of_subgoal ctxt falsify assms0 subgoal0 =
                    raise Fail ("stale abs or rep function: " ^ s)
                  else
                    (case spec_rules_of ctxt t of
-                     SOME (classif, consts, props0) =>
+                     SOME (classif, consts, props0, ths) =>
                      let
                        val props = map (preprocess_prop false ctxt) props0;
 
@@ -703,7 +795,9 @@ fun isa_problem_of_subgoal ctxt falsify assms0 subgoal0 =
                              SOME propss =>
                              [ICoPred (if classif = Spec_Rules.Inductive then BNF_Util.Least_FP
                                   else BNF_Util.Greatest_FP,
-                                false, (* TODO *)
+                                length consts = 1 andalso
+                                is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout
+                                  (the_single consts) (map Thm.prop_of ths),
                                 map2 (fn const => fn props => {const = const, props = props})
                                   consts propss)]
                            | NONE => specs ())
@@ -731,15 +825,14 @@ fun isa_problem_of_subgoal ctxt falsify assms0 subgoal0 =
       |> List.partition has_polymorphism;
   in
     let
-      val mono_axioms_and_assms = map (preprocess_prop false ctxt) (mono_axioms0 @ assms0);
+      val mono_axioms_and_some_assms =
+        map (preprocess_prop false ctxt) (mono_axioms0 @ some_assms0);
       val subgoal = preprocess_prop falsify ctxt subgoal0;
       val seens = ([], [], []);
     in
       (NONE, poly_axioms,
-       (seens,
-        map IAxiom mono_axioms_and_assms @
-        [IGoal subgoal])
-       |> fold (consider_term 0) (subgoal :: mono_axioms_and_assms)
+       (seens, map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal])
+       |> fold (consider_term 0) (subgoal :: mono_axioms_and_some_assms)
        |> snd
        |> rev (* prettier *)
        |> sort_isa_problem_topologically ctxt
