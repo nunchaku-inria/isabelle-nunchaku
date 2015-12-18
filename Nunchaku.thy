@@ -17,7 +17,13 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-schematic_goal "x \<noteq> (y :: ?'a)"
+axiomatization nonzero where
+  nz: "nonzero \<noteq> (0 :: nat)"
+
+axiomatization where
+  foo: "(undefined :: nat \<Rightarrow> nat) undefined = undefined"
+
+lemma "x \<noteq> y"
 nunchaku[card = 6]
 
 

@@ -1,7 +1,5 @@
 Isabelle frontend:
 
-  * test schematic type vars
-  * axioms
   * test records
   * cleanup in options and main driver
 

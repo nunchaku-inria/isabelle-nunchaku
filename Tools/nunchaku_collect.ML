@@ -42,7 +42,7 @@ sig
 
   type isa_problem = isa_command list list
 
-  val isa_problem_of_goal: Proof.context -> bool -> term -> term option * isa_problem
+  val isa_problem_of_goal: Proof.context -> bool -> term -> term option * term list * isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -131,8 +131,10 @@ fun unfold_basic_def ctxt =
 
 exception TOO_META of term;
 
+val has_polymorphism = exists_type (exists_subtype is_TVar);
+
 fun preprocess_prop falsify ctxt t =
-  if exists_type (exists_subtype is_TVar) t then
+  if has_polymorphism t then
     raise TOO_META t
   else
     t
@@ -409,6 +411,18 @@ fun definition_of thy (x as (s, _)) =
   |> map_filter #def
   |> map_filter (try (specialize_definition_type thy x o Thm.prop_of o Thm.axiom thy))
   |> try hd;
+
+fun is_built_in_theory thy_id =
+  Context.subthy_id (thy_id, Context.theory_id @{theory Hilbert_Choice});
+
+val orphan_axioms_of =
+  Spec_Rules.get
+  #> filter (curry (op =) Spec_Rules.Unknown o fst)
+  #> map snd
+  #> filter (null o fst)
+  #> maps snd
+  #> filter_out (is_built_in_theory o Thm.theory_id_of_thm)
+  #> map Thm.prop_of;
 
 val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 
@@ -711,17 +725,26 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                 |> consider_type depth T)
             end));
 
-    val goal = preprocess_prop falsify ctxt goal0;
+    val (poly_axioms, mono_axioms0) = orphan_axioms_of ctxt
+      |> List.partition has_polymorphism;
   in
-    (NONE,
-     (([], [], []), [IGoal goal])
-     |> consider_term 0 goal
-     |> snd
-     |> rev (* prettier *)
-     |> sort_isa_problem_topologically ctxt
-     |> group_isa_commands)
-  end
-  handle TOO_META t => (SOME t, [[IGoal @{const False}]]);
+    let
+      val mono_axioms = map (preprocess_prop falsify ctxt) mono_axioms0;
+      val goal = preprocess_prop falsify ctxt goal0;
+      val seens = ([], [], []);
+    in
+      (NONE, poly_axioms,
+       (seens,
+        map IAxiom mono_axioms @
+        [IGoal goal])
+       |> fold (consider_term 0) (goal :: mono_axioms)
+       |> snd
+       |> rev (* prettier *)
+       |> sort_isa_problem_topologically ctxt
+       |> group_isa_commands)
+      handle TOO_META t => (SOME t, poly_axioms, [[IGoal @{const False}]])
+    end
+  end;
 
 fun str_of_isa_term_with_type ctxt t =
   Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);

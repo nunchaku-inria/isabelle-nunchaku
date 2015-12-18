@@ -139,6 +139,7 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, ove
       | TPTP => writeln o prefix "%%% "
       | _ => K ());
 
+    val das_wort_Model = if falsify then "Countermodel" else "Model";
     val das_wort_model = if falsify then "countermodel" else "model";
   in
     if getenv nunchaku_env_var = "" then
@@ -153,7 +154,7 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, ove
 
         fun run () =
           let
-            val (too_meta, isa_prob) = isa_problem_of_goal ctxt falsify goal;
+            val (too_meta, poly_axioms, isa_prob) = isa_problem_of_goal ctxt falsify goal;
 val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
 
             val outcome as (outcome_code, _) =
@@ -168,18 +169,20 @@ val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
 val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
                 in
                   (case solve_nun_problem tool_params nice_nun_prob of
-                    Unsat =>
-                    (print_nt ("Nunchaku found no " ^ das_wort_model); (noneN, []))
+                    Unsat => (print_nt ("No " ^ das_wort_model ^ " exists"); (noneN, []))
                   | Sat (output, _) =>
-                    (print ("Nunchaku found a " ^ das_wort_model ^ ":\n" ^ output); (genuineN, []))
-                  | Timed_Out =>
-                    (print_nt "Nunchaku ran out of time"; (unknownN, []))
+                    if null poly_axioms then
+                      (print (das_wort_Model ^ ":\n" ^ output); (genuineN, []))
+                    else
+                      (print (das_wort_Model ^ " (ignoring polymorphic axioms):\n" ^ output ^
+                         "\nIgnored axioms:\n" ^
+                         cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms));
+                       (quasi_genuineN, []))
+                  | Timed_Out => (print_nt "Time out"; (unknownN, []))
                   | Nunchaku_Not_Found =>
-                    (print_nt "External tool \"nunchaku\" not installed"; (unknownN, []))
-                  | CVC4_Not_Found =>
-                    (print_nt "External tool \"cvc4\" not installed"; (unknownN, []))
-                  | Unknown_Error msg =>
-                    (print_nt ("Unknown error: " ^ msg); (unknownN, [])))
+                    (print_nt "External tool \"nunchaku\" not found"; (unknownN, []))
+                  | CVC4_Not_Found => (print_nt "External tool \"cvc4\" not found"; (unknownN, []))
+                  | Unknown_Error msg => (print_nt ("Unknown error: " ^ msg); (unknownN, [])))
                 end);
           in
             if expect = "" orelse outcome_code = expect then outcome
