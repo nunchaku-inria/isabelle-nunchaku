@@ -133,61 +133,61 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, ove
 
     val das_wort_Model = if falsify then "Countermodel" else "Model";
     val das_wort_model = if falsify then "countermodel" else "model";
-  in
-    if getenv nunchaku_env_var = "" then
-      (* The "expect" argument is deliberately ignored if the "nunchaku" command-line tool is
-         missing so that "Nunchaku_Examples" can be processed on any machine. *)
-      (print_nt ("$" ^ nunchaku_env_var ^ " not set"); (no_nunchakuN, []))
-    else
+
+    val tool_params = {overlord = overlord, debug = debug, timeout = timeout};
+
+    fun run () =
       let
-        val deadline = Time.+ (Time.now (), timeout);
-
-        val tool_params = {overlord = overlord, debug = debug, timeout = timeout};
-
-        fun run () =
-          let
-            val (too_meta, poly_axioms, isa_prob) = isa_problem_of_goal ctxt falsify goal;
+        val (too_meta, poly_axioms, isa_prob) = isa_problem_of_goal ctxt falsify goal;
 val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
 
-            val outcome as (outcome_code, _) =
-              (case too_meta of
-                SOME t =>
-                (print_nt ("Problem too meta for Nunchaku (because of proposition " ^
-                   Syntax.string_of_term ctxt t ^ ")"); (unknownN, []))
-              | NONE =>
-                let
-                  val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
-                  val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
-val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
-                in
-                  (case solve_nun_problem tool_params nice_nun_prob of
-                    Unsat => (print_nt ("No " ^ das_wort_model ^ " exists"); (noneN, []))
-                  | Sat (output, _) =>
-                    if null poly_axioms then
-                      (print (das_wort_Model ^ ":\n" ^ output); (genuineN, []))
-                    else
-                      (print (das_wort_Model ^ " (ignoring polymorphic axioms):\n" ^ output ^
-                         "\nIgnored axioms:\n" ^
-                         cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms));
-                       (quasi_genuineN, []))
-                  | Timeout => (print_nt "Time out"; (unknownN, []))
-                  | Nunchaku_Not_Found =>
-                    (print_nt "External tool \"nunchaku\" not found"; (unknownN, []))
-                  | CVC4_Not_Found => (print_nt "External tool \"cvc4\" not found"; (unknownN, []))
-                  | Unknown_Error (_, msg) => (print_nt ("Unknown error: " ^ msg); (unknownN, [])))
-                end);
-          in
-            if expect = "" orelse outcome_code = expect then outcome
-            else error ("Unexpected outcome: " ^ quote outcome_code)
-          end;
-
         val outcome as (outcome_code, _) =
-          TimeLimit.timeLimit (Time.+ (timeout, timeout_slack)) run ()
-          handle TimeLimit.TimeOut => (print_nt "Time out"; (unknownN, []));
+          (case too_meta of
+            SOME t =>
+            (print_nt ("Problem too meta for Nunchaku (because of proposition " ^
+               Syntax.string_of_term ctxt t ^ ")"); (unknownN, []))
+          | NONE =>
+            let
+              val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
+              val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
+val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
+            in
+              (case solve_nun_problem tool_params nice_nun_prob of
+                Unsat => (print_nt ("No " ^ das_wort_model ^ " exists"); (noneN, []))
+              | Sat (output, _) =>
+                if null poly_axioms then
+                  (print (das_wort_Model ^ ":\n" ^ output); (genuineN, []))
+                else
+                  (print (das_wort_Model ^ " (ignoring polymorphic axioms):\n" ^ output ^
+                     "\nIgnored axioms:\n" ^
+                     cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms));
+                   (quasi_genuineN, []))
+              | Timeout => (print_nt "Time out"; (unknownN, []))
+              | Nunchaku_Var_Not_Set =>
+                (print_nt ("Variable $" ^ nunchaku_env_var ^ " not set"); (unknownN, []))
+              | Nunchaku_Cannot_Execute =>
+                (print_nt "External tool \"nunchaku\" cannot execute"; (unknownN, []))
+              | Nunchaku_Not_Found =>
+                (print_nt "External tool \"nunchaku\" not found"; (unknownN, []))
+              | CVC4_Cannot_Execute =>
+                (print_nt "External tool \"cvc4\" cannot execute"; (unknownN, []))
+              | CVC4_Not_Found => (print_nt "External tool \"cvc4\" not found"; (unknownN, []))
+              | Unknown_Error (code, msg) =>
+                (print_nt ("Unknown error: " ^ msg ^
+                   (if code = 0 then "" else " (code " ^ string_of_int code ^ ")"));
+                 (unknownN, [])))
+            end);
       in
         if expect = "" orelse outcome_code = expect then outcome
         else error ("Unexpected outcome: " ^ quote outcome_code)
-      end
+      end;
+
+    val outcome as (outcome_code, _) =
+      TimeLimit.timeLimit (Time.+ (timeout, timeout_slack)) run ()
+      handle TimeLimit.TimeOut => (print_nt "Time out"; (unknownN, []));
+  in
+    if expect = "" orelse outcome_code = expect then outcome
+    else error ("Unexpected outcome: " ^ quote outcome_code)
   end;
 
 fun run_chaku_on_subgoal state params mode i step =

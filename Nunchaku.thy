@@ -22,7 +22,7 @@ fun rev' where
 | "rev' (x # xs) = rev' xs @ [x]"
 
 lemma "rev xs = rev' xs"
-nunchaku[overlord, timeout = 100]
+nuncxhaku[overlord, timeout = 100]
 oops
 
 
