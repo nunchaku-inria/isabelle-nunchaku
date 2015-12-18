@@ -25,7 +25,7 @@ sig
   | Timed_Out
   | Nunchaku_Not_Found
   | CVC4_Not_Found
-  | Unknown_Error
+  | Unknown_Error of string
 
   val nunchaku_env_var: string
 
@@ -52,7 +52,7 @@ datatype nun_outcome =
 | Timed_Out
 | Nunchaku_Not_Found
 | CVC4_Not_Found
-| Unknown_Error;
+| Unknown_Error of string;
 
 val nunchaku_env_var = "NUNCHAKU";
 
@@ -71,7 +71,7 @@ fun uncached_solve_nun_problem overlord prob =
     in
       if String.isPrefix "SAT" output then Sat (output, {tys = [], tms = []})
       else if String.isPrefix "UNSAT" output then Unsat
-      else Unknown_Error
+      else Unknown_Error (elide_string 1000 output)
     end);
 
 fun solve_nun_problem {overlord, debug} prob =
