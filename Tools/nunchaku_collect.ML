@@ -34,7 +34,7 @@ sig
   | IQuotient of isa_type_spec
   | ICoData of BNF_Util.fp_kind * isa_co_data_spec list
   | IVal of term
-  | ICoPred of BNF_Util.fp_kind * isa_const_spec list
+  | ICoPred of BNF_Util.fp_kind * bool * isa_const_spec list
   | IRec of isa_const_spec list
   | ISpec of isa_consts_spec
   | IAxiom of term
@@ -77,7 +77,7 @@ datatype isa_command =
 | IQuotient of isa_type_spec
 | ICoData of BNF_Util.fp_kind * isa_co_data_spec list
 | IVal of term
-| ICoPred of BNF_Util.fp_kind * isa_const_spec list
+| ICoPred of BNF_Util.fp_kind * bool * isa_const_spec list
 | IRec of isa_const_spec list
 | ISpec of isa_consts_spec
 | IAxiom of term
@@ -437,7 +437,7 @@ fun keys_of _ (ITVal T) = [key_of_typ T]
   | keys_of _ (IQuotient {abs_typ, ...}) = [key_of_typ abs_typ]
   | keys_of _ (ICoData (_, specs)) = map (key_of_typ o #typ) specs
   | keys_of ctxt (IVal const) = [key_of_const ctxt const]
-  | keys_of ctxt (ICoPred (_, specs)) = map (key_of_const ctxt o #const) specs
+  | keys_of ctxt (ICoPred (_, _, specs)) = map (key_of_const ctxt o #const) specs
   | keys_of ctxt (IRec specs) = map (key_of_const ctxt o #const) specs
   | keys_of ctxt (ISpec {consts, ...}) = map (key_of_const ctxt) consts
   | keys_of _ (IAxiom _) = []
@@ -455,7 +455,7 @@ fun deps_of _ (ITVal _) = []
   | deps_of ctxt (IQuotient {wrt, ...}) = add_keys ctxt wrt []
   | deps_of ctxt (ICoData (_, specs)) = maps (co_data_spec_deps_of ctxt) specs
   | deps_of _ (IVal const) = add_type_keys (fastype_of const) []
-  | deps_of ctxt (ICoPred (_, specs)) =
+  | deps_of ctxt (ICoPred (_, _, specs)) =
     maps (const_spec_deps_of ctxt (map #const specs) o #props) specs
   | deps_of ctxt (IRec specs) = maps (const_spec_deps_of ctxt (map #const specs) o #props) specs
   | deps_of ctxt (ISpec spec) = consts_spec_deps_of ctxt spec
@@ -705,6 +705,7 @@ fun isa_problem_of_subgoal ctxt falsify assms0 subgoal0 =
                              SOME propss =>
                              [ICoPred (if classif = Spec_Rules.Inductive then BNF_Util.Least_FP
                                   else BNF_Util.Greatest_FP,
+                                false, (* TODO *)
                                 map2 (fn const => fn props => {const = const, props = props})
                                   consts propss)]
                            | NONE => specs ())
@@ -780,8 +781,9 @@ fun str_of_isa_command ctxt (ITVal T) = "type " ^ Syntax.string_of_typ ctxt T
   | str_of_isa_command ctxt (ICoData (fp, specs)) =
     BNF_Util.case_fp fp "data" "codata" ^ " " ^ str_of_and_list (str_of_isa_co_data_spec ctxt) specs
   | str_of_isa_command ctxt (IVal t) = "val " ^ str_of_isa_term_with_type ctxt t
-  | str_of_isa_command ctxt (ICoPred (fp, specs)) =
-    BNF_Util.case_fp fp "pred" "copred" ^ " " ^ str_of_and_list (str_of_isa_const_spec ctxt) specs
+  | str_of_isa_command ctxt (ICoPred (fp, wf, specs)) =
+    BNF_Util.case_fp fp "pred" "copred" ^ " " ^ (if wf then "[wf] " else "") ^
+    str_of_and_list (str_of_isa_const_spec ctxt) specs
   | str_of_isa_command ctxt (IRec specs) =
     "rec " ^ str_of_and_list (str_of_isa_const_spec ctxt) specs
   | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_consts_spec ctxt spec

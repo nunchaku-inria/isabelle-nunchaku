@@ -157,8 +157,10 @@ fun nun_problem_of_isa ctxt =
       | ICoData (fp, specs) =>
         BNF_Util.case_fp fp NData NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
       | IVal t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
-      | ICoPred (fp, specs) =>
-        BNF_Util.case_fp fp NPred NCopred (map (nun_const_spec_of_isa ctxt) specs)
+      | ICoPred (fp, wf, specs) =>
+        (if wf then curry NPred true
+         else if fp = BNF_Util.Least_FP then curry NPred false
+         else NCopred) (map (nun_const_spec_of_isa ctxt) specs)
       | IRec specs => NRec (map (nun_const_spec_of_isa ctxt) specs)
       | ISpec spec => NSpec (nun_consts_spec_of_isa ctxt spec)
       | IAxiom prop => NAxiom (nun_tm_of_isa ctxt prop)

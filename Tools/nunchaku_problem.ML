@@ -50,7 +50,7 @@ sig
   | NData of nun_co_data_spec list
   | NCodata of nun_co_data_spec list
   | NVal of tm * ty
-  | NPred of nun_const_spec list
+  | NPred of bool * nun_const_spec list
   | NCopred of nun_const_spec list
   | NRec of nun_const_spec list
   | NSpec of nun_consts_spec
@@ -151,7 +151,7 @@ datatype nun_command =
 | NData of nun_co_data_spec list
 | NCodata of nun_co_data_spec list
 | NVal of tm * ty
-| NPred of nun_const_spec list
+| NPred of bool * nun_const_spec list
 | NCopred of nun_const_spec list
 | NRec of nun_const_spec list
 | NSpec of nun_consts_spec
@@ -340,9 +340,9 @@ fun fold_map_nun_command_idents f (NTVal ty) =
     fold_map_tm_idents f tm
     ##>> fold_map_ty_idents f ty
     #>> NVal
-  | fold_map_nun_command_idents f (NPred specs) =
+  | fold_map_nun_command_idents f (NPred (wf, specs)) =
     fold_map (fold_map_nun_const_spec_idents f) specs
-    #>> NPred
+    #>> curry NPred wf
   | fold_map_nun_command_idents f (NCopred specs) =
     fold_map (fold_map_nun_const_spec_idents f) specs
     #>> NCopred
@@ -607,7 +607,8 @@ fun str_of_nun_command (NTVal ty) = "val " ^ str_of_tval ty
   | str_of_nun_command (NData specs) = "data " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NCodata specs) = "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
-  | str_of_nun_command (NPred specs) = "pred " ^ str_of_and_list str_of_nun_const_spec specs
+  | str_of_nun_command (NPred (wf, specs)) =
+    "pred " ^ (if wf then "[wf] " else "") ^ str_of_and_list str_of_nun_const_spec specs
   | str_of_nun_command (NCopred specs) = "copred " ^ str_of_and_list str_of_nun_const_spec specs
   | str_of_nun_command (NRec specs) = "rec " ^ str_of_and_list str_of_nun_const_spec specs
   | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_consts_spec spec
