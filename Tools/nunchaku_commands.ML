@@ -29,7 +29,6 @@ val default_default_params =
    ("mono", "smart"),
    ("overlord", "false"),
    ("show_consts", "false"),
-   ("show_skolems", "true"),
    ("specialize", "true"),
    ("spy", "false"),
    ("timeout", "30"),
@@ -43,7 +42,6 @@ val negated_params =
    ("dont_specialize", "specialize"),
    ("dont_spy", "spy"),
    ("hide_consts", "show_consts"),
-   ("hide_skolems", "show_skolems"),
    ("no_assms", "assms"),
    ("no_debug", "debug"),
    ("no_overlord", "overlord"),
@@ -55,7 +53,7 @@ val negated_params =
 fun is_known_raw_param s =
   AList.defined (op =) default_default_params s orelse
   AList.defined (op =) negated_params s orelse
-  member (op =) ["show_all", "whack", "eval", "need", "atoms", "expect"] s orelse
+  member (op =) ["whack", "eval", "need", "atoms", "expect"] s orelse
   exists (fn p => String.isPrefix (p ^ " ") s)
     ["finitize", "dont_finitize", "mono", "non_mono", "wf", "non_wf", "format", "atoms"];
 
@@ -79,9 +77,7 @@ fun normalize_raw_param (name, value) =
       | ["true"] => ["false"]
       | [] => ["false"]
       | _ => value))]
-  | NONE =>
-    if name = "show_all" then [("show_skolems", value), ("show_consts", value)]
-    else [(name, value)]);
+  | NONE => [(name, value)]);
 
 structure Data = Theory_Data
 (
@@ -193,7 +189,6 @@ fun extract_params ctxt mode default_params override_params =
     val timeout = lookup_time "timeout";
     val wf_timeout = lookup_time "wf_timeout";
     val multithread = mode = Normal andalso lookup_bool "multithread";
-    val show_skolems = debug orelse lookup_bool "show_skolems";
     val show_consts = debug orelse lookup_bool "show_consts";
     val evals = these (lookup_term_list_option_polymorphic "eval");
     val formats = lookup_ints_assigns read_term_polymorphic "format" 0;
@@ -210,9 +205,8 @@ fun extract_params ctxt mode default_params override_params =
       {wfs = wfs, finitizes = finitizes, monos = monos, merge_type_vars = merge_type_vars};
 
     val output_format_params =
-      {verbose = verbose, debug = debug, show_skolems = show_skolems, show_consts = show_consts,
-       max_potential = max_potential, max_genuine = max_genuine, evals = evals, atomss = atomss,
-       formats = formats};
+      {verbose = verbose, debug = debug, show_consts = show_consts, max_potential = max_potential,
+       max_genuine = max_genuine, evals = evals, atomss = atomss, formats = formats};
 
     val optimization_params =
       {specialize = specialize, whacks = whacks, multithread = multithread};

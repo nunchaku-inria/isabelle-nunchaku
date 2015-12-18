@@ -17,6 +17,17 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+fun rev' where
+  "rev' [] = []"
+| "rev' (x # xs) = rev' xs @ [x]"
+
+lemma "rev xs = rev' xs"
+nunchaku[overlord, timeout = 100]
+oops
+
+
+
+
 axiomatization nonzero where
   nz: "nonzero \<noteq> (0 :: nat)"
 
@@ -24,7 +35,7 @@ axiomatization where
   foo: "(undefined :: nat \<Rightarrow> nat) undefined = undefined"
 
 lemma "x \<noteq> y"
-nunchaku[card = 6]
+nunchaku[]
 
 
 (*

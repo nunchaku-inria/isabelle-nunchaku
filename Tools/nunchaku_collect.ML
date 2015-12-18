@@ -395,13 +395,13 @@ fun spec_rules_of ctxt const =
     fold process_spec specs NONE
   end;
 
-fun lhs_of_definition (Const (@{const_name Pure.eq}, _) $ t $ _) = t
-  | lhs_of_definition (@{const Trueprop} $ (Const (@{const_name HOL.eq}, _) $ t $ _)) = t;
+fun lhs_of_equation (Const (@{const_name Pure.eq}, _) $ t $ _) = t
+  | lhs_of_equation (@{const Trueprop} $ (Const (@{const_name HOL.eq}, _) $ t $ _)) = t;
 
 fun specialize_definition_type thy x def0 =
   let
     val def = specialize_type thy x def0;
-    val lhs = lhs_of_definition def;
+    val lhs = lhs_of_equation def;
   in
     if exists_Const (curry (op =) x) lhs then def else raise Fail "cannot specialize"
   end;
@@ -677,8 +677,10 @@ fun isa_problem_of_goal ctxt falsify goal0 =
                     is_quotient_rep ctxt x orelse is_copy_abs ctxt x orelse
                     is_copy_rep ctxt x then
                    (seens, prob)
+(*###
                  else if is_stale_copy_abs ctxt x orelse is_stale_copy_rep ctxt x then
-                   raise Fail "stale abs or rep function"
+                   raise Fail ("stale abs or rep function: " ^ s)
+*)
                  else
                    (case spec_rules_of ctxt t of
                      SOME (classif, consts, props0) =>

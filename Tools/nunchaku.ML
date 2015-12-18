@@ -25,7 +25,6 @@ sig
   type output_format_params =
     {verbose: bool,
      debug: bool,
-     show_skolems: bool,
      show_consts: bool,
      max_potential: int,
      max_genuine: int,
@@ -85,7 +84,6 @@ type scope_of_search_params =
 type output_format_params =
   {verbose: bool,
    debug: bool,
-   show_skolems: bool,
    show_consts: bool,
    max_potential: int,
    max_genuine: int,
@@ -144,7 +142,7 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, ove
       let
         val deadline = Time.+ (Time.now (), timeout);
 
-        val tool_params = {overlord = overlord, debug = debug};
+        val tool_params = {overlord = overlord, debug = debug, timeout = timeout};
 
         fun run () =
           let
@@ -172,11 +170,11 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
                          "\nIgnored axioms:\n" ^
                          cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms));
                        (quasi_genuineN, []))
-                  | Timed_Out => (print_nt "Time out"; (unknownN, []))
+                  | Timeout => (print_nt "Time out"; (unknownN, []))
                   | Nunchaku_Not_Found =>
                     (print_nt "External tool \"nunchaku\" not found"; (unknownN, []))
                   | CVC4_Not_Found => (print_nt "External tool \"cvc4\" not found"; (unknownN, []))
-                  | Unknown_Error msg => (print_nt ("Unknown error: " ^ msg); (unknownN, [])))
+                  | Unknown_Error (_, msg) => (print_nt ("Unknown error: " ^ msg); (unknownN, [])))
                 end);
           in
             if expect = "" orelse outcome_code = expect then outcome
@@ -185,7 +183,7 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
 
         val outcome as (outcome_code, _) =
           TimeLimit.timeLimit (Time.+ (timeout, timeout_slack)) run ()
-          handle TimeLimit.TimeOut => (print_nt "Nunchaku ran out of time"; (unknownN, []));
+          handle TimeLimit.TimeOut => (print_nt "Time out"; (unknownN, []));
       in
         if expect = "" orelse outcome_code = expect then outcome
         else error ("Unexpected outcome: " ^ quote outcome_code)

@@ -2,6 +2,7 @@ Isabelle frontend:
 
   * test records
   * cleanup in options and main driver
+    * test timeout option
 
   * parse models
 
@@ -11,7 +12,6 @@ Isabelle frontend:
 
 Middleware:
 
-  * declare var not constant for cardinality witness
   * leverage empty sorts
 
   * syntax for models
