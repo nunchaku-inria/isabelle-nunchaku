@@ -21,11 +21,9 @@ val default_default_params =
   [("assms", "true"),
    ("debug", "false"),
    ("falsify", "true"),
-   ("finitize", "smart"),
    ("format", "1"),
    ("max_genuine", "1"),
    ("max_potential", "1"),
-   ("merge_type_vars", "false"),
    ("mono", "smart"),
    ("overlord", "false"),
    ("show_consts", "false"),
@@ -37,9 +35,7 @@ val default_default_params =
    ("wf_timeout", "0.5")]
 
 val negated_params =
-  [("dont_finitize", "finitize"),
-   ("dont_merge_type_vars", "merge_type_vars"),
-   ("dont_specialize", "specialize"),
+  [("dont_specialize", "specialize"),
    ("dont_spy", "spy"),
    ("hide_consts", "show_consts"),
    ("no_assms", "assms"),
@@ -55,7 +51,7 @@ fun is_known_raw_param s =
   AList.defined (op =) negated_params s orelse
   member (op =) ["whack", "eval", "need", "atoms", "expect"] s orelse
   exists (fn p => String.isPrefix (p ^ " ") s)
-    ["finitize", "dont_finitize", "mono", "non_mono", "wf", "non_wf", "format", "atoms"];
+    ["mono", "non_mono", "wf", "non_wf", "format", "atoms"];
 
 fun check_raw_param (s, _) =
   if is_known_raw_param s then () else error ("Unknown parameter: " ^ quote s);
@@ -172,7 +168,6 @@ fun extract_params ctxt mode default_params override_params =
       AList.lookup (op =) raw_params #> Option.map (map read_term_polymorphic);
     val read_const_polymorphic = read_term_polymorphic #> dest_Const;
 
-    val finitizes = lookup_bool_option_assigns read_type_polymorphic "finitize";
     val monos =
       if mode = Auto_Try then [(NONE, SOME true)]
       else lookup_bool_option_assigns read_type_polymorphic "mono";
@@ -184,7 +179,6 @@ fun extract_params ctxt mode default_params override_params =
     val spy = getenv "NUNCHAKU_SPY" = "yes" orelse lookup_bool "spy";
     val assms = lookup_bool "assms";
     val whacks = lookup_term_list_option_polymorphic "whack" |> these;
-    val merge_type_vars = lookup_bool "merge_type_vars";
     val specialize = lookup_bool "specialize";
     val timeout = lookup_time "timeout";
     val wf_timeout = lookup_time "wf_timeout";
@@ -202,7 +196,7 @@ fun extract_params ctxt mode default_params override_params =
        expect = expect};
 
     val scope_of_search_params =
-      {wfs = wfs, finitizes = finitizes, monos = monos, merge_type_vars = merge_type_vars};
+      {wfs = wfs, monos = monos};
 
     val output_format_params =
       {verbose = verbose, debug = debug, show_consts = show_consts, max_potential = max_potential,

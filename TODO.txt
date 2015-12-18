@@ -2,7 +2,6 @@ Isabelle frontend:
 
   * test records
   * cleanup in options and main driver
-    * test timeout option
 
   * parse models
 
