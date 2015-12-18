@@ -53,7 +53,7 @@ sig
   val unknownN: string
   val no_nunchakuN: string
 
-  val run_chaku_on_subgoal: Proof.state -> params -> mode -> int -> int -> string * string list
+  val run_chaku_on_subgoal: Proof.state -> params -> mode -> int -> string * string list
 end;
 
 structure Nunchaku : NUNCHAKU =
@@ -114,9 +114,10 @@ val no_nunchakuN = "no_nunchaku";
 (* Give the soft timeout a chance. *)
 val timeout_slack = seconds 1.0;
 
-fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, overlord, expect, ...},
-    output_format_params = {debug, ...}, timeout_params = {timeout, ...}, ...}) mode i n step
-    def_assm_ts nondef_assm_ts goal =
+fun run_chaku_on_prop state
+    (params as {mode_of_operation_params = {falsify, assms, overlord, expect, ...},
+       output_format_params = {debug, ...}, timeout_params = {timeout, ...}, ...})
+    mode i n all_assms subgoal =
   let
     val ctxt = Proof.context_of state;
 
@@ -134,7 +135,8 @@ fun run_chaku_on_prop state (params as {mode_of_operation_params = {falsify, ove
 
     fun run () =
       let
-        val (too_meta, poly_axioms, isa_prob) = isa_problem_of_goal ctxt falsify goal;
+        val (too_meta, poly_axioms, isa_prob) =
+          isa_problem_of_subgoal ctxt falsify (if assms then all_assms else []) subgoal;
 val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
 
         val outcome as (outcome_code, _) =
@@ -186,19 +188,19 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
     else error ("Unexpected outcome: " ^ quote outcome_code)
   end;
 
-fun run_chaku_on_subgoal state params mode i step =
+fun run_chaku_on_subgoal state params mode i =
   let
     val ctxt = Proof.context_of state;
-    val t = state |> Proof.raw_goal |> #goal |> Thm.prop_of;
+    val goal = Thm.prop_of (#goal (Proof.raw_goal state));
   in
-    (case Logic.count_prems t of
+    (case Logic.count_prems goal of
       0 => (writeln "No subgoal!"; (noneN, []))
     | n =>
       let
-        val t = Logic.goal_params t i |> fst;
-        val assms = map Thm.term_of (Assumption.all_assms_of ctxt);
+        val subgoal = fst (Logic.goal_params goal i);
+        val all_assms = map Thm.term_of (Assumption.all_assms_of ctxt);
       in
-        run_chaku_on_prop state params mode i n step [] assms t
+        run_chaku_on_prop state params mode i n all_assms subgoal
       end)
   end;
 

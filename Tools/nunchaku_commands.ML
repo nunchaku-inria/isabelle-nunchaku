@@ -228,7 +228,7 @@ val parse_value =
 val parse_param = parse_key -- Scan.optional (@{keyword "="} |-- parse_value) [];
 val parse_params = Scan.optional (@{keyword "["} |-- Parse.list parse_param --| @{keyword "]"}) [];
 
-fun run_chaku override_params mode i step state =
+fun run_chaku override_params mode i state =
   let
     val thy = Proof.theory_of state;
     val ctxt = Proof.context_of state;
@@ -236,7 +236,7 @@ fun run_chaku override_params mode i step state =
     val params = extract_params ctxt mode (default_raw_params thy) override_params;
   in
     (if mode = Auto_Try then perhaps o try else fn f => fn x => f x)
-      (fn _ => run_chaku_on_subgoal state params mode i step) (unknownN, [])
+      (fn _ => run_chaku_on_subgoal state params mode i) (unknownN, [])
     |> `(fn (outcome_code, _) => outcome_code = genuineN)
   end;
 
@@ -254,11 +254,10 @@ fun nunchaku_params_trans params =
 
 val _ =
   Outer_Syntax.command @{command_keyword nunchaku}
-    "try to find a counterexample for a given subgoal using Nunchaku"
+    "try to find a countermodel using Nunchaku"
     (parse_params -- Scan.optional Parse.nat 1 >> (fn (params, i) =>
-      Toplevel.keep_proof (fn state =>
-        ignore (run_chaku params Normal i (Toplevel.proof_position_of state)
-          (Toplevel.proof_of state)))));
+       Toplevel.keep_proof (fn state =>
+         ignore (run_chaku params Normal i (Toplevel.proof_of state)))));
 
 val _ =
   Outer_Syntax.command @{command_keyword nunchaku_params}

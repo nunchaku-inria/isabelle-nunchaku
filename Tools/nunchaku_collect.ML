@@ -42,7 +42,8 @@ sig
 
   type isa_problem = isa_command list list
 
-  val isa_problem_of_goal: Proof.context -> bool -> term -> term option * term list * isa_problem
+  val isa_problem_of_subgoal: Proof.context -> bool -> term list -> term ->
+    term option * term list * isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -568,7 +569,7 @@ fun partition_props [_] props = SOME [props]
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
 val axioms_max_depth = 255
 
-fun isa_problem_of_goal ctxt falsify goal0 =
+fun isa_problem_of_subgoal ctxt falsify assms0 subgoal0 =
   let
     val thy = Proof_Context.theory_of ctxt;
 
@@ -731,15 +732,15 @@ fun isa_problem_of_goal ctxt falsify goal0 =
       |> List.partition has_polymorphism;
   in
     let
-      val mono_axioms = map (preprocess_prop falsify ctxt) mono_axioms0;
-      val goal = preprocess_prop falsify ctxt goal0;
+      val mono_axioms_and_assms = map (preprocess_prop false ctxt) (mono_axioms0 @ assms0);
+      val subgoal = preprocess_prop falsify ctxt subgoal0;
       val seens = ([], [], []);
     in
       (NONE, poly_axioms,
        (seens,
-        map IAxiom mono_axioms @
-        [IGoal goal])
-       |> fold (consider_term 0) (goal :: mono_axioms)
+        map IAxiom mono_axioms_and_assms @
+        [IGoal subgoal])
+       |> fold (consider_term 0) (subgoal :: mono_axioms_and_assms)
        |> snd
        |> rev (* prettier *)
        |> sort_isa_problem_topologically ctxt

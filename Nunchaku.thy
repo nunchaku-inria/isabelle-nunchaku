@@ -21,8 +21,10 @@ fun rev' where
   "rev' [] = []"
 | "rev' (x # xs) = rev' xs @ [x]"
 
-lemma "rev xs = rev' xs"
-nunchaku[overlord, timeout = 1]
+lemma
+  assumes "xs = ys"
+  shows "rev xs ~= rev ys"
+nunchaku[overlord, timeout = 1, satisfy]
 oops
 
 
