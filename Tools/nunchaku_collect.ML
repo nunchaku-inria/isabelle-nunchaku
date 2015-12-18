@@ -678,10 +678,8 @@ fun isa_problem_of_subgoal ctxt falsify assms0 subgoal0 =
                     is_quotient_rep ctxt x orelse is_copy_abs ctxt x orelse
                     is_copy_rep ctxt x then
                    (seens, prob)
-(*###
                  else if is_stale_copy_abs ctxt x orelse is_stale_copy_rep ctxt x then
                    raise Fail ("stale abs or rep function: " ^ s)
-*)
                  else
                    (case spec_rules_of ctxt t of
                      SOME (classif, consts, props0) =>
