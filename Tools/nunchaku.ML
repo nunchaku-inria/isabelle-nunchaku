@@ -17,10 +17,7 @@ sig
      expect: string}
 
   type scope_of_search_params =
-    {cards_assigns: (typ option * int list) list,
-     maxes_assigns: ((string * typ) option * int list) list,
-     wfs: ((string * typ) option * bool option) list,
-     iters_assigns: ((string * typ) option * int list) list,
+    {wfs: ((string * typ) option * bool option) list,
      finitizes: (typ option * bool option) list,
      monos: (typ option * bool option) list,
      merge_type_vars: bool}
@@ -80,10 +77,7 @@ type mode_of_operation_params =
    expect: string};
 
 type scope_of_search_params =
-  {cards_assigns: (typ option * int list) list,
-   maxes_assigns: ((string * typ) option * int list) list,
-   wfs: ((string * typ) option * bool option) list,
-   iters_assigns: ((string * typ) option * int list) list,
+  {wfs: ((string * typ) option * bool option) list,
    finitizes: (typ option * bool option) list,
    monos: (typ option * bool option) list,
    merge_type_vars: bool};

@@ -19,12 +19,10 @@ type raw_param = string * string list;
 
 val default_default_params =
   [("assms", "true"),
-   ("card", "1-10"),
    ("debug", "false"),
    ("falsify", "true"),
    ("finitize", "smart"),
    ("format", "1"),
-   ("iter", "0,1,2,4,8,12,16,20,24,28"),
    ("max_genuine", "1"),
    ("max_potential", "1"),
    ("merge_type_vars", "false"),
@@ -57,10 +55,9 @@ val negated_params =
 fun is_known_raw_param s =
   AList.defined (op =) default_default_params s orelse
   AList.defined (op =) negated_params s orelse
-  member (op =) ["max", "show_all", "whack", "eval", "need", "atoms", "expect"] s orelse
+  member (op =) ["show_all", "whack", "eval", "need", "atoms", "expect"] s orelse
   exists (fn p => String.isPrefix (p ^ " ") s)
-    ["card", "max", "iter", "finitize", "dont_finitize", "mono", "non_mono", "wf", "non_wf",
-     "format", "atoms"];
+    ["finitize", "dont_finitize", "mono", "non_mono", "wf", "non_wf", "format", "atoms"];
 
 fun check_raw_param (s, _) =
   if is_known_raw_param s then () else error ("Unknown parameter: " ^ quote s);
@@ -179,9 +176,6 @@ fun extract_params ctxt mode default_params override_params =
       AList.lookup (op =) raw_params #> Option.map (map read_term_polymorphic);
     val read_const_polymorphic = read_term_polymorphic #> dest_Const;
 
-    val cards_assigns = lookup_ints_assigns read_type_polymorphic "card" 1;
-    val maxes_assigns = lookup_ints_assigns read_const_polymorphic "max" ~1;
-    val iters_assigns = lookup_ints_assigns read_const_polymorphic "iter" 0;
     val finitizes = lookup_bool_option_assigns read_type_polymorphic "finitize";
     val monos =
       if mode = Auto_Try then [(NONE, SOME true)]
@@ -213,9 +207,7 @@ fun extract_params ctxt mode default_params override_params =
        expect = expect};
 
     val scope_of_search_params =
-      {cards_assigns = cards_assigns, maxes_assigns = maxes_assigns, wfs = wfs,
-       iters_assigns = iters_assigns, finitizes = finitizes, monos = monos,
-       merge_type_vars = merge_type_vars};
+      {wfs = wfs, finitizes = finitizes, monos = monos, merge_type_vars = merge_type_vars};
 
     val output_format_params =
       {verbose = verbose, debug = debug, show_skolems = show_skolems, show_consts = show_consts,
