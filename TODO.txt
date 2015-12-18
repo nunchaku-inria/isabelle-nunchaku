@@ -1,6 +1,5 @@
 Isabelle frontend:
 
-  * implement 'spy'
   * port other Nitpick tests
 
   * parse models

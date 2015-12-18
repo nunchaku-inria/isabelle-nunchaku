@@ -23,6 +23,7 @@ sig
   val strip_fun_type: typ -> typ list * typ
   val attach_typeS: term -> term
   val specialize_type: theory -> string * typ -> term -> term
+  val spying: bool -> (unit -> Proof.state * int * string) -> unit
 end;
 
 structure Nunchaku_Util : NUNCHAKU_UTIL =
@@ -65,5 +66,24 @@ val attach_typeS =
       | T => T));
 
 val specialize_type = ATP_Util.specialize_type;
+
+val spying_version = "a"
+
+val hackish_string_of_term = Sledgehammer_Util.hackish_string_of_term;
+
+fun spying spy f =
+  if spy then
+    let
+      val (state, i, message) = f ();
+      val ctxt = Proof.context_of state;
+      val goal = Logic.get_goal (Thm.prop_of (#goal (Proof.goal state))) i;
+      val hash =
+        String.substring (SHA1.rep (SHA1.digest (hackish_string_of_term ctxt goal)), 0, 12);
+    in
+      File.append (Path.explode "$ISABELLE_HOME_USER/spy_nunchaku")
+        (spying_version ^ " " ^ timestamp () ^ ": " ^ hash ^ ": " ^ message ^ "\n")
+    end
+  else
+    ();
 
 end;

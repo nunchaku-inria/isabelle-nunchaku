@@ -24,7 +24,7 @@ fun rev' where
 lemma
   assumes "xs = ys"
   shows "rev xs ~= rev ys"
-nunchaku[overlord, timeout = 1, satisfy]
+nunchaku[overlord, timeout = 1, satisfy, spy]
 oops
 
 
