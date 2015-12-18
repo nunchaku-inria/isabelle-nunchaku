@@ -1,6 +1,5 @@
 Isabelle frontend:
 
-  * well-foundedness check
   * port other Nitpick tests
 
   * parse models
