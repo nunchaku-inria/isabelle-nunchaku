@@ -75,28 +75,21 @@ fun uncached_solve_nun_problem overlord prob =
     end);
 
 fun solve_nun_problem {overlord, debug} prob =
-  let
-    fun solve_now () =
-      uncached_solve_nun_problem overlord prob;
-  in
-    if overlord orelse debug then
-      solve_now ()
-    else
-      (case AList.lookup (op =) (the_list (Synchronized.value cached_outcome)) prob of
-        SOME outcome => outcome
-      | NONE =>
-        let
-          val outcome = solve_now ();
+  (case (overlord orelse debug,
+      AList.lookup (op =) (the_list (Synchronized.value cached_outcome)) prob) of
+    (false, SOME outcome) => outcome
+  | _ =>
+    let
+      val outcome = uncached_solve_nun_problem overlord prob;
 
-          fun update_cache () =
-            Synchronized.change cached_outcome (K (SOME (prob, outcome)));
-        in
-          (case outcome of
-            Unsat => update_cache ()
-          | Sat _ => update_cache ()
-          | _ => ());
-          outcome
-        end)
-  end;
+      fun update_cache () =
+        Synchronized.change cached_outcome (K (SOME (prob, outcome)));
+    in
+      (case outcome of
+        Unsat => update_cache ()
+      | Sat _ => update_cache ()
+      | _ => ());
+      outcome
+    end);
 
 end;
