@@ -287,14 +287,6 @@ lemma "\<And>x. f x y = f y x"
 nunchaku [expect = genuine]
 oops
 
-lemma "I = (\<lambda>x. x) \<Longrightarrow> Pure.all P \<equiv> Pure.all (\<lambda>x. P (I x))"
-nunchaku [expect = none]
-by auto
-
-lemma "x \<equiv> (op \<equiv>) \<Longrightarrow> False"
-nunchaku [expect = genuine]
-oops
-
 lemma "P x \<equiv> P x"
 nunchaku [expect = none]
 by auto
@@ -304,14 +296,6 @@ nunchaku [expect = none]
 by auto
 
 lemma "P x = Q x \<Longrightarrow> P x \<equiv> Q x"
-nunchaku [expect = none]
-by auto
-
-lemma "x \<equiv> (op \<Longrightarrow>) \<Longrightarrow> False"
-nunchaku [expect = genuine]
-oops
-
-lemma "I \<equiv> (\<lambda>x. x) \<Longrightarrow> (op \<Longrightarrow> x) \<equiv> (\<lambda>y. (op \<Longrightarrow> x (I y)))"
 nunchaku [expect = none]
 by auto
 
@@ -367,10 +351,6 @@ lemma "\<exists>!x. x = undefined"
 nunchaku [expect = none]
 by auto
 
-lemma "x = All \<Longrightarrow> False"
-nunchaku [dont_box, expect = genuine]
-oops
-
 lemma "\<forall>x. f x y = f x y"
 nunchaku [expect = none]
 oops
@@ -388,7 +368,7 @@ nunchaku [expect = genuine]
 oops
 
 lemma "x = Ex \<Longrightarrow> False"
-nunchaku [dont_box, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 lemma "\<exists>x. f x y = f x y"
