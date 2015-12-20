@@ -116,10 +116,10 @@ fun add_keys ctxt t =
   fold_aterms (add_aterm_keys ctxt) t
   #> fold_types add_type_keys t;
 
-fun close_form t =
+fun close_form except t =
   fold (fn ((s, i), T) => fn t' =>
       HOLogic.all_const T $ Abs (s, T, abstract_over (Var ((s, i), T), t')))
-    (Term.add_vars t []) t;
+    (Term.add_vars t [] |> subtract (op =) except) t;
 
 val basic_defs =
   @{thms Ex1_def Let_def case_bool_if} @
@@ -144,7 +144,7 @@ fun preprocess_prop falsify ctxt t =
     |> tap (fn t' => fastype_of t' = HOLogic.boolT orelse raise TOO_META t)
     |> falsify ? HOLogic.mk_not
     |> unfold_basic_def ctxt
-    |> close_form;
+    |> close_form [];
 
 val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 
@@ -630,28 +630,22 @@ fun triple_for_intro_rule ctxt x rule =
       |>> map (Object_Logic.atomize_term ctxt)
       ||> Object_Logic.atomize_term ctxt;
 
-    val (main, side) = List.partition (exists_Const (curry (op =) x)) prems;
+    val (mains, sides) = List.partition (exists_Const (curry (op =) x)) prems;
 
     val is_right_head = curry (op aconv) (Const x) o head_of;
   in
-    if forall is_right_head main then (side, main, concl) else raise NO_TRIPLE ()
+    if forall is_right_head mains then (sides, mains, concl) else raise NO_TRIPLE ()
   end;
 
 val tuple_for_args = HOLogic.mk_tuple o snd o strip_comb;
 
-fun wf_constraint_for rel side concl main =
-  let
-    val core = HOLogic.mk_mem (HOLogic.mk_prod (apply2 tuple_for_args (main, concl)), Var rel);
-    val t = List.foldl HOLogic.mk_imp core side;
-    val vars = remove (op =) rel (Term.add_vars t []);
-  in
-    Library.foldl (fn (t', ((x, j), T)) =>
-        HOLogic.all_const T $ Abs (x, T, abstract_over (Var ((x, j), T), t')))
-      (t, vars)
-  end;
+fun wf_constraint_for rel sides concl mains =
+  HOLogic.mk_mem (HOLogic.mk_prod (apply2 tuple_for_args (mains, concl)), Var rel)
+  |> fold (curry HOLogic.mk_imp) sides
+  |> close_form [rel];
 
-fun wf_constraint_for_triple rel (side, main, concl) =
-  map (wf_constraint_for rel side concl) main
+fun wf_constraint_for_triple rel (sides, mains, concl) =
+  map (wf_constraint_for rel sides concl) mains
   |> foldr1 HOLogic.mk_conj;
 
 fun terminates_by ctxt timeout goal tac =
