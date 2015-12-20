@@ -15,6 +15,7 @@ sig
   val str_of_and_list: ('a -> string) -> 'a list -> string
   val parse_bool_option: bool -> string -> string -> bool option
   val parse_time: string -> string -> Time.time
+  val string_of_time: Time.time -> string
   val simplify_spaces: string -> string
   val ascii_of: string -> string
   val unascii_of: string -> string
@@ -48,6 +49,7 @@ fun str_of_and_list str_of_elem =
 
 val parse_bool_option = Sledgehammer_Util.parse_bool_option;
 val parse_time = Sledgehammer_Util.parse_time;
+val string_of_time = ATP_Util.string_of_time;
 val simplify_spaces = Sledgehammer_Util.simplify_spaces;
 val ascii_of = ATP_Problem_Generate.ascii_of;
 val unascii_of = ATP_Problem_Generate.unascii_of;

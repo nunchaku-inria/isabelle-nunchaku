@@ -227,14 +227,12 @@ primrec subst\<^sub>1 where
 lemma "\<not> loose t 0 \<Longrightarrow> subst\<^sub>1 \<sigma> t = t"
 nunchaku [verbose, expect = genuine]
 nunchaku [eval = "subst\<^sub>1 \<sigma> t", expect = genuine]
-(* nunchaku [dont_box, expect = unknown] *)
 oops
 
 primrec subst\<^sub>2 where
-"subst\<^sub>2 \<sigma> (Var j) = \<sigma> j" |
-"subst\<^sub>2 \<sigma> (Lam t) =
- Lam (subst\<^sub>2 (\<lambda>n. case n of 0 \<Rightarrow> Var 0 | Suc m \<Rightarrow> lift (\<sigma> m) 0) t)" |
-"subst\<^sub>2 \<sigma> (App t u) = App (subst\<^sub>2 \<sigma> t) (subst\<^sub>2 \<sigma> u)"
+  "subst\<^sub>2 \<sigma> (Var j) = \<sigma> j"
+| "subst\<^sub>2 \<sigma> (Lam t) = Lam (subst\<^sub>2 (\<lambda>n. case n of 0 \<Rightarrow> Var 0 | Suc m \<Rightarrow> lift (\<sigma> m) 0) t)"
+| "subst\<^sub>2 \<sigma> (App t u) = App (subst\<^sub>2 \<sigma> t) (subst\<^sub>2 \<sigma> u)"
 
 lemma "\<not> loose t 0 \<Longrightarrow> subst\<^sub>2 \<sigma> t = t"
 nunchaku [expect = none]
@@ -248,7 +246,6 @@ nunchaku [verbose, expect = genuine]
 oops
 
 lemma "\<exists>g. \<forall>x :: 'b. g (f x) = x \<Longrightarrow> \<forall>y :: 'a. \<exists>x. y = f x"
-nunchaku [mono, expect = none]
 nunchaku [expect = genuine]
 oops
 
@@ -264,7 +261,7 @@ lemma "n \<in> reach \<Longrightarrow> 2 dvd n"
 (* nunchaku *)
 apply (induct set: reach)
   apply auto
- nunchaku [bits = 1-4, expect = none]
+ nunchaku [timeout = 5, expect = unknown]
  apply (thin_tac "n \<in> reach")
  nunchaku [expect = genuine]
 oops
@@ -273,7 +270,7 @@ lemma "n \<in> reach \<Longrightarrow> 2 dvd n \<and> n \<noteq> 0"
 (* nunchaku *)
 apply (induct set: reach)
   apply auto
- nunchaku [bits = 1-4, expect = none]
+ nunchaku [timeout = 5, expect = unknown]
  apply (thin_tac "n \<in> reach")
  nunchaku [expect = genuine]
 oops

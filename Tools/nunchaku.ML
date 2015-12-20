@@ -123,17 +123,17 @@ val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state
     ({mode_of_operation_params = {falsify, assms, spy, overlord, expect},
-      scope_of_search_params = {wfs, ...}, output_format_params = {debug, ...},
+      scope_of_search_params = {wfs, ...}, output_format_params = {verbose, debug, ...},
       timeout_params = {timeout, wf_timeout}, ...})
     mode i all_assms subgoal =
   let
     val ctxt = Proof.context_of state;
 
+    val timer = Timer.startRealTimer ()
+
     val print = writeln;
-    val print_n =
-      (case mode of
-        Normal => writeln
-      | _ => K ());
+    val print_n = if mode = Normal then writeln else K ();
+    fun print_v f = if verbose then writeln (f ()) else ();
 
     val das_wort_Model = if falsify then "Countermodel" else "Model";
     val das_wort_model = if falsify then "countermodel" else "model";
@@ -203,6 +203,8 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
     val outcome as (outcome_code, _) =
       TimeLimit.timeLimit (Time.+ (timeout, timeout_slack)) run ()
       handle TimeLimit.TimeOut => (print_n "Time out"; (unknownN, []));
+
+    val _ = print_v (fn () => "Total time: " ^ string_of_time (Timer.checkRealTimer timer));
 
     val _ = spying spy (fn () => (state, i, "outcome: " ^ outcome_code));
   in
