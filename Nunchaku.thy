@@ -18,6 +18,12 @@ ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
 (*
+declare [[ML_exception_trace]]
+
+lemma "p (A::'a set) \<Longrightarrow> finite (Y::bool set)"
+nunchaku
+oops
+
 lemma "finite (A :: ('a option) set) \<Longrightarrow> P A"
 nunchaku
 

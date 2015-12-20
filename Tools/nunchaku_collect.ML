@@ -432,10 +432,10 @@ fun spec_rules_of ctxt (x as (s, T)) =
 
     val specs =
       if s = @{const_name The} then
-        [(Spec_Rules.Unknown, ([Logic.varify_types_global @{term The}], [@{thm theI_unique}]))]
+        [(Spec_Rules.Unknown, ([Logic.varify_global @{term The}], [@{thm theI_unique}]))]
       else if s = @{const_name finite} andalso is_type_surely_finite ctxt T then
-        [(Spec_Rules.Equational, ([Logic.varify_types_global @{term finite}],
-           [Skip_Proof.make_thm thy (Logic.varify_types_global @{prop "finite A = True"})]))]
+        [(Spec_Rules.Equational, ([Logic.varify_global @{term finite}],
+           [Skip_Proof.make_thm thy (Logic.varify_global @{prop "finite A = True"})]))]
       else
         Spec_Rules.retrieve ctxt const
         |> sort (classif_ord o apply2 fst);
