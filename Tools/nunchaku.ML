@@ -148,7 +148,7 @@ val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
         val outcome as (outcome_code, _) =
           (case too_meta of
             SOME t =>
-            (print_n ("Problem too meta for Nunchaku (because of proposition " ^
+            (print_n ("Problem too meta for Nunchaku (because of proposition\n" ^
                Syntax.string_of_term ctxt t ^ ")"); (unknownN, []))
           | NONE =>
             let

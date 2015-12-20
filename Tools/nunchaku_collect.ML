@@ -823,23 +823,21 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
 
     val (poly_axioms, mono_axioms0) = orphan_axioms_of ctxt
       |> List.partition has_polymorphism;
+
+    val mono_axioms_and_some_assms =
+      map (preprocess_prop false ctxt) (mono_axioms0 @ some_assms0);
+    val subgoal = preprocess_prop falsify ctxt subgoal0;
+    val seens = ([], [], []);
   in
-    let
-      val mono_axioms_and_some_assms =
-        map (preprocess_prop false ctxt) (mono_axioms0 @ some_assms0);
-      val subgoal = preprocess_prop falsify ctxt subgoal0;
-      val seens = ([], [], []);
-    in
-      (NONE, poly_axioms,
-       (seens, map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal])
-       |> fold (consider_term 0) (subgoal :: mono_axioms_and_some_assms)
-       |> snd
-       |> rev (* prettier *)
-       |> sort_isa_problem_topologically ctxt
-       |> group_isa_commands)
-      handle TOO_META t => (SOME t, poly_axioms, [[IGoal @{const False}]])
-    end
-  end;
+    (NONE, poly_axioms,
+     (seens, map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal])
+     |> fold (consider_term 0) (subgoal :: mono_axioms_and_some_assms)
+     |> snd
+     |> rev (* prettier *)
+     |> sort_isa_problem_topologically ctxt
+     |> group_isa_commands)
+  end
+  handle TOO_META t => (SOME t, [], [[IGoal @{const False}]]);
 
 fun str_of_isa_term_with_type ctxt t =
   Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);

@@ -8,11 +8,11 @@ Examples featuring Nunchaku's functional core.
 section {* Examples Featuring Nunchaku's Functional Core *}
 
 theory Core_Nuns
-imports Main
+imports "../Nunchaku"
 begin
 
-nunchaku_params [verbose, max_potential = 0,
-                timeout = 240]
+nunchaku_params [verbose, max_potential = 0, timeout = 240]
+
 
 subsection {* Curry in a Hurry *}
 
@@ -36,6 +36,7 @@ lemma "case_prod (\<lambda>x y. f (x, y)) = f"
 nunchaku [expect = none]
 by auto
 
+
 subsection {* Representations *}
 
 lemma "\<exists>f. f = (\<lambda>x. x) \<and> f y = y"
@@ -55,7 +56,7 @@ lemma "P (\<lambda>x. x)"
 nunchaku [expect = genuine]
 oops
 
-lemma "{(a::'a\<times>'a, b::'b)}^-1 = {(b, a)}"
+lemma "{(a :: 'a \<times> 'a, b :: 'b)}^-1 = {(b, a)}"
 nunchaku [expect = none]
 by auto
 
@@ -67,11 +68,11 @@ lemma "\<exists>P. P = Id"
 nunchaku [expect = none]
 by auto
 
-lemma "(a::'a\<Rightarrow>'b, a) \<in> Id\<^sup>*"
+lemma "(a :: 'a \<Rightarrow> 'b, a) \<in> Id\<^sup>*"
 nunchaku [expect = none]
 by auto
 
-lemma "(a::'a\<times>'a, a) \<in> Id\<^sup>* \<union> {(a, b)}\<^sup>*"
+lemma "(a :: 'a \<times> 'a, a) \<in> Id\<^sup>* \<union> {(a, b)}\<^sup>*"
 nunchaku [expect = none]
 by auto
 
@@ -79,11 +80,11 @@ lemma "(a, a) \<in> Id"
 nunchaku [expect = none]
 by (auto simp: Id_def)
 
-lemma "((a::'a, b::'a), (a, b)) \<in> Id"
+lemma "((a :: 'a, b :: 'a), (a, b)) \<in> Id"
 nunchaku [expect = none]
 by (auto simp: Id_def)
 
-lemma "(x::'a\<times>'a) \<in> UNIV"
+lemma "(x :: 'a \<times> 'a) \<in> UNIV"
 nunchaku [expect = none]
 sorry
 
@@ -112,14 +113,11 @@ lemma "{a, b} = {b}"
 nunchaku [expect = genuine]
 oops
 
-lemma "(a::'a\<times>'a, a::'a\<times>'a) \<in> R"
+lemma "(a :: 'a \<times> 'a, a :: 'a \<times> 'a) \<in> R"
 nunchaku [expect = genuine]
-nunchaku [expect = genuine]
-nunchaku [dont_box, expect = genuine]
 oops
 
-lemma "f (g::'a\<Rightarrow>'a) = x"
-nunchaku [dont_box, expect = genuine]
+lemma "f (g :: 'a \<Rightarrow> 'a) = x"
 nunchaku [expect = genuine]
 oops
 
@@ -131,7 +129,7 @@ lemma "f (a, a) = f (c, d)"
 nunchaku [expect = genuine]
 oops
 
-lemma "(x::'a) = (\<lambda>a. \<lambda>b. \<lambda>c. if c then a else b) x x True"
+lemma "(x :: 'a) = (\<lambda>a. \<lambda>b. \<lambda>c. if c then a else b) x x True"
 nunchaku [expect = none]
 by auto
 
@@ -143,7 +141,7 @@ lemma "f = case_prod"
 nunchaku [expect = genuine]
 oops
 
-lemma "(A::'a\<times>'a, B::'a\<times>'a) \<in> R \<Longrightarrow> (A, B) \<in> R"
+lemma "(A :: 'a \<times> 'a, B :: 'a \<times> 'a) \<in> R \<Longrightarrow> (A, B) \<in> R"
 nunchaku [expect = none]
 by auto
 
@@ -152,33 +150,31 @@ lemma "(A, B) \<in> R \<or> (\<exists>C. (A, C) \<in> R \<and> (C, B) \<in> R) \
 nunchaku [expect = none]
 by auto
 
-lemma "f = (\<lambda>x::'a\<times>'b. x)"
+lemma "f = (\<lambda>x :: 'a \<times> 'b. x)"
 nunchaku [expect = genuine]
 oops
+
 
 subsection {* Quantifiers *}
 
 lemma "x = y"
-nunchaku [card 'a = 1, expect = none]
-nunchaku [card 'a = 100, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 lemma "\<forall>x. x = y"
-nunchaku [card 'a = 1, expect = none]
-nunchaku [card 'a = 100, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>x::'a \<Rightarrow> bool. x = y"
-nunchaku [card 'a = 1, expect = genuine]
-nunchaku [card 'a = 100, expect = genuine]
+lemma "\<forall>x :: 'a \<Rightarrow> bool. x = y"
+nunchaku [expect = genuine]
 oops
 
-lemma "\<exists>x::'a \<Rightarrow> bool. x = y"
-nunchaku [card 'a = 1-15, expect = none]
+lemma "\<exists>x :: 'a \<Rightarrow> bool. x = y"
+nunchaku [expect = unknown]
 by auto
 
-lemma "\<exists>x y::'a \<Rightarrow> bool. x = y"
-nunchaku [expect = none]
+lemma "\<exists>x y :: 'a \<Rightarrow> bool. x = y"
+nunchaku [expect = unknown]
 by auto
 
 lemma "\<forall>x. \<exists>y. f x y = f x (g x)"
@@ -193,66 +189,55 @@ lemma "\<forall>u. \<exists>v. \<forall>w. \<exists>x. f u v w x = f u (g u w) w
 nunchaku [expect = genuine]
 oops
 
-lemma "\<forall>u. \<exists>v. \<forall>w. \<exists>x. \<forall>y. \<exists>z.
-       f u v w x y z = f u (g u) w (h u w) y (k u w y)"
-nunchaku [expect = none]
-sorry
-
-lemma "\<forall>u. \<exists>v. \<forall>w. \<exists>x. \<forall>y. \<exists>z.
-       f u v w x y z = f u (g u) w (h u w y) y (k u w y)"
-nunchaku [expect = genuine]
-oops
-
-lemma "\<forall>u. \<exists>v. \<forall>w. \<exists>x. \<forall>y. \<exists>z.
-       f u v w x y z = f u (g u w) w (h u w) y (k u w y)"
-nunchaku [expect = genuine]
-oops
-
-lemma "\<forall>u::'a \<times> 'b. \<exists>v::'c. \<forall>w::'d. \<exists>x::'e \<times> 'f.
-       f u v w x = f u (g u) w (h u w)"
-nunchaku [expect = none]
-sorry
-
-lemma "\<forall>u::'a \<times> 'b. \<exists>v::'c. \<forall>w::'d. \<exists>x::'e \<times> 'f.
-       f u v w x = f u (g u w) w (h u)"
-nunchaku [dont_box, expect = genuine]
-oops
-
-lemma "\<forall>u::'a \<Rightarrow> 'b. \<exists>v::'c. \<forall>w::'d. \<exists>x::'e \<Rightarrow> 'f.
-       f u v w x = f u (g u) w (h u w)"
-nunchaku [dont_box, expect = none]
-sorry
-
-lemma "\<forall>u::'a \<Rightarrow> 'b. \<exists>v::'c. \<forall>w::'d. \<exists>x::'e \<Rightarrow> 'f.
-       f u v w x = f u (g u w) w (h u)"
-nunchaku [dont_box, expect = genuine]
-oops
-
-lemma "\<forall>x. if (\<forall>y. x = y) then False else True"
-nunchaku [expect = genuine]
-nunchaku [expect = none]
-oops
-
-lemma "\<forall>x::'a\<times>'b. if (\<forall>y. x = y) then False else True"
-nunchaku [expect = genuine]
-nunchaku [expect = none]
-oops
-
-lemma "\<forall>x. if (\<exists>y. x = y) then True else False"
-nunchaku [expect = none]
-sorry
-
-lemma "(\<exists>x::'a. \<forall>y. P x y) \<or> (\<exists>x::'a \<times> 'a. \<forall>y. P y x)"
-nunchaku [card 'a = 1, expect = genuine]
-oops
-
-lemma "\<exists>x. if x = y then (\<forall>y. y = x \<or> y \<noteq> x)
-           else (\<forall>y. y = (x, x) \<or> y \<noteq> (x, x))"
+lemma "\<forall>u. \<exists>v. \<forall>w. \<exists>x. \<forall>y. \<exists>z. f u v w x y z = f u (g u) w (h u w) y (k u w y)"
 nunchaku [expect = none]
 by auto
 
-lemma "\<exists>x. if x = y then (\<exists>y. y = x \<or> y \<noteq> x)
-           else (\<exists>y. y = (x, x) \<or> y \<noteq> (x, x))"
+lemma "\<forall>u. \<exists>v. \<forall>w. \<exists>x. \<forall>y. \<exists>z. f u v w x y z = f u (g u) w (h u w y) y (k u w y)"
+nunchaku [expect = genuine]
+oops
+
+lemma "\<forall>u. \<exists>v. \<forall>w. \<exists>x. \<forall>y. \<exists>z. f u v w x y z = f u (g u w) w (h u w) y (k u w y)"
+nunchaku [expect = genuine]
+oops
+
+lemma "\<forall>u :: 'a \<times> 'b. \<exists>v :: 'c. \<forall>w :: 'd. \<exists>x :: 'e \<times> 'f. f u v w x = f u (g u) w (h u w)"
+nunchaku [expect = none]
+by blast
+
+lemma "\<forall>u :: 'a \<times> 'b. \<exists>v :: 'c. \<forall>w :: 'd. \<exists>x :: 'e \<times> 'f. f u v w x = f u (g u w) w (h u)"
+nunchaku [expect = genuine]
+oops
+
+lemma "\<forall>u :: 'a \<Rightarrow> 'b. \<exists>v :: 'c. \<forall>w :: 'd. \<exists>x :: 'e \<Rightarrow> 'f. f u v w x = f u (g u) w (h u w)"
+nunchaku [expect = none]
+by blast
+
+lemma "\<forall>u :: 'a \<Rightarrow> 'b. \<exists>v :: 'c. \<forall>w :: 'd. \<exists>x :: 'e \<Rightarrow> 'f. f u v w x = f u (g u w) w (h u)"
+nunchaku [expect = genuine]
+oops
+
+lemma "\<forall>x. if \<forall>y. x = y then False else True"
+nunchaku [expect = genuine]
+oops
+
+lemma "\<forall>x :: 'a \<times> 'b. if \<forall>y. x = y then False else True"
+nunchaku [expect = genuine]
+oops
+
+lemma "\<forall>x. if \<exists>y. x = y then True else False"
+nunchaku [expect = none]
+by simp
+
+lemma "(\<exists>x :: 'a. \<forall>y. P x y) \<or> (\<exists>x :: 'a \<times> 'a. \<forall>y. P y x)"
+nunchaku [expect = genuine]
+oops
+
+lemma "\<exists>x. if x = y then \<forall>y. y = x \<or> y \<noteq> x else \<forall>y. y = (x, x) \<or> y \<noteq> (x, x)"
+nunchaku [expect = none]
+by auto
+
+lemma "\<exists>x. if x = y then \<exists>y. y = x \<or> y \<noteq> x else \<exists>y. y = (x, x) \<or> y \<noteq> (x, x)"
 nunchaku [expect = none]
 by auto
 
@@ -260,9 +245,10 @@ lemma "let x = (\<forall>x. P x) in if x then x else \<not> x"
 nunchaku [expect = none]
 by auto
 
-lemma "let x = (\<forall>x::'a \<times> 'b. P x) in if x then x else \<not> x"
+lemma "let x = (\<forall>x :: 'a \<times> 'b. P x) in if x then x else \<not> x"
 nunchaku [expect = none]
 by auto
+
 
 subsection {* Schematic Variables *}
 
@@ -278,7 +264,7 @@ schematic_goal "\<exists>x. x = ?x"
 nunchaku [expect = none]
 by auto
 
-schematic_goal "\<exists>x::'a \<Rightarrow> 'b. x = ?x"
+schematic_goal "\<exists>x :: 'a \<Rightarrow> 'b. x = ?x"
 nunchaku [expect = none]
 by auto
 
@@ -290,27 +276,14 @@ schematic_goal "\<exists>x. ?x = ?y"
 nunchaku [expect = none]
 by auto
 
-subsection {* Known Constants *}
 
-lemma "x \<equiv> Pure.all \<Longrightarrow> False"
-nunchaku [expect = genuine]
-nunchaku [box "('a \<Rightarrow> prop) \<Rightarrow> prop", expect = genuine]
-nunchaku [expect = genuine]
-oops
+subsection {* Known Constants *}
 
 lemma "\<And>x. f x y = f x y"
 nunchaku [expect = none]
 oops
 
 lemma "\<And>x. f x y = f y x"
-nunchaku [expect = genuine]
-oops
-
-lemma "Pure.all (\<lambda>x. Trueprop (f x y = f x y)) \<equiv> Trueprop True"
-nunchaku [expect = none]
-by auto
-
-lemma "Pure.all (\<lambda>x. Trueprop (f x y = f x y)) \<equiv> Trueprop False"
 nunchaku [expect = genuine]
 oops
 
@@ -491,35 +464,35 @@ lemma "snd (x, y) = y"
 nunchaku [expect = none]
 by (simp add: snd_def)
 
-lemma "fst (x::'a\<Rightarrow>'b, y) = x"
+lemma "fst (x :: 'a \<Rightarrow> 'b, y) = x"
 nunchaku [expect = none]
 by (simp add: fst_def)
 
-lemma "snd (x::'a\<Rightarrow>'b, y) = y"
+lemma "snd (x :: 'a \<Rightarrow> 'b, y) = y"
 nunchaku [expect = none]
 by (simp add: snd_def)
 
-lemma "fst (x, y::'a\<Rightarrow>'b) = x"
+lemma "fst (x, y :: 'a \<Rightarrow> 'b) = x"
 nunchaku [expect = none]
 by (simp add: fst_def)
 
-lemma "snd (x, y::'a\<Rightarrow>'b) = y"
+lemma "snd (x, y :: 'a \<Rightarrow> 'b) = y"
 nunchaku [expect = none]
 by (simp add: snd_def)
 
-lemma "fst (x::'a\<times>'b, y) = x"
+lemma "fst (x :: 'a \<times> 'b, y) = x"
 nunchaku [expect = none]
 by (simp add: fst_def)
 
-lemma "snd (x::'a\<times>'b, y) = y"
+lemma "snd (x :: 'a \<times> 'b, y) = y"
 nunchaku [expect = none]
 by (simp add: snd_def)
 
-lemma "fst (x, y::'a\<times>'b) = x"
+lemma "fst (x, y :: 'a \<times> 'b) = x"
 nunchaku [expect = none]
 by (simp add: fst_def)
 
-lemma "snd (x, y::'a\<times>'b) = y"
+lemma "snd (x, y :: 'a \<times> 'b) = y"
 nunchaku [expect = none]
 by (simp add: snd_def)
 
@@ -626,7 +599,7 @@ lemma "a \<notin> A \<Longrightarrow> a \<notin> (A \<inter> B)" "b \<notin> B \
 nunchaku [expect = none]
 by auto
 
-lemma "x \<in> ((A::'a set) - B) \<longleftrightarrow> x \<in> A \<and> x \<notin> B"
+lemma "x \<in> ((A :: 'a set) - B) \<longleftrightarrow> x \<in> A \<and> x \<notin> B"
 nunchaku [expect = none]
 by auto
 
@@ -650,7 +623,7 @@ lemma "A \<subset> B \<Longrightarrow> A \<subseteq> B"
 nunchaku [expect = none]
 by auto
 
-lemma "I = (\<lambda>x::'a set. x) \<Longrightarrow> uminus = (\<lambda>x. uminus (I x))"
+lemma "I = (\<lambda>x :: 'a set. x) \<Longrightarrow> uminus = (\<lambda>x. uminus (I x))"
 nunchaku [expect = none]
 by auto
 
@@ -662,7 +635,7 @@ lemma "A \<inter> - A = {}"
 nunchaku [expect = none]
 by auto
 
-lemma "A = -(A::'a set)"
+lemma "A = -(A :: 'a set)"
 nunchaku [card 'a = 10, expect = genuine]
 oops
 
@@ -731,7 +704,7 @@ lemma "P (Eps P)"
 nunchaku [expect = genuine]
 oops
 
-lemma "Eps (\<lambda>x. x \<in> P) \<in> (P::nat set)"
+lemma "Eps (\<lambda>x. x \<in> P) \<in> (P :: nat set)"
 nunchaku [expect = genuine]
 oops
 
@@ -739,7 +712,7 @@ lemma "\<not> P (Eps P)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<not> (P :: nat \<Rightarrow> bool) (Eps P)"
+lemma "\<not> (P  ::  nat \<Rightarrow> bool) (Eps P)"
 nunchaku [expect = genuine]
 oops
 
@@ -747,7 +720,7 @@ lemma "P \<noteq> bot \<Longrightarrow> P (Eps P)"
 nunchaku [expect = none]
 sorry
 
-lemma "(P :: nat \<Rightarrow> bool) \<noteq> bot \<Longrightarrow> P (Eps P)"
+lemma "(P  ::  nat \<Rightarrow> bool) \<noteq> bot \<Longrightarrow> P (Eps P)"
 nunchaku [expect = none]
 sorry
 
@@ -755,7 +728,7 @@ lemma "P (The P)"
 nunchaku [expect = genuine]
 oops
 
-lemma "(P :: nat \<Rightarrow> bool) (The P)"
+lemma "(P  ::  nat \<Rightarrow> bool) (The P)"
 nunchaku [expect = genuine]
 oops
 
@@ -763,7 +736,7 @@ lemma "\<not> P (The P)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<not> (P :: nat \<Rightarrow> bool) (The P)"
+lemma "\<not> (P  ::  nat \<Rightarrow> bool) (The P)"
 nunchaku [expect = genuine]
 oops
 
@@ -771,7 +744,7 @@ lemma "The P \<noteq> x"
 nunchaku [expect = genuine]
 oops
 
-lemma "The P \<noteq> (x::nat)"
+lemma "The P \<noteq> (x :: nat)"
 nunchaku [expect = genuine]
 oops
 
@@ -779,7 +752,7 @@ lemma "P x \<Longrightarrow> P (The P)"
 nunchaku [expect = genuine]
 oops
 
-lemma "P (x::nat) \<Longrightarrow> P (The P)"
+lemma "P (x :: nat) \<Longrightarrow> P (The P)"
 nunchaku [expect = genuine]
 oops
 
@@ -787,33 +760,33 @@ lemma "P = {x} \<Longrightarrow> (THE x. x \<in> P) \<in> P"
 nunchaku [expect = none]
 oops
 
-lemma "P = {x::nat} \<Longrightarrow> (THE x. x \<in> P) \<in> P"
+lemma "P = {x :: nat} \<Longrightarrow> (THE x. x \<in> P) \<in> P"
 nunchaku [expect = none]
 oops
 
-consts Q :: 'a
+consts Q  ::  'a
 
 lemma "Q (Eps Q)"
 nunchaku [expect = genuine]
 oops
 
-lemma "(Q :: nat \<Rightarrow> bool) (Eps Q)"
+lemma "(Q  ::  nat \<Rightarrow> bool) (Eps Q)"
 nunchaku [expect = none] (* unfortunate *)
 oops
 
-lemma "\<not> (Q :: nat \<Rightarrow> bool) (Eps Q)"
+lemma "\<not> (Q  ::  nat \<Rightarrow> bool) (Eps Q)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<not> (Q :: nat \<Rightarrow> bool) (Eps Q)"
+lemma "\<not> (Q  ::  nat \<Rightarrow> bool) (Eps Q)"
 nunchaku [expect = genuine]
 oops
 
-lemma "(Q::'a \<Rightarrow> bool) \<noteq> bot \<Longrightarrow> (Q::'a \<Rightarrow> bool) (Eps Q)"
+lemma "(Q :: 'a \<Rightarrow> bool) \<noteq> bot \<Longrightarrow> (Q :: 'a \<Rightarrow> bool) (Eps Q)"
 nunchaku [expect = none]
 sorry
 
-lemma "(Q::nat \<Rightarrow> bool) \<noteq> bot \<Longrightarrow> (Q::nat \<Rightarrow> bool) (Eps Q)"
+lemma "(Q :: nat \<Rightarrow> bool) \<noteq> bot \<Longrightarrow> (Q :: nat \<Rightarrow> bool) (Eps Q)"
 nunchaku [expect = none]
 sorry
 
@@ -821,7 +794,7 @@ lemma "Q (The Q)"
 nunchaku [expect = genuine]
 oops
 
-lemma "(Q::nat \<Rightarrow> bool) (The Q)"
+lemma "(Q :: nat \<Rightarrow> bool) (The Q)"
 nunchaku [expect = genuine]
 oops
 
@@ -829,7 +802,7 @@ lemma "\<not> Q (The Q)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<not> (Q::nat \<Rightarrow> bool) (The Q)"
+lemma "\<not> (Q :: nat \<Rightarrow> bool) (The Q)"
 nunchaku [expect = genuine]
 oops
 
@@ -837,7 +810,7 @@ lemma "The Q \<noteq> x"
 nunchaku [expect = genuine]
 oops
 
-lemma "The Q \<noteq> (x::nat)"
+lemma "The Q \<noteq> (x :: nat)"
 nunchaku [expect = genuine]
 oops
 
@@ -845,15 +818,15 @@ lemma "Q x \<Longrightarrow> Q (The Q)"
 nunchaku [expect = genuine]
 oops
 
-lemma "Q (x::nat) \<Longrightarrow> Q (The Q)"
+lemma "Q (x :: nat) \<Longrightarrow> Q (The Q)"
 nunchaku [expect = genuine]
 oops
 
-lemma "Q = (\<lambda>x::'a. x = a) \<Longrightarrow> (Q::'a \<Rightarrow> bool) (The Q)"
+lemma "Q = (\<lambda>x :: 'a. x = a) \<Longrightarrow> (Q :: 'a \<Rightarrow> bool) (The Q)"
 nunchaku [expect = none]
 sorry
 
-lemma "Q = (\<lambda>x::nat. x = a) \<Longrightarrow> (Q::nat \<Rightarrow> bool) (The Q)"
+lemma "Q = (\<lambda>x :: nat. x = a) \<Longrightarrow> (Q :: nat \<Rightarrow> bool) (The Q)"
 nunchaku [expect = none]
 sorry
 
@@ -909,7 +882,7 @@ nunchaku_params [max_potential = 0]
 
 subsection {* Destructors and Recursors *}
 
-lemma "(x::'a) = (case True of True \<Rightarrow> x | False \<Rightarrow> x)"
+lemma "(x :: 'a) = (case True of True \<Rightarrow> x | False \<Rightarrow> x)"
 nunchaku [expect = none]
 by auto
 
