@@ -171,28 +171,30 @@ fun classify_type_name ctxt T_name =
 fun fp_kind_of_ctr_sugar_kind Ctr_Sugar.Codatatype = BNF_Util.Greatest_FP
   | fp_kind_of_ctr_sugar_kind _ = BNF_Util.Least_FP;
 
-fun mutual_co_datatypes_of ctxt T_name =
-  if T_name = @{type_name itself} then
-    (BNF_Util.Least_FP, [@{typ "'a itself"}], [[@{const Pure.type ('a)}]])
-  else
-    let
-      val (fp, ctr_sugars) =
-        (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
-          SOME (fp_sugar as {fp, fp_res = {Ts, ...}, ...}) =>
-          (fp,
-           (case Ts of
-             [_] => [fp_sugar]
-           | _ => map (the o BNF_FP_Def_Sugar.fp_sugar_of ctxt o fst o dest_Type) Ts)
-           |> map (#ctr_sugar o #fp_ctr_sugar))
-        | NONE =>
-          (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
-            SOME (ctr_sugar as {kind, ...}) =>
-            (* Any freely constructed type that is not a codatatype is considered a datatype. This
-               is sound (but incomplete) for model finding. *)
-            (fp_kind_of_ctr_sugar_kind kind, [ctr_sugar])));
-    in
-      (fp, map #T ctr_sugars, map #ctrs ctr_sugars)
-    end;
+fun mutual_co_datatypes_of ctxt (T_name, Ts) =
+  (if T_name = @{type_name itself} then
+     (BNF_Util.Least_FP, [@{typ "'a itself"}], [[@{const Pure.type ('a)}]])
+   else
+     let
+       val (fp, ctr_sugars) =
+         (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
+           SOME (fp_sugar as {fp, fp_res = {Ts, ...}, ...}) =>
+           (fp,
+            (case Ts of
+              [_] => [fp_sugar]
+            | _ => map (the o BNF_FP_Def_Sugar.fp_sugar_of ctxt o fst o dest_Type) Ts)
+            |> map (#ctr_sugar o #fp_ctr_sugar))
+         | NONE =>
+           (case Ctr_Sugar.ctr_sugar_of ctxt T_name of
+             SOME (ctr_sugar as {kind, ...}) =>
+             (* Any freely constructed type that is not a codatatype is considered a datatype. This
+                is sound (but incomplete) for model finding. *)
+             (fp_kind_of_ctr_sugar_kind kind, [ctr_sugar])));
+     in
+       (fp, map #T ctr_sugars, map #ctrs ctr_sugars)
+     end)
+  |> @{apply 3(2)} (map ((fn Type (s, _) => Type (s, Ts))))
+  |> @{apply 3(3)} (map (map (Ctr_Sugar.mk_ctr Ts)));
 
 fun quotient_of ctxt T_name =
   (case Quotient_Info.lookup_quotients ctxt T_name of
@@ -359,6 +361,43 @@ fun instantiate_constant_type_in_term ctxt const target =
     | NONE => raise Type.TYPE_MATCH)
   end;
 
+(* Similar to "ATP_Util.tiny_card_of_type". *)
+fun is_type_surely_finite ctxt T =
+  let
+    datatype card = One | Many | Inf
+
+    fun max_card Inf _ = Inf
+      | max_card _ Inf = Inf
+      | max_card Many _ = Many
+      | max_card _ Many = Many
+      | max_card One One = One;
+
+    fun card_of avoid T =
+      if member (op =) avoid T then
+        Inf
+      else
+        (case T of
+          TFree _ => Many
+        | TVar _ => Inf
+        | Type (@{type_name fun}, [T1, T2]) =>
+          (case (card_of avoid T1, card_of avoid T2) of
+            (_, One) => One
+          | (k1, k2) => max_card k1 k2)
+        | Type (@{type_name prod}, [T1, T2]) =>
+          (case (card_of avoid T1, card_of avoid T2) of
+            (k1, k2) => max_card k1 k2)
+        | Type (@{type_name set}, [T']) => card_of avoid (T' --> HOLogic.boolT)
+        | Type (T_name, Ts) =>
+          (case try (mutual_co_datatypes_of ctxt) (T_name, Ts) of
+            NONE => Inf
+          | SOME (_, fpTs, ctrss) =>
+            (case ctrss of [[_]] => One | _ => Many)
+            |> fold (fold (fold (max_card o card_of (fpTs @ avoid)) o binder_types o fastype_of))
+              ctrss));
+  in
+    card_of [] T <> Inf
+  end;
+
 fun int_of_classif Spec_Rules.Equational = 1
   | int_of_classif Spec_Rules.Inductive = 2
   | int_of_classif Spec_Rules.Co_Inductive = 3
@@ -381,10 +420,11 @@ fun spec_rules_of ctxt (x as (s, T)) =
           SOME subst =>
           (let
              val ts = map (Envir.subst_term_types subst) ts0;
-             val props = map (instantiate_constant_type_in_term ctxt const o Thm.prop_of) ths;
+             val poly_props = map Thm.prop_of ths;
+             val props = map (instantiate_constant_type_in_term ctxt const) poly_props;
            in
              if exists (exists (exists_type (exists_subtype is_TVar))) [ts, props] then NONE
-             else SOME (classif, ts, props, ths)
+             else SOME (classif, ts, props, poly_props)
            end
            handle Type.TYPE_MATCH => NONE)
         | NONE => NONE)
@@ -393,6 +433,9 @@ fun spec_rules_of ctxt (x as (s, T)) =
     val specs =
       if s = @{const_name The} then
         [(Spec_Rules.Unknown, ([Logic.varify_types_global @{term The}], [@{thm theI_unique}]))]
+      else if s = @{const_name finite} andalso is_type_surely_finite ctxt T then
+        [(Spec_Rules.Equational, ([Logic.varify_types_global @{term finite}],
+           [Skip_Proof.make_thm thy (Logic.varify_types_global @{prop "finite A = True"})]))]
       else
         Spec_Rules.retrieve ctxt const
         |> sort (classif_ord o apply2 fst);
@@ -620,7 +663,7 @@ fun is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout const intros =
   let
     val thy = Proof_Context.theory_of ctxt;
 
-    val Const (x as (s, T)) = head_of (HOLogic.dest_Trueprop (Logic.strip_imp_concl (hd intros)));
+    val Const (x as (_, T)) = head_of (HOLogic.dest_Trueprop (Logic.strip_imp_concl (hd intros)));
   in
     (case triple_lookup (const_match thy o swap) wfs (dest_Const const) of
       SOME (SOME wf) => wf
@@ -736,9 +779,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
                #> (case classify_type_name ctxt s of
                     Co_Datatype =>
                     let
-                      val (fp, fpTs0, ctrss0) = mutual_co_datatypes_of ctxt s;
-                      val fpTs = map ((fn Type (s, _) => Type (s, Ts))) fpTs0;
-                      val ctrss = map (map (Ctr_Sugar.mk_ctr Ts)) ctrss0;
+                      val (fp, fpTs, ctrss) = mutual_co_datatypes_of ctxt (s, Ts);
                       val specs = map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) fpTs ctrss;
                     in
                       (fn ((seenS, seenT, seen), prob) =>
@@ -778,7 +819,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
                    raise Fail ("stale abs or rep function: " ^ s)
                  else
                    (case spec_rules_of ctxt x of
-                     SOME (classif, consts, props0, ths) =>
+                     SOME (classif, consts, props0, poly_props) =>
                      let
                        val props = map (preprocess_prop false ctxt) props0;
 
@@ -801,7 +842,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
                                   else BNF_Util.Greatest_FP,
                                 length consts = 1 andalso
                                 is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout
-                                  (the_single consts) (map Thm.prop_of ths),
+                                  (the_single consts) poly_props,
                                 map2 (fn const => fn props => {const = const, props = props})
                                   consts propss)]
                            | NONE => specs ())

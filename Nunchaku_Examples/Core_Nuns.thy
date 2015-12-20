@@ -411,8 +411,9 @@ lemma "x = y \<and> y = z \<Longrightarrow> x = z"
 nunchaku [expect = none]
 by auto
 
-lemma "I = (\<lambda>x. x) \<Longrightarrow> (op \<and>) = (\<lambda>x. op \<and> (I x))"
-      "I = (\<lambda>x. x) \<Longrightarrow> (op \<and>) = (\<lambda>x y. x \<and> (I y))"
+lemma
+  "I = (\<lambda>x. x) \<Longrightarrow> (op \<and>) = (\<lambda>x. op \<and> (I x))"
+  "I = (\<lambda>x. x) \<Longrightarrow> (op \<and>) = (\<lambda>x y. x \<and> (I y))"
 nunchaku [expect = none]
 by auto
 
@@ -438,43 +439,43 @@ by auto
 
 lemma "fst (x, y) = x"
 nunchaku [expect = none]
-by (simp add: fst_def)
+by simp
 
 lemma "snd (x, y) = y"
 nunchaku [expect = none]
-by (simp add: snd_def)
+by simp
 
 lemma "fst (x :: 'a \<Rightarrow> 'b, y) = x"
 nunchaku [expect = none]
-by (simp add: fst_def)
+by simp
 
 lemma "snd (x :: 'a \<Rightarrow> 'b, y) = y"
 nunchaku [expect = none]
-by (simp add: snd_def)
+by simp
 
 lemma "fst (x, y :: 'a \<Rightarrow> 'b) = x"
 nunchaku [expect = none]
-by (simp add: fst_def)
+by simp
 
 lemma "snd (x, y :: 'a \<Rightarrow> 'b) = y"
 nunchaku [expect = none]
-by (simp add: snd_def)
+by simp
 
 lemma "fst (x :: 'a \<times> 'b, y) = x"
 nunchaku [expect = none]
-by (simp add: fst_def)
+by simp
 
 lemma "snd (x :: 'a \<times> 'b, y) = y"
 nunchaku [expect = none]
-by (simp add: snd_def)
+by simp
 
 lemma "fst (x, y :: 'a \<times> 'b) = x"
 nunchaku [expect = none]
-by (simp add: fst_def)
+by simp
 
 lemma "snd (x, y :: 'a \<times> 'b) = y"
 nunchaku [expect = none]
-by (simp add: snd_def)
+by simp
 
 lemma "I = (\<lambda>x. x) \<Longrightarrow> fst = (\<lambda>x. fst (I x))"
 nunchaku [expect = none]
@@ -498,7 +499,7 @@ by auto
 
 lemma "{} = {x. False}"
 nunchaku [expect = none]
-by (metis empty_def)
+by simp
 
 lemma "x \<in> {}"
 nunchaku [expect = genuine]
@@ -526,11 +527,11 @@ by auto
 
 lemma "UNIV = {x. True}"
 nunchaku [expect = none]
-by (simp only: UNIV_def)
+by simp
 
 lemma "x \<in> UNIV \<longleftrightarrow> True"
 nunchaku [expect = none]
-by (simp only: UNIV_def mem_Collect_eq)
+by simp
 
 lemma "x \<notin> UNIV"
 nunchaku [expect = genuine]
@@ -567,7 +568,7 @@ lemma "I = (\<lambda>x. x) \<Longrightarrow> op \<union> = (\<lambda>x. op \<uni
 nunchaku [expect = none]
 by auto
 
-lemma "a \<in> A \<Longrightarrow> a \<in> (A \<union> B)" "b \<in> B \<Longrightarrow> b \<in> (A \<union> B)"
+lemma "a \<in> A \<Longrightarrow> a \<in> A \<union> B" "b \<in> B \<Longrightarrow> b \<in> A \<union> B"
 nunchaku [expect = none]
 by auto
 
@@ -575,7 +576,7 @@ lemma "I = (\<lambda>x. x) \<Longrightarrow> op \<inter> = (\<lambda>x. op \<int
 nunchaku [expect = none]
 by auto
 
-lemma "a \<notin> A \<Longrightarrow> a \<notin> (A \<inter> B)" "b \<notin> B \<Longrightarrow> b \<notin> (A \<inter> B)"
+lemma "a \<notin> A \<Longrightarrow> a \<notin> A \<inter> B" "b \<notin> B \<Longrightarrow> b \<notin> A \<inter> B"
 nunchaku [expect = none]
 by auto
 
@@ -615,8 +616,8 @@ lemma "A \<inter> - A = {}"
 nunchaku [expect = none]
 by auto
 
-lemma "A = -(A :: 'a set)"
-nunchaku [card 'a = 10, expect = genuine]
+lemma "A = - A"
+nunchaku [expect = genuine]
 oops
 
 lemma "finite A"

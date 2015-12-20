@@ -17,10 +17,13 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-lemma "P y \<Longrightarrow> P (THE x. P x)"
+(*
+lemma "finite (A :: ('a option) set) \<Longrightarrow> P A"
 nunchaku
 
-(*
+
+lemma "P y \<Longrightarrow> P (THE x. P x)"
+nunchaku
 
 fun rev' where
   "rev' [] = []"
