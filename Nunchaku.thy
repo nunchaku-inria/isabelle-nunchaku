@@ -18,6 +18,10 @@ ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
 (*
+lemma "(x :: 'a) = (case True of True \<Rightarrow> x | False \<Rightarrow> x)"
+nunchaku [expect = none]
+by auto
+
 declare [[ML_exception_trace]]
 
 lemma "p (A::'a set) \<Longrightarrow> finite (Y::bool set)"

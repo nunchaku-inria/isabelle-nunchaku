@@ -640,11 +640,9 @@ oops
 
 lemma "\<exists>x. x = The"
 nunchaku [expect = none]
-nunchaku [expect = genuine]
 oops
 
 lemma "P x \<Longrightarrow> P (The P)"
-nunchaku [expect = none]
 nunchaku [expect = genuine]
 oops
 
@@ -693,7 +691,7 @@ lemma "\<not> P (Eps P)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<not> (P  ::  nat \<Rightarrow> bool) (Eps P)"
+lemma "\<not> (P :: nat \<Rightarrow> bool) (Eps P)"
 nunchaku [expect = genuine]
 oops
 
@@ -701,7 +699,7 @@ lemma "P \<noteq> bot \<Longrightarrow> P (Eps P)"
 nunchaku [expect = none]
 sorry
 
-lemma "(P  ::  nat \<Rightarrow> bool) \<noteq> bot \<Longrightarrow> P (Eps P)"
+lemma "(P :: nat \<Rightarrow> bool) \<noteq> bot \<Longrightarrow> P (Eps P)"
 nunchaku [expect = none]
 sorry
 
@@ -709,7 +707,7 @@ lemma "P (The P)"
 nunchaku [expect = genuine]
 oops
 
-lemma "(P  ::  nat \<Rightarrow> bool) (The P)"
+lemma "(P :: nat \<Rightarrow> bool) (The P)"
 nunchaku [expect = genuine]
 oops
 
@@ -717,7 +715,7 @@ lemma "\<not> P (The P)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<not> (P  ::  nat \<Rightarrow> bool) (The P)"
+lemma "\<not> (P :: nat \<Rightarrow> bool) (The P)"
 nunchaku [expect = genuine]
 oops
 
@@ -745,21 +743,21 @@ lemma "P = {x :: nat} \<Longrightarrow> (THE x. x \<in> P) \<in> P"
 nunchaku [expect = none]
 oops
 
-consts Q  ::  'a
+consts Q :: 'a
 
 lemma "Q (Eps Q)"
 nunchaku [expect = genuine]
 oops
 
-lemma "(Q  ::  nat \<Rightarrow> bool) (Eps Q)"
-nunchaku [expect = none] (* unfortunate *)
-oops
-
-lemma "\<not> (Q  ::  nat \<Rightarrow> bool) (Eps Q)"
+lemma "(Q :: nat \<Rightarrow> bool) (Eps Q)"
 nunchaku [expect = genuine]
 oops
 
-lemma "\<not> (Q  ::  nat \<Rightarrow> bool) (Eps Q)"
+lemma "\<not> (Q :: nat \<Rightarrow> bool) (Eps Q)"
+nunchaku [expect = genuine]
+oops
+
+lemma "\<not> (Q :: nat \<Rightarrow> bool) (Eps Q)"
 nunchaku [expect = genuine]
 oops
 
@@ -811,55 +809,46 @@ lemma "Q = (\<lambda>x :: nat. x = a) \<Longrightarrow> (Q :: nat \<Rightarrow> 
 nunchaku [expect = none]
 sorry
 
-nunchaku_params [max_potential = 1]
-
 lemma "(THE j. j > Suc 2 \<and> j \<le> 3) \<noteq> 0"
-nunchaku [card nat = 2, expect = potential]
-nunchaku [card nat = 6, expect = potential] (* unfortunate *)
+nunchaku [expect = genuine]
 oops
 
 lemma "(THE j. j > Suc 2 \<and> j \<le> 4) = x \<Longrightarrow> x \<noteq> 0"
-nunchaku [card nat = 2, expect = potential]
-nunchaku [card nat = 6, expect = none]
+nunchaku [expect = none]
 sorry
 
 lemma "(THE j. j > Suc 2 \<and> j \<le> 4) = x \<Longrightarrow> x = 4"
-nunchaku [card nat = 2, expect = potential]
-nunchaku [card nat = 6, expect = none]
+nunchaku [expect = none]
 sorry
 
 lemma "(THE j. j > Suc 2 \<and> j \<le> 5) = x \<Longrightarrow> x = 4"
-nunchaku [card nat = 6, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 lemma "(THE j. j > Suc 2 \<and> j \<le> 5) = x \<Longrightarrow> x = 4 \<or> x = 5"
-nunchaku [card nat = 6, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 lemma "(SOME j. j > Suc 2 \<and> j \<le> 3) \<noteq> 0"
-nunchaku [card nat = 2, expect = potential]
-nunchaku [card nat = 6, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 lemma "(SOME j. j > Suc 2 \<and> j \<le> 4) = x \<Longrightarrow> x \<noteq> 0"
-nunchaku [card nat = 2, expect = potential]
-nunchaku [card nat = 6, expect = none]
-oops
+nunchaku [expect = none]
+sorry
 
 lemma "(SOME j. j > Suc 2 \<and> j \<le> 4) = x \<Longrightarrow> x = 4"
-nunchaku [card nat = 2, expect = potential]
-nunchaku [card nat = 6, expect = none]
+nunchaku [expect = none]
 sorry
 
 lemma "(SOME j. j > Suc 2 \<and> j \<le> 5) = x \<Longrightarrow> x = 4"
-nunchaku [card nat = 6, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 lemma "(SOME j. j > Suc 2 \<and> j \<le> 5) = x \<Longrightarrow> x = 4 \<or> x = 5"
-nunchaku [card nat = 6, expect = none]
+nunchaku [expect = none]
 sorry
 
-nunchaku_params [max_potential = 0]
 
 subsection {* Destructors and Recursors *}
 

@@ -122,7 +122,7 @@ fun close_form t =
     (Term.add_vars t []) t;
 
 val basic_defs =
-  @{thms Ex1_def Let_def} @
+  @{thms Ex1_def Let_def case_bool_if} @
   map (fn th => th RS @{thm eq_reflection}) @{thms Ball_def Bex_def rmember_def[symmetric]};
 
 fun unfold_basic_def ctxt =
@@ -146,10 +146,19 @@ fun preprocess_prop falsify ctxt t =
     |> unfold_basic_def ctxt
     |> close_form;
 
-datatype type_classification = TVal | Copy | Quotient | Co_Datatype;
+val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
+
+val is_const_builtin =
+  member (op =) [@{const_name All}, @{const_name conj}, @{const_name disj}, @{const_name HOL.eq},
+    @{const_name Ex}, @{const_name False}, @{const_name If}, @{const_name implies},
+    @{const_name Not}, @{const_name True}];
+
+datatype type_classification = Builtin | TVal | Copy | Quotient | Co_Datatype;
 
 fun classify_type_name ctxt T_name =
-  if T_name = @{type_name itself} then
+  if is_type_builtin T_name then
+    Builtin
+  else if T_name = @{type_name itself} then
     Co_Datatype
   else
     (case BNF_FP_Def_Sugar.fp_sugar_of ctxt T_name of
@@ -460,7 +469,7 @@ fun definition_of thy (x as (s, _)) =
   |> map_filter (try (specialize_definition_type thy x o Thm.prop_of o Thm.axiom thy))
   |> try hd;
 
-fun is_built_in_theory thy_id =
+fun is_builtin_theory thy_id =
   Context.subthy_id (thy_id, Context.theory_id @{theory Hilbert_Choice});
 
 val orphan_axioms_of =
@@ -469,7 +478,7 @@ val orphan_axioms_of =
   #> map snd
   #> filter (null o fst)
   #> maps snd
-  #> filter_out (is_built_in_theory o Thm.theory_id_of_thm)
+  #> filter_out (is_builtin_theory o Thm.theory_id_of_thm)
   #> map Thm.prop_of;
 
 val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
