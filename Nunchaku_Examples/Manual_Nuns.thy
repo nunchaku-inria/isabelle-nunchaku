@@ -7,20 +7,20 @@ Examples from the Nunchaku manual.
 
 section {* Examples from the Nunchaku Manual *}
 
-(* The "expect" arguments to Nunchaku in this theory and the other example
-   theories are there so that the example can also serve as a regression test
-   suite. *)
+(* The "expect" arguments to Nunchaku in this and other theory files are there because the files
+   also serve as a regression test suite. *)
 
 theory Manual_Nuns
-imports Real "~~/src/HOL/Library/Quotient_Product"
+imports Real "~~/src/HOL/Library/Quotient_Product" "../Nunchaku"
 begin
 
-section {* 2. First Steps *}
+
+subsection {* 2. First Steps *}
 
 nunchaku_params [timeout = 240]
 
 
-subsection {* 2.1. Propositional Logic *}
+subsubsection {* 2.1. Propositional Logic *}
 
 lemma "P \<longleftrightarrow> Q"
 nunchaku [expect = genuine]
@@ -30,14 +30,14 @@ nunchaku [expect = genuine] 2
 oops
 
 
-subsection {* 2.2. Type Variables *}
+subsubsection {* 2.2. Type Variables *}
 
 lemma "x \<in> A \<Longrightarrow> (THE y. y \<in> A) \<in> A"
 nunchaku [verbose, expect = genuine]
 oops
 
 
-subsection {* 2.3. Constants *}
+subsubsection {* 2.3. Constants *}
 
 lemma "x \<in> A \<Longrightarrow> (THE y. y \<in> A) \<in> A"
 nunchaku [show_consts, expect = genuine]
@@ -46,12 +46,11 @@ oops
 
 lemma "\<exists>!x. x \<in> A \<Longrightarrow> (THE y. y \<in> A) \<in> A"
 nunchaku [expect = none]
-nunchaku [card 'a = 1-50, expect = none]
 (* sledgehammer *)
 by (metis the_equality)
 
 
-subsection {* 2.4. Skolemization *}
+subsubsection {* 2.4. Skolemization *}
 
 lemma "\<exists>g. \<forall>x. g (f x) = x \<Longrightarrow> \<forall>y. \<exists>x. y = f x"
 nunchaku [expect = genuine]
@@ -66,42 +65,40 @@ nunchaku [expect = genuine]
 oops
 
 
-subsection {* 2.5. Natural Numbers and Integers *}
+subsubsection {* 2.5. Natural Numbers and Integers *}
 
-lemma "\<lbrakk>i \<le> j; n \<le> (m::int)\<rbrakk> \<Longrightarrow> i * n + j * m \<le> i * m + j * n"
+lemma "\<lbrakk>i \<le> j; n \<le> (m :: int)\<rbrakk> \<Longrightarrow> i * n + j * m \<le> i * m + j * n"
 nunchaku [expect = genuine]
-nunchaku [binary_ints, bits = 16, expect = genuine]
 oops
 
-lemma "\<forall>n. Suc n \<noteq> n \<Longrightarrow> P"
-nunchaku [card nat = 100, expect = potential]
+lemma "(\<forall>n. Suc n \<noteq> n) \<Longrightarrow> P"
+nunchaku [timeout = 5, expect = potential]
 oops
 
 lemma "P Suc"
-nunchaku [expect = none]
+nunchaku [expect = genuine]
 oops
 
-lemma "P (op +::nat\<Rightarrow>nat\<Rightarrow>nat)"
-nunchaku [card nat = 1, expect = genuine]
-nunchaku [card nat = 2, expect = none]
+lemma "P (op + :: nat \<Rightarrow> nat \<Rightarrow> nat)"
+nunchaku [expect = genuine]
 oops
 
 
-subsection {* 2.6. Inductive Datatypes *}
+subsubsection {* 2.6. Inductive Datatypes *}
 
 lemma "hd (xs @ [y, y]) = hd xs"
 nunchaku [expect = genuine]
-nunchaku [show_consts, show_types, expect = genuine]
+nunchaku [show_consts, expect = genuine]
 oops
 
 lemma "\<lbrakk>length xs = 1; length ys = 1\<rbrakk> \<Longrightarrow> xs = ys"
-nunchaku [show_types, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 
-subsection {* 2.7. Typedefs, Records, Rationals, and Reals *}
+subsubsection {* 2.7. Typedefs, Records, Rationals, and Reals *}
 
-definition "three = {0::nat, 1, 2}"
+definition "three = {0 :: nat, 1, 2}"
 typedef three = three
   unfolding three_def by blast
 
@@ -110,102 +107,87 @@ definition B :: three where "B \<equiv> Abs_three 1"
 definition C :: three where "C \<equiv> Abs_three 2"
 
 lemma "\<lbrakk>A \<in> X; B \<in> X\<rbrakk> \<Longrightarrow> c \<in> X"
-nunchaku [show_types, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 fun my_int_rel where
-"my_int_rel (x, y) (u, v) = (x + v = u + y)"
+  "my_int_rel (x, y) (u, v) = (x + v = u + y)"
 
 quotient_type my_int = "nat \<times> nat" / my_int_rel
 by (auto simp add: equivp_def fun_eq_iff)
 
 definition add_raw where
-"add_raw \<equiv> \<lambda>(x, y) (u, v). (x + (u::nat), y + (v::nat))"
+  "add_raw \<equiv> \<lambda>(x, y) (u, v). (x + (u :: nat), y + (v :: nat))"
 
-quotient_definition "add::my_int \<Rightarrow> my_int \<Rightarrow> my_int" is add_raw
+quotient_definition "add :: my_int \<Rightarrow> my_int \<Rightarrow> my_int" is add_raw
 unfolding add_raw_def by auto
 
 lemma "add x y = add x x"
-nunchaku [show_types, expect = genuine]
-oops
-
-ML {*
-fun my_int_postproc _ _ _ T (Const _ $ (Const _ $ t1 $ t2)) =
-    HOLogic.mk_number T (snd (HOLogic.dest_number t1)
-                         - snd (HOLogic.dest_number t2))
-  | my_int_postproc _ _ _ _ t = t
-*}
-
-declaration {*
-Nunchaku_Model.register_term_postprocessor @{typ my_int} my_int_postproc
-*}
-
-lemma "add x y = add x x"
-nunchaku [show_types]
+nunchaku [expect = genuine]
 oops
 
 record point =
   Xcoord :: int
   Ycoord :: int
 
-lemma "Xcoord (p::point) = Xcoord (q::point)"
-nunchaku [show_types, expect = genuine]
+lemma "Xcoord (p :: point) = Xcoord (q :: point)"
+nunchaku [expect = genuine]
 oops
 
-lemma "4 * x + 3 * (y::real) \<noteq> 1 / 2"
-nunchaku [show_types, expect = genuine]
+lemma "4 * x + 3 * (y :: real) \<noteq> 1 / 2"
+nunchaku [expect = genuine]
 oops
 
 
-subsection {* 2.8. Inductive and Coinductive Predicates *}
+subsubsection {* 2.8. Inductive and Coinductive Predicates *}
 
 inductive even where
-"even 0" |
-"even n \<Longrightarrow> even (Suc (Suc n))"
+  "even 0"
+| "even n \<Longrightarrow> even (Suc (Suc n))"
 
 lemma "\<exists>n. even n \<and> even (Suc n)"
-nunchaku [card nat = 50, unary_ints, verbose, expect = potential]
+nunchaku [timeout = 5, expect = potential]
 oops
 
 lemma "\<exists>n \<le> 49. even n \<and> even (Suc n)"
-nunchaku [card nat = 50, unary_ints, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 inductive even' where
-"even' (0::nat)" |
-"even' 2" |
-"\<lbrakk>even' m; even' n\<rbrakk> \<Longrightarrow> even' (m + n)"
+  "even' (0 :: nat)"
+| "even' 2"
+| "\<lbrakk>even' m; even' n\<rbrakk> \<Longrightarrow> even' (m + n)"
 
 lemma "\<exists>n \<in> {0, 2, 4, 6, 8}. \<not> even' n"
-nunchaku [card nat = 10, unary_ints, verbose, show_consts, expect = genuine]
+nunchaku [verbose, show_consts, expect = genuine]
 oops
 
 lemma "even' (n - 2) \<Longrightarrow> even' n"
-nunchaku [card nat = 10, show_consts, expect = genuine]
+nunchaku [show_consts, expect = genuine]
 oops
 
 coinductive nats where
-"nats (x::nat) \<Longrightarrow> nats x"
+  "nats (x :: nat) \<Longrightarrow> nats x"
 
 lemma "nats = (\<lambda>n. n \<in> {0, 1, 2, 3, 4})"
-nunchaku [card nat = 10, show_consts, expect = genuine]
+nunchaku [show_consts, expect = genuine]
 oops
 
 inductive odd where
-"odd 1" |
-"\<lbrakk>odd m; even n\<rbrakk> \<Longrightarrow> odd (m + n)"
+  "odd 1"
+| "\<lbrakk>odd m; even n\<rbrakk> \<Longrightarrow> odd (m + n)"
 
 lemma "odd n \<Longrightarrow> odd (n - 2)"
-nunchaku [card nat = 4, show_consts, expect = genuine]
+nunchaku [show_consts, expect = genuine]
 oops
 
 
-subsection {* 2.9. Coinductive Datatypes *}
+subsubsection {* 2.9. Coinductive Datatypes *}
 
 codatatype 'a llist = LNil | LCons 'a "'a llist"
 
 primcorec iterates where
-"iterates f a = LCons a (iterates f (f a))"
+  "iterates f a = LCons a (iterates f (f a))"
 
 lemma "xs \<noteq> LCons a xs"
 nunchaku [expect = genuine]
@@ -216,30 +198,31 @@ nunchaku [verbose, expect = genuine]
 oops
 
 lemma "\<lbrakk>xs = LCons a xs; ys = LCons a ys\<rbrakk> \<Longrightarrow> xs = ys"
-nunchaku [bisim_depth = -1, show_types, expect = quasi_genuine]
 nunchaku [expect = none]
 sorry
 
 
-subsection {* 2.10. Boxing *}
+subsubsection {* 2.10. Boxing *}
 
-datatype tm = Var nat | Lam tm | App tm tm
+datatype tm =
+  Var nat
+| Lam tm
+| App tm tm
 
 primrec lift where
-"lift (Var j) k = Var (if j < k then j else j + 1)" |
-"lift (Lam t) k = Lam (lift t (k + 1))" |
-"lift (App t u) k = App (lift t k) (lift u k)"
+  "lift (Var j) k = Var (if j < k then j else j + 1)"
+| "lift (Lam t) k = Lam (lift t (k + 1))"
+| "lift (App t u) k = App (lift t k) (lift u k)"
 
 primrec loose where
-"loose (Var j) k = (j \<ge> k)" |
-"loose (Lam t) k = loose t (Suc k)" |
-"loose (App t u) k = (loose t k \<or> loose u k)"
+  "loose (Var j) k = (j \<ge> k)"
+| "loose (Lam t) k = loose t (Suc k)"
+| "loose (App t u) k = (loose t k \<or> loose u k)"
 
 primrec subst\<^sub>1 where
-"subst\<^sub>1 \<sigma> (Var j) = \<sigma> j" |
-"subst\<^sub>1 \<sigma> (Lam t) =
- Lam (subst\<^sub>1 (\<lambda>n. case n of 0 \<Rightarrow> Var 0 | Suc m \<Rightarrow> lift (\<sigma> m) 1) t)" |
-"subst\<^sub>1 \<sigma> (App t u) = App (subst\<^sub>1 \<sigma> t) (subst\<^sub>1 \<sigma> u)"
+  "subst\<^sub>1 \<sigma> (Var j) = \<sigma> j"
+| "subst\<^sub>1 \<sigma> (Lam t) = Lam (subst\<^sub>1 (\<lambda>n. case n of 0 \<Rightarrow> Var 0 | Suc m \<Rightarrow> lift (\<sigma> m) 1) t)"
+| "subst\<^sub>1 \<sigma> (App t u) = App (subst\<^sub>1 \<sigma> t) (subst\<^sub>1 \<sigma> u)"
 
 lemma "\<not> loose t 0 \<Longrightarrow> subst\<^sub>1 \<sigma> t = t"
 nunchaku [verbose, expect = genuine]
@@ -258,22 +241,22 @@ nunchaku [expect = none]
 sorry
 
 
-subsection {* 2.11. Scope Monotonicity *}
+subsubsection {* 2.11. Scope Monotonicity *}
 
 lemma "length xs = length ys \<Longrightarrow> rev (zip xs ys) = zip xs (rev ys)"
 nunchaku [verbose, expect = genuine]
 oops
 
-lemma "\<exists>g. \<forall>x::'b. g (f x) = x \<Longrightarrow> \<forall>y::'a. \<exists>x. y = f x"
+lemma "\<exists>g. \<forall>x :: 'b. g (f x) = x \<Longrightarrow> \<forall>y :: 'a. \<exists>x. y = f x"
 nunchaku [mono, expect = none]
 nunchaku [expect = genuine]
 oops
 
 
-subsection {* 2.12. Inductive Properties *}
+subsubsection {* 2.12. Inductive Properties *}
 
 inductive_set reach where
-"(4::nat) \<in> reach" |
+"(4 :: nat) \<in> reach" |
 "n \<in> reach \<Longrightarrow> n < 4 \<Longrightarrow> 3 * n + 1 \<in> reach" |
 "n \<in> reach \<Longrightarrow> n + 2 \<in> reach"
 
@@ -299,12 +282,12 @@ lemma "n \<in> reach \<Longrightarrow> 2 dvd n \<and> n \<ge> 4"
 by (induct set: reach) arith+
 
 
-section {* 3. Case Studies *}
+subsection {* 3. Case Studies *}
 
 nunchaku_params [max_potential = 0]
 
 
-subsection {* 3.1. A Context-Free Grammar *}
+subsubsection {* 3.1. A Context-Free Grammar *}
 
 datatype alphabet = a | b
 
@@ -379,9 +362,9 @@ nunchaku [expect = none]
 sorry
 
 
-subsection {* 3.2. AA Trees *}
+subsubsection {* 3.2. AA Trees *}
 
-datatype 'a aa_tree = \<Lambda> | N "'a::linorder" nat "'a aa_tree" "'a aa_tree"
+datatype 'a aa_tree = \<Lambda> | N "'a :: linorder" nat "'a aa_tree" "'a aa_tree"
 
 primrec data where
 "data \<Lambda> = undefined" |
@@ -449,7 +432,7 @@ theorem wf_insort\<^sub>1: "wf t \<Longrightarrow> wf (insort\<^sub>1 t x)"
 nunchaku [expect = genuine]
 oops
 
-theorem wf_insort\<^sub>1_nat: "wf t \<Longrightarrow> wf (insort\<^sub>1 t (x::nat))"
+theorem wf_insort\<^sub>1_nat: "wf t \<Longrightarrow> wf (insort\<^sub>1 t (x :: nat))"
 nunchaku [eval = "insort\<^sub>1 t x", expect = genuine]
 oops
 

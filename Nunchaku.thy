@@ -18,6 +18,26 @@ ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
 (*
+declare [[ML_print_depth = 100]]
+
+ML {*
+        (Spec_Rules.retrieve @{context} @{const size ('a)}
+         |> map_filter (try (fn (Spec_Rules.Equational, (_, [thm])) => thm)))
+*}
+
+ML {*
+  Defs.specifications_of (Theory.defs_of @{theory}) (Defs.Const, @{const_name size})
+  |> map_filter #def
+*}
+
+ML {*
+Spec_Rules.retrieve @{context} @{term length}
+|> map (fn (_, (csts, _)) => csts)
+*}
+
+lemma "length (x # xs) ~= 0"
+nunchaku
+
 inductive even :: "'a \<Rightarrow> nat \<Rightarrow> bool" where
   "even x 0"
 | "even x n \<Longrightarrow> even x (Suc (Suc n))"

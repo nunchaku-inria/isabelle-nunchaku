@@ -543,7 +543,8 @@ val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empt
 val nicifiable = String.isSuffix "_";
 
 val nice_of_ugly_suggestion =
-  unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_";
+  unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_"
+  #> (fn s => if s = "" orelse not (Char.isAlpha (String.sub (s, 0))) then "x" ^ s else s);
 
 fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
   let
