@@ -366,17 +366,17 @@ fun int_of_classif Spec_Rules.Equational = 1
 
 val classif_ord = int_ord o apply2 int_of_classif;
 
-fun spec_rules_of ctxt const =
+fun spec_rules_of ctxt (x as (s, T)) =
   let
     val thy = Proof_Context.theory_of ctxt;
 
-    val const_T = fastype_of const;
+    val const = Const x;
 
     fun subst_of t0 =
-      try (Sign.typ_match thy (fastype_of t0, const_T)) Vartab.empty;
+      try (Sign.typ_match thy (fastype_of t0, T)) Vartab.empty;
 
     fun process_spec _ (res as SOME _) = res
-      | process_spec (classif, (ts0, ths)) NONE =
+      | process_spec (classif, (ts0, ths as _ :: _)) NONE =
         (case get_first subst_of ts0 of
           SOME subst =>
           (let
@@ -387,11 +387,15 @@ fun spec_rules_of ctxt const =
              else SOME (classif, ts, props, ths)
            end
            handle Type.TYPE_MATCH => NONE)
-        | NONE => NONE);
+        | NONE => NONE)
+      | process_spec _ NONE = NONE;
 
     val specs =
-      Spec_Rules.retrieve ctxt const
-      |> sort (classif_ord o apply2 fst);
+      if s = @{const_name The} then
+        [(Spec_Rules.Unknown, ([Logic.varify_types_global @{term The}], [@{thm theI_unique}]))]
+      else
+        Spec_Rules.retrieve ctxt const
+        |> sort (classif_ord o apply2 fst);
   in
     fold process_spec specs NONE
   end;
@@ -773,7 +777,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
                  else if is_stale_copy_abs ctxt x orelse is_stale_copy_rep ctxt x then
                    raise Fail ("stale abs or rep function: " ^ s)
                  else
-                   (case spec_rules_of ctxt t of
+                   (case spec_rules_of ctxt x of
                      SOME (classif, consts, props0, ths) =>
                      let
                        val props = map (preprocess_prop false ctxt) props0;
