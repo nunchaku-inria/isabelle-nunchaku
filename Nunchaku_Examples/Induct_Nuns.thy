@@ -60,51 +60,42 @@ oops
 
 lemma "p2 = top"
 nunchaku [expect = genuine]
-nunchaku [dont_star_linear_preds, expect = genuine]
 oops
 
 lemma "q2 = top"
 nunchaku [expect = none]
-nunchaku [dont_star_linear_preds, expect = none]
 nunchaku [wf, expect = quasi_genuine]
 sorry
 
 lemma "p2 = q2"
 nunchaku [expect = genuine]
-nunchaku [dont_star_linear_preds, expect = genuine]
 oops
 
 lemma "p2 n"
 nunchaku [expect = genuine]
-nunchaku [dont_star_linear_preds, expect = genuine]
-nunchaku [dont_specialize, expect = genuine]
 oops
 
 lemma "q2 n"
 nunchaku [expect = none]
-nunchaku [dont_star_linear_preds, expect = none]
 sorry
 
 lemma "\<not> p2 n"
 nunchaku [expect = none]
-nunchaku [dont_star_linear_preds, expect = none]
 sorry
 
 lemma "\<not> q2 n"
 nunchaku [expect = genuine]
-nunchaku [dont_star_linear_preds, expect = genuine]
-nunchaku [dont_specialize, expect = genuine]
 oops
 
 inductive p3 and p4 where
-"p3 0" |
-"p3 n \<Longrightarrow> p4 (Suc n)" |
-"p4 n \<Longrightarrow> p3 (Suc n)"
+  "p3 0"
+| "p3 n \<Longrightarrow> p4 (Suc n)"
+| "p4 n \<Longrightarrow> p3 (Suc n)"
 
 coinductive q3 and q4 where
-"q3 0" |
-"q3 n \<Longrightarrow> q4 (Suc n)" |
-"q4 n \<Longrightarrow> q3 (Suc n)"
+  "q3 0"
+| "q3 n \<Longrightarrow> q4 (Suc n)"
+| "q4 n \<Longrightarrow> q3 (Suc n)"
 
 lemma "p3 = q3"
 nunchaku [expect = none]
