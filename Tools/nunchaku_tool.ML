@@ -87,7 +87,7 @@ fun uncached_solve_nun_problem ({overlord, timeout, ...} : tool_params) prob =
         else if String.isPrefix "TIMEOUT" output then Timeout
         else if code = 126 then Nunchaku_Cannot_Execute
         else if code = 127 then Nunchaku_Not_Found
-        else Unknown_Error (code, elide_string 1000 output)
+        else Unknown_Error (code, simplify_spaces (elide_string 1000 output))
       end);
 
 fun solve_nun_problem (params as {overlord, debug, ...}) prob =

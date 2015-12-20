@@ -17,6 +17,13 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+inductive even :: "'a \<Rightarrow> nat \<Rightarrow> bool" where
+  "even x 0"
+| "even x n \<Longrightarrow> even x (Suc (Suc n))"
+
+lemma "even' x y"
+nunchaku[wf]
+
 (*
 lemma "(x :: 'a) = (case True of True \<Rightarrow> x | False \<Rightarrow> x)"
 nunchaku [expect = none]

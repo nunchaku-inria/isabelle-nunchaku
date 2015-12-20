@@ -116,13 +116,15 @@ fun str_of_mode Auto_Try = "Auto_Try"
   | str_of_mode Try = "Try"
   | str_of_mode Normal = "Normal";
 
+fun none_true assigns = forall (curry (op <>) (SOME true) o snd) assigns;
+
 (* Give the soft timeout a chance. *)
 val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state
-    (params as {mode_of_operation_params = {falsify, assms, spy, overlord, expect},
-       scope_of_search_params = {wfs, ...}, output_format_params = {debug, ...},
-       timeout_params = {timeout, wf_timeout}, ...})
+    ({mode_of_operation_params = {falsify, assms, spy, overlord, expect},
+      scope_of_search_params = {wfs, ...}, output_format_params = {debug, ...},
+      timeout_params = {timeout, wf_timeout}, ...})
     mode i all_assms subgoal =
   let
     val ctxt = Proof.context_of state;
@@ -159,13 +161,23 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
               (case solve_nun_problem tool_params nice_nun_prob of
                 Unsat => (print_n ("No " ^ das_wort_model ^ " exists"); (noneN, []))
               | Sat (output, _) =>
-                if null poly_axioms then
-                  (print (das_wort_Model ^ ":\n" ^ output); (genuineN, []))
-                else
-                  (print (das_wort_Model ^ " (ignoring polymorphic axioms):\n" ^ output ^
-                     "\nIgnored axioms:\n" ^
-                     cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms));
-                   (quasi_genuineN, []))
+                (case (null poly_axioms, none_true wfs) of
+                  (true, true) => (print (das_wort_Model ^ ":\n" ^ output); (genuineN, []))
+                | (no_poly, no_wf) =>
+                  let
+                    val ignorings = []
+                      |> not no_poly ? cons "polymorphic axioms"
+                      |> not no_wf ? cons "unchecked well-foundedness";
+                  in
+                    (print (das_wort_Model ^ " (ignoring " ^ space_implode " and " ignorings ^
+                       "):\n" ^ output ^
+                       (if no_poly then
+                          ""
+                        else
+                          "\nIgnored axioms:\n" ^
+                          cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
+                     (quasi_genuineN, []))
+                  end)
               | Timeout => (print_n "Time out"; (unknownN, []))
               | Nunchaku_Var_Not_Set =>
                 (print_n ("Variable $" ^ nunchaku_env_var ^ " not set"); (unknownN, []))

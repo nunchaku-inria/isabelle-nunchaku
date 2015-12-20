@@ -8,60 +8,53 @@ Examples featuring Nunchaku applied to (co)inductive definitions.
 section {* Examples Featuring Nunchaku Applied to (Co)inductive Definitions *}
 
 theory Induct_Nuns
-imports Main
+imports "../Nunchaku"
 begin
 
-nunchaku_params [verbose, unary_ints,
-                timeout = 240]
+nunchaku_params [verbose, timeout = 240]
 
 inductive p1 :: "nat \<Rightarrow> bool" where
-"p1 0" |
-"p1 n \<Longrightarrow> p1 (n + 2)"
+  "p1 0"
+| "p1 n \<Longrightarrow> p1 (n + 2)"
 
 coinductive q1 :: "nat \<Rightarrow> bool" where
-"q1 0" |
-"q1 n \<Longrightarrow> q1 (n + 2)"
+  "q1 0"
+| "q1 n \<Longrightarrow> q1 (n + 2)"
 
 lemma "p1 = q1"
 nunchaku [expect = none]
 nunchaku [wf, expect = none]
 nunchaku [non_wf, expect = none]
-nunchaku [non_wf, dont_star_linear_preds, expect = none]
 oops
 
 lemma "p1 \<noteq> q1"
 nunchaku [expect = potential]
 nunchaku [wf, expect = potential]
 nunchaku [non_wf, expect = potential]
-nunchaku [non_wf, dont_star_linear_preds, expect = potential]
 oops
 
 lemma "p1 (n - 2) \<Longrightarrow> p1 n"
 nunchaku [expect = genuine]
 nunchaku [non_wf, expect = genuine]
-nunchaku [non_wf, dont_star_linear_preds, expect = genuine]
 oops
 
 lemma "q1 (n - 2) \<Longrightarrow> q1 n"
 nunchaku [expect = genuine]
 nunchaku [non_wf, expect = genuine]
-nunchaku [non_wf, dont_star_linear_preds, expect = genuine]
 oops
 
 inductive p2 :: "nat \<Rightarrow> bool" where
-"p2 n \<Longrightarrow> p2 n"
+  "p2 n \<Longrightarrow> p2 n"
 
 coinductive q2 :: "nat \<Rightarrow> bool" where
-"q2 n \<Longrightarrow> q2 n"
+  "q2 n \<Longrightarrow> q2 n"
 
 lemma "p2 = bot"
 nunchaku [expect = none]
-nunchaku [dont_star_linear_preds, expect = none]
 sorry
 
 lemma "q2 = bot"
 nunchaku [expect = genuine]
-nunchaku [dont_star_linear_preds, expect = genuine]
 nunchaku [wf, expect = quasi_genuine]
 oops
 

@@ -9,17 +9,30 @@ section {* Nunchaku Example Based on Tobias Nipkow's Hotel Key Card
           Formalization *}
 
 theory Hotel_Nuns
-imports Main
+imports "../Nunchaku"
 begin
 
-nunchaku_params [verbose, max_potential = 0, sat_solver = MiniSat_JNI,
-                timeout = 240]
+nunchaku_params [verbose, max_potential = 0, timeout = 240]
 
 typedecl guest
 typedecl key
 typedecl room
 
-type_synonym keycurrk = initk, issued = range initk, cards = (\<lambda>g. {}),
+type_synonym keycard = "key \<times> key"
+
+record state =
+  owns :: "room \<Rightarrow> guest option"
+  currk :: "room \<Rightarrow> key"
+  issued :: "key set"
+  cards :: "guest \<Rightarrow> keycard set"
+  roomk :: "room \<Rightarrow> key"
+  isin :: "room \<Rightarrow> guest set"
+  safe :: "room \<Rightarrow> bool"
+
+inductive_set reach :: "state set" where
+init:
+"inj initk \<Longrightarrow>
+ \<lparr>owns = (\<lambda>r. None), currk = initk, issued = range initk, cards = (\<lambda>g. {}),
   roomk = initk, isin = (\<lambda>r. {}), safe = (\<lambda>r. True)\<rparr> \<in> reach" |
 check_in:
 "\<lbrakk>s \<in> reach; k \<notin> issued s\<rbrakk> \<Longrightarrow>
@@ -36,10 +49,7 @@ exit_room:
 "\<lbrakk>s \<in> reach; g \<in> isin s r\<rbrakk> \<Longrightarrow> s\<lparr>isin := (isin s)(r := isin s r - {g})\<rparr> \<in> reach"
 
 theorem safe: "s \<in> reach \<Longrightarrow> safe s r \<Longrightarrow> g \<in> isin s r \<Longrightarrow> owns s r = Some g"
-nunchaku [card room = 1, card guest = 2, card "guest option" = 3,
-         card key = 4, card state = 6, show_consts, format = 2,
-         expect = genuine]
-(* nunchaku [card room = 1, card guest = 2, expect = genuine] *) (* slow *)
+nunchaku [expect = genuine]
 oops
 
 end

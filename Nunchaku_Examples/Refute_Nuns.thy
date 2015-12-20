@@ -2,10 +2,14 @@
     Author:     Jasmin Blanchette, Inria Nancy, LORIA, MPII
     Copyright   2009-2015
 
-Refute examples adapted to Nunchaku.
+Examples for the Refute tool adapted to Nunchaku. Based on
+
+    Title:      HOL/ex/Refute_Examples.thy
+    Author:     Tjark Weber
+    Copyright   2003-2007
 *)
 
-section {* Refute Examples Adapted to Nunchaku *}
+section {* Examples for the Refute Tool Adapted to Nunchaku *}
 
 theory Refute_Nuns
 imports "../Nunchaku"
