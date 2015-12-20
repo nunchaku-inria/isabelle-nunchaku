@@ -1,6 +1,6 @@
 (*  Title:      HOL/Nunchaku_Examples/Refute_Nuns.thy
-    Author:     Jasmin Blanchette, TU Muenchen
-    Copyright   2015
+    Author:     Jasmin Blanchette, Inria Nancy, LORIA, MPII
+    Copyright   2009-2015
 
 Refute examples adapted to Nunchaku.
 *)
@@ -11,14 +11,14 @@ theory Refute_Nuns
 imports "../Nunchaku"
 begin
 
-nunchaku_params [verbose, card = 1-6, max_potential = 0, timeout = 240]
+nunchaku_params [verbose, max_potential = 0, timeout = 240]
 
 lemma "P \<and> Q"
 apply (rule conjI)
 nunchaku [expect = genuine] 1
 nunchaku [expect = genuine] 2
 nunchaku [expect = genuine]
-nunchaku [card = 5, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 subsection {* Examples and Test Cases *}
@@ -279,7 +279,7 @@ oops
 text {* ``Every point is a fixed point of some function.'' *}
 
 lemma "\<exists>f. f x = x"
-nunchaku [card = 1-7, expect = none]
+nunchaku [expect = none]
 apply (rule_tac x = "\<lambda>x. x" in exI)
 apply simp
 done
@@ -293,12 +293,12 @@ oops
 text {* And now two correct ones *}
 
 lemma "(\<forall>x. \<exists>y. P x y) \<longrightarrow> (\<exists>f. \<forall>x. P x (f x))"
-nunchaku [card = 1-4, expect = none]
+nunchaku [expect = none]
 apply (simp add: choice)
 done
 
 lemma "(\<forall>x. \<exists>!y. P x y) \<longrightarrow> (\<exists>!f. \<forall>x. P x (f x))"
-nunchaku [card = 1-3, expect = none]
+nunchaku [expect = none]
 apply auto
  apply (simp add: ex1_implies_ex choice)
 apply fast
@@ -486,7 +486,7 @@ nunchaku [expect = genuine]
 oops
 
 lemma "(x :: nat) < x + y"
-nunchaku [card = 1, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 text {* \<times> *}
@@ -696,7 +696,7 @@ nunchaku [expect = genuine]
 oops
 
 lemma "rec_T3 e (E x) = e x"
-nunchaku [card = 1-4, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
@@ -725,7 +725,7 @@ nunchaku [expect = genuine]
 oops
 
 lemma "P Suc"
-nunchaku [card = 1-7, expect = none]
+nunchaku [expect = none]
 oops
 
 lemma "rec_nat zero suc 0 = zero"
@@ -761,12 +761,12 @@ nunchaku [expect = genuine]
 oops
 
 lemma "rec_list nil cons [] = nil"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_list nil cons (x#xs) = cons x xs (rec_list nil cons xs)"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
@@ -839,7 +839,7 @@ apply simp
 done
 
 lemma "rec_BinTree l n (Node x y) = n x y (rec_BinTree l n x) (rec_BinTree l n y)"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
@@ -877,14 +877,14 @@ nunchaku [expect = genuine]
 oops
 
 lemma "rec_aexp number ite equal (Number x) = number x"
-nunchaku [card = 1-3, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_aexp number ite equal (ITE x y z) =
   ite x y z (rec_bexp number ite equal x) (rec_aexp number ite equal y)
     (rec_aexp number ite equal z)"
-nunchaku [card = 1-3, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
@@ -898,7 +898,7 @@ oops
 
 lemma "rec_bexp number ite equal (Equal x y) =
   equal x y (rec_aexp number ite equal x) (rec_aexp number ite equal y)"
-nunchaku [card = 1-3, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
@@ -957,32 +957,32 @@ nunchaku [expect = genuine]
 oops
 
 lemma "rec_X a b c d e f A = a"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_X a b c d e f (B x) = b x (rec_X a b c d e f x)"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_X a b c d e f (C y) = c y (rec_Y a b c d e f y)"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_Y a b c d e f (D x) = d x (rec_X a b c d e f x)"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_Y a b c d e f (E y) = e y (rec_Y a b c d e f y)"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_Y a b c d e f F = f"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
@@ -1059,13 +1059,13 @@ nunchaku [expect = genuine]
 oops
 
 lemma "rec_InfTree leaf node Leaf = leaf"
-nunchaku [card = 1-3, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_InfTree leaf node (Node g) =
   node ((\<lambda>InfTree. (InfTree, rec_InfTree leaf node InfTree)) \<circ> g)"
-nunchaku [card = 1-3, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
@@ -1084,22 +1084,22 @@ nunchaku [expect = genuine]
 oops
 
 lemma "P (Lam (\<lambda>a. Var a))"
-nunchaku [card = 1-5, expect = none]
+nunchaku [expect = none]
 nunchaku [card 'a = 4, card "'a lambda" = 5, expect = genuine]
 oops
 
 lemma "rec_lambda var app lam (Var x) = var x"
-nunchaku [card = 1-3, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_lambda var app lam (App x y) = app x y (rec_lambda var app lam x) (rec_lambda var app lam y)"
-nunchaku [card = 1-3, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
 lemma "rec_lambda var app lam (Lam x) = lam ((\<lambda>lambda. (lambda, rec_lambda var app lam lambda)) \<circ> x)"
-nunchaku [card = 1-3, expect = none]
+nunchaku [expect = none]
 apply simp
 done
 
@@ -1201,15 +1201,15 @@ nunchaku [expect = genuine]
 oops
 
 lemma "f (lfp f) = lfp f"
-nunchaku [card = 2, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 lemma "f (gfp f) = gfp f"
-nunchaku [card = 2, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 lemma "lfp f = gfp f"
-nunchaku [card = 2, expect = genuine]
+nunchaku [expect = genuine]
 oops
 
 subsubsection {* Axiomatic Type Classes and Overloading *}
