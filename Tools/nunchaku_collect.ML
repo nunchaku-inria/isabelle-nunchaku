@@ -45,7 +45,7 @@ sig
   exception CYCLIC_DEPS of unit
   exception TOO_DEEP_DEPS of unit
   exception TOO_META of term
-  exception STALE_FUNC of term
+  exception UNSUPPORTED_FUNC of term
 
   val isa_problem_of_subgoal: Proof.context -> bool -> ((string * typ) option * bool option) list ->
     bool -> Time.time -> term list -> term -> term list * isa_problem
@@ -93,7 +93,7 @@ type isa_problem = isa_command list list;
 exception CYCLIC_DEPS of unit;
 exception TOO_DEEP_DEPS of unit;
 exception TOO_META of term;
-exception STALE_FUNC of term;
+exception UNSUPPORTED_FUNC of term;
 
 val key_of_typ =
   let
@@ -821,7 +821,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
                     is_copy_rep ctxt x then
                    (seens, prob)
                  else if is_stale_copy_abs ctxt x orelse is_stale_copy_rep ctxt x then
-                   raise STALE_FUNC t
+                   raise UNSUPPORTED_FUNC t
                  else
                    (case spec_rules_of ctxt x of
                      SOME (classif, consts, props0, poly_props) =>

@@ -216,8 +216,8 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
           | TOO_META t =>
             (print_n ("Formula too meta for Nunchaku:\n" ^ Syntax.string_of_term ctxt t);
              (unknownN, []))
-          | STALE_FUNC t =>
-            (print_n ("Stale low-level function in problem: " ^ Syntax.string_of_term ctxt t);
+          | UNSUPPORTED_FUNC t =>
+            (print_n ("Unsupported low-level function in problem: " ^ Syntax.string_of_term ctxt t);
              (unknownN, []));
       in
         if expect = "" orelse outcome_code = expect then outcome
