@@ -8,15 +8,14 @@ Examples featuring Nunchaku applied to records.
 section {* Examples Featuring Nunchaku Applied to Records *}
 
 theory Record_Nuns
-imports Main
+imports "../Nunchaku"
 begin
 
-nunchaku_params [verbose, max_potential = 0,
-                timeout = 240]
+nunchaku_params [verbose, max_potential = 0, timeout = 240]
 
 record point2d =
-  xc :: int
-  yc :: int
+  xc :: nat
+  yc :: nat
 
 lemma "\<lparr>xc = x, yc = y\<rparr> = p\<lparr>xc := x, yc := y\<rparr>"
 nunchaku [expect = none]
@@ -35,7 +34,7 @@ nunchaku [expect = genuine]
 oops
 
 record point3d = point2d +
-  zc :: int
+  zc :: nat
 
 lemma "\<lparr>xc = x, yc = y, zc = z\<rparr> = p\<lparr>xc := x, yc := y, zc := z\<rparr>"
 nunchaku [expect = none]
@@ -58,7 +57,7 @@ nunchaku [expect = genuine]
 oops
 
 record point4d = point3d +
-  wc :: int
+  wc :: nat
 
 lemma "\<lparr>xc = x, yc = y, zc = z, wc = w\<rparr> = p\<lparr>xc := x, yc := y, zc := z, wc := w\<rparr>"
 nunchaku [expect = none]

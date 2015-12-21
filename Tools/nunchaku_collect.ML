@@ -42,8 +42,10 @@ sig
 
   type isa_problem = isa_command list list
 
+  exception TOO_META of term
+
   val isa_problem_of_subgoal: Proof.context -> bool -> ((string * typ) option * bool option) list ->
-    bool -> Time.time -> term list -> term -> term option * term list * isa_problem
+    bool -> Time.time -> term list -> term -> term list * isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -84,6 +86,8 @@ datatype isa_command =
 | IGoal of term;
 
 type isa_problem = isa_command list list;
+
+exception TOO_META of term;
 
 val key_of_typ =
   let
@@ -129,8 +133,6 @@ fun unfold_basic_def ctxt =
   let val thy = Proof_Context.theory_of ctxt in
     Pattern.rewrite_term thy (map (Logic.dest_equals o Thm.prop_of) basic_defs) []
   end;
-
-exception TOO_META of term;
 
 val has_polymorphism = exists_type (exists_subtype is_TVar);
 
@@ -879,15 +881,14 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
     val subgoal = preprocess_prop falsify ctxt subgoal0;
     val seens = ([], [], []);
   in
-    (NONE, poly_axioms,
+    (poly_axioms,
      (seens, map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal])
      |> fold (consider_term 0) (subgoal :: mono_axioms_and_some_assms)
      |> snd
      |> rev (* prettier *)
      |> sort_isa_problem_topologically ctxt
      |> group_isa_commands)
-  end
-  handle TOO_META t => (SOME t, [], [[IGoal @{const False}]]);
+  end;
 
 fun str_of_isa_term_with_type ctxt t =
   Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);

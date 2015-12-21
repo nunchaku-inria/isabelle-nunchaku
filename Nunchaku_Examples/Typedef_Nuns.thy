@@ -8,11 +8,10 @@ Examples featuring Nunchaku applied to typedefs.
 section {* Examples Featuring Nunchaku Applied to Typedefs *}
 
 theory Typedef_Nuns
-imports Complex_Main
+imports Complex_Main "../Nunchaku"
 begin
 
-nunchaku_params [verbose, max_threads = 1,
-                timeout = 240]
+nunchaku_params [verbose, timeout = 240]
 
 definition "three = {0::nat, 1, 2}"
 typedef three = three
@@ -48,7 +47,6 @@ nunchaku [expect = potential] (* unfortunate *)
 oops
 
 lemma "\<exists>x (y::bool one_or_two). x \<noteq> y"
-nunchaku [expect = potential] (* unfortunate *)
 nunchaku [expect = none]
 oops
 

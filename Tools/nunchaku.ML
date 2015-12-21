@@ -153,67 +153,65 @@ fun run_chaku_on_prop state
 
     fun run () =
       let
-        val (too_meta, poly_axioms, isa_prob) =
-          isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout (if assms then all_assms else [])
-            subgoal;
-val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
-
         val outcome as (outcome_code, _) =
-          (case too_meta of
-            SOME t =>
-            (print_n ("Problem too meta for Nunchaku (because of proposition\n" ^
-               Syntax.string_of_term ctxt t ^ ")"); (unknownN, []))
-          | NONE =>
-            let
-              val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
-              val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
+          let
+            val (poly_axioms, isa_prob) =
+              isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout
+                (if assms then all_assms else []) subgoal;
+val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
+            val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
+            val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
 val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
 
-              fun print_any_hints () =
-                if has_lonely_bool_var subgoal then
-                  print "Hint: Maybe you forgot a colon after the lemma's name?"
-                else if has_syntactic_sorts subgoal then
-                  print "Hint: Maybe you forgot a type constraint?"
-                else
-                  ();
-            in
-              (case solve_nun_problem tool_params nice_nun_prob of
-                Unsat => (print_n ("No " ^ das_wort_model ^ " exists"); (noneN, []))
-              | Sat (output, _) =>
-                (case (null poly_axioms, none_true wfs) of
-                  (true, true) =>
-                  (print (das_wort_Model ^ ":\n" ^ output); print_any_hints (); (genuineN, []))
-                | (no_poly, no_wf) =>
-                  let
-                    val ignorings = []
-                      |> not no_poly ? cons "polymorphic axioms"
-                      |> not no_wf ? cons "unchecked well-foundedness";
-                  in
-                    (print (das_wort_Model ^ " (ignoring " ^ space_implode " and " ignorings ^
-                       "):\n" ^ output ^
-                       (if no_poly then
-                          ""
-                        else
-                          "\nIgnored axioms:\n" ^
-                          cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
-                     print_any_hints ();
-                     (quasi_genuineN, []))
-                  end)
-              | Timeout => (print_n "Time out"; (unknownN, []))
-              | Nunchaku_Var_Not_Set =>
-                (print_n ("Variable $" ^ nunchaku_env_var ^ " not set"); (unknownN, []))
-              | Nunchaku_Cannot_Execute =>
-                (print_n "External tool \"nunchaku\" cannot execute"; (unknownN, []))
-              | Nunchaku_Not_Found =>
-                (print_n "External tool \"nunchaku\" not found"; (unknownN, []))
-              | CVC4_Cannot_Execute =>
-                (print_n "External tool \"cvc4\" cannot execute"; (unknownN, []))
-              | CVC4_Not_Found => (print_n "External tool \"cvc4\" not found"; (unknownN, []))
-              | Unknown_Error (code, msg) =>
-                (print_n ("Unknown error: " ^ msg ^
-                   (if code = 0 then "" else " (code " ^ string_of_int code ^ ")"));
-                 (unknownN, [])))
-            end);
+            fun print_any_hints () =
+              if has_lonely_bool_var subgoal then
+                print "Hint: Maybe you forgot a colon after the lemma's name?"
+              else if has_syntactic_sorts subgoal then
+                print "Hint: Maybe you forgot a type constraint?"
+              else
+                ();
+          in
+            (case solve_nun_problem tool_params nice_nun_prob of
+              Unsat => (print_n ("No " ^ das_wort_model ^ " exists"); (noneN, []))
+            | Sat (output, _) =>
+              (case (null poly_axioms, none_true wfs) of
+                (true, true) =>
+                (print (das_wort_Model ^ ":\n" ^ output); print_any_hints (); (genuineN, []))
+              | (no_poly, no_wf) =>
+                let
+                  val ignorings = []
+                    |> not no_poly ? cons "polymorphic axioms"
+                    |> not no_wf ? cons "unchecked well-foundedness";
+                in
+                  (print (das_wort_Model ^ " (ignoring " ^ space_implode " and " ignorings ^
+                     "):\n" ^ output ^
+                     (if no_poly then
+                        ""
+                      else
+                        "\nIgnored axioms:\n" ^
+                        cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
+                   print_any_hints ();
+                   (quasi_genuineN, []))
+                end)
+            | Timeout => (print_n "Time out"; (unknownN, []))
+            | Nunchaku_Var_Not_Set =>
+              (print_n ("Variable $" ^ nunchaku_env_var ^ " not set"); (unknownN, []))
+            | Nunchaku_Cannot_Execute =>
+              (print_n "External tool \"nunchaku\" cannot execute"; (unknownN, []))
+            | Nunchaku_Not_Found =>
+              (print_n "External tool \"nunchaku\" not found"; (unknownN, []))
+            | CVC4_Cannot_Execute =>
+              (print_n "External tool \"cvc4\" cannot execute"; (unknownN, []))
+            | CVC4_Not_Found => (print_n "External tool \"cvc4\" not found"; (unknownN, []))
+            | Unknown_Error (code, msg) =>
+              (print_n ("Unknown error: " ^ msg ^
+                 (if code = 0 then "" else " (code " ^ string_of_int code ^ ")"));
+               (unknownN, [])))
+          end
+          handle
+            TOO_META t =>
+            (print_n ("Problem too meta for Nunchaku (because of proposition\n" ^
+               Syntax.string_of_term ctxt t ^ ")"); (unknownN, []));
       in
         if expect = "" orelse outcome_code = expect then outcome
         else error ("Unexpected outcome: " ^ quote outcome_code)

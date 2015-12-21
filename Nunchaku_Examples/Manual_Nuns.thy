@@ -14,7 +14,6 @@ theory Manual_Nuns
 imports Real "~~/src/HOL/Library/Quotient_Product" "../Nunchaku"
 begin
 
-
 subsection {* 2. First Steps *}
 
 nunchaku_params [timeout = 240]
@@ -364,73 +363,74 @@ subsubsection {* 3.2. AA Trees *}
 datatype 'a aa_tree = \<Lambda> | N "'a :: linorder" nat "'a aa_tree" "'a aa_tree"
 
 primrec data where
-"data \<Lambda> = undefined" |
-"data (N x _ _ _) = x"
+  "data \<Lambda> = undefined"
+| "data (N x _ _ _) = x"
 
 primrec dataset where
-"dataset \<Lambda> = {}" |
-"dataset (N x _ t u) = {x} \<union> dataset t \<union> dataset u"
+  "dataset \<Lambda> = {}"
+| "dataset (N x _ t u) = {x} \<union> dataset t \<union> dataset u"
 
 primrec level where
-"level \<Lambda> = 0" |
-"level (N _ k _ _) = k"
+  "level \<Lambda> = 0"
+| "level (N _ k _ _) = k"
 
 primrec left where
-"left \<Lambda> = \<Lambda>" |
-"left (N _ _ t\<^sub>1 _) = t\<^sub>1"
+  "left \<Lambda> = \<Lambda>"
+| "left (N _ _ t\<^sub>1 _) = t\<^sub>1"
 
 primrec right where
-"right \<Lambda> = \<Lambda>" |
-"right (N _ _ _ t\<^sub>2) = t\<^sub>2"
+  "right \<Lambda> = \<Lambda>"
+| "right (N _ _ _ t\<^sub>2) = t\<^sub>2"
 
 fun wf where
-"wf \<Lambda> = True" |
-"wf (N _ k t u) =
- (if t = \<Lambda> then
-    k = 1 \<and> (u = \<Lambda> \<or> (level u = 1 \<and> left u = \<Lambda> \<and> right u = \<Lambda>))
-  else
-    wf t \<and> wf u \<and> u \<noteq> \<Lambda> \<and> level t < k \<and> level u \<le> k \<and> level (right u) < k)"
+  "wf \<Lambda> = True"
+| "wf (N _ k t u) =
+   (if t = \<Lambda> then k = 1 \<and> (u = \<Lambda> \<or> (level u = 1 \<and> left u = \<Lambda> \<and> right u = \<Lambda>))
+    else wf t \<and> wf u \<and> u \<noteq> \<Lambda> \<and> level t < k \<and> level u \<le> k \<and> level (right u) < k)"
 
 fun skew where
-"skew \<Lambda> = \<Lambda>" |
-"skew (N x k t u) =
- (if t \<noteq> \<Lambda> \<and> k = level t then
-    N (data t) k (left t) (N x k (right t) u)
-  else
-    N x k t u)"
+  "skew \<Lambda> = \<Lambda>"
+| "skew (N x k t u) =
+   (if t \<noteq> \<Lambda> \<and> k = level t then N (data t) k (left t) (N x k (right t) u)
+    else N x k t u)"
 
 fun split where
-"split \<Lambda> = \<Lambda>" |
-"split (N x k t u) =
- (if u \<noteq> \<Lambda> \<and> k = level (right u) then
-    N (data u) (Suc k) (N x k t (left u)) (right u)
-  else
-    N x k t u)"
+  "split \<Lambda> = \<Lambda>"
+| "split (N x k t u) =
+   (if u \<noteq> \<Lambda> \<and> k = level (right u) then N (data u) (Suc k) (N x k t (left u)) (right u)
+    else N x k t u)"
 
 theorem dataset_skew_split:
-"dataset (skew t) = dataset t"
-"dataset (split t) = dataset t"
+  "dataset (skew t) = dataset t"
+  "dataset (split t) = dataset t"
 nunchaku [expect = none]
 sorry
 
 theorem wf_skew_split:
-"wf t \<Longrightarrow> skew t = t"
-"wf t \<Longrightarrow> split t = t"
+  "wf t \<Longrightarrow> skew t = t"
+  "wf t \<Longrightarrow> split t = t"
 nunchaku [expect = none]
 sorry
 
 primrec insort\<^sub>1 where
-"insort\<^sub>1 \<Lambda> x = N x 1 \<Lambda> \<Lambda>" |
-"insort\<^sub>1 (N y k t u) x =
- (* (split \<circ> skew) *) (N y k (if x < y then insort\<^sub>1 t x else t)
-                             (if x > y then insort\<^sub>1 u x else u))"
+  "insort\<^sub>1 \<Lambda> x = N x 1 \<Lambda> \<Lambda>"
+| "insort\<^sub>1 (N y k t u) x =
+   (* (split \<circ> skew) *)
+   (N y k (if x < y then insort\<^sub>1 t x else t) (if x > y then insort\<^sub>1 u x else u))"
 
 theorem wf_insort\<^sub>1: "wf t \<Longrightarrow> wf (insort\<^sub>1 t x)"
 nunchaku [expect = genuine]
 oops
 
-theorem wf_insort\<^sub>1_nat: "wf t \<Longrightarrow> wf (insort\<^sub>1 t (x :: nat))"
-nunchaku [eval = "insort\<^sub>1 t x", expect = genuine]
+theorem wf_insort\<^sub>1_nat:
+"wf t \<Longrightarrow>
+t = N 1 1 \<Lambda> \<Lambda> \<Longrightarrow>
+x = 0 \<Longrightarrow>
+wf (insort\<^sub>1 t (x :: nat))"
+nunchaku[overlord]
+(*
+nunchaku [eval = "insort\<^sub>1 t x", expect = genuine, debug, verbose]
+*)
 oops
 
 primrec insort\<^sub>2 where
