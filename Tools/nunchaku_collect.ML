@@ -347,20 +347,23 @@ fun is_stale_copy_rep ctxt (s, T) =
     classify_type_name ctxt absT_name <> Copy andalso is_maybe_copy_rep ctxt absT_name s
   | _ => false);
 
-fun instantiate_constant_type_in_term ctxt const target =
+fun instantiate_constant_types_in_term ctxt csts target =
   let
     val thy = Proof_Context.theory_of ctxt;
 
-    fun subst_for (Const (s', T')) =
-        (case const of
+    fun try_const _ _ (res as SOME _) = res
+      | try_const (s', T') cst NONE =
+        (case cst of
           Const (s, T) =>
           if s = s' then
             SOME (Sign.typ_match thy (T', T) Vartab.empty)
             handle Type.TYPE_MATCH => NONE
           else
             NONE
-        | _ => NONE)
-      | subst_for (t as Free _) = if t = const then SOME Vartab.empty else NONE
+        | _ => NONE);
+
+    fun subst_for (Const x) = fold (try_const x) csts NONE
+      | subst_for (t as Free _) = if member (op aconv) csts t then SOME Vartab.empty else NONE
       | subst_for (t1 $ t2) = (case subst_for t1 of SOME subst => SOME subst | NONE => subst_for t2)
       | subst_for (Abs (_, _, t')) = subst_for t'
       | subst_for _ = NONE;
@@ -418,8 +421,6 @@ fun spec_rules_of ctxt (x as (s, T)) =
   let
     val thy = Proof_Context.theory_of ctxt;
 
-    val const = Const x;
-
     fun subst_of t0 =
       try (Sign.typ_match thy (fastype_of t0, T)) Vartab.empty;
 
@@ -430,7 +431,7 @@ fun spec_rules_of ctxt (x as (s, T)) =
           (let
              val ts = map (Envir.subst_term_types subst) ts0;
              val poly_props = map Thm.prop_of ths;
-             val props = map (instantiate_constant_type_in_term ctxt const) poly_props;
+             val props = map (instantiate_constant_types_in_term ctxt ts) poly_props;
            in
              if exists (exists (exists_type (exists_subtype is_TVar))) [ts, props] then NONE
              else SOME (classif, ts, props, poly_props)
@@ -446,7 +447,7 @@ fun spec_rules_of ctxt (x as (s, T)) =
         [(Spec_Rules.Equational, ([Logic.varify_global @{term finite}],
            [Skip_Proof.make_thm thy (Logic.varify_global @{prop "finite A = True"})]))]
       else
-        Spec_Rules.retrieve ctxt const
+        Spec_Rules.retrieve ctxt (Const x)
         |> sort (classif_ord o apply2 fst);
   in
     fold process_spec specs NONE
@@ -480,13 +481,6 @@ val orphan_axioms_of =
   #> maps snd
   #> filter_out (is_builtin_theory o Thm.theory_id_of_thm)
   #> map Thm.prop_of;
-
-val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
-
-val is_const_builtin =
-  member (op =) [@{const_name All}, @{const_name conj}, @{const_name disj}, @{const_name HOL.eq},
-    @{const_name Ex}, @{const_name False}, @{const_name If}, @{const_name implies},
-    @{const_name Not}, @{const_name True}];
 
 fun keys_of _ (ITVal T) = [key_of_typ T]
   | keys_of _ (ICopy {abs_typ, ...}) = [key_of_typ abs_typ]
@@ -826,34 +820,42 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
                      let
                        val props = map (preprocess_prop false ctxt) props0;
 
-                       fun specs () = [ISpec {consts = consts, props = props}];
+                       fun def_or_spec () =
+                         (case definition_of thy x of
+                           SOME eq0 =>
+                           let val eq = preprocess_prop false ctxt eq0 in
+                             ([eq], [IRec [{const = t, props = [eq]}]])
+                           end
+                         | NONE => (props, [ISpec {consts = consts, props = props}]));
 
-                       val cmds =
+                       val (props', cmds) =
                          if null props then
-                           map IVal consts
+                           ([], map IVal consts)
                          else if classif = Spec_Rules.Equational then
                            (case partition_props consts props of
                              SOME propss =>
-                             [IRec (map2 (fn const => fn props => {const = const, props = props})
-                                consts propss)]
-                           | NONE => specs ())
+                             (props,
+                              [IRec (map2 (fn const => fn props => {const = const, props = props})
+                                 consts propss)])
+                           | NONE => def_or_spec ())
                          else if member (op =) [Spec_Rules.Inductive, Spec_Rules.Co_Inductive]
                              classif then
                            (case partition_props consts props of
                              SOME propss =>
-                             [ICoPred (if classif = Spec_Rules.Inductive then BNF_Util.Least_FP
-                                  else BNF_Util.Greatest_FP,
-                                length consts = 1 andalso
-                                is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout
-                                  (the_single consts) poly_props,
-                                map2 (fn const => fn props => {const = const, props = props})
-                                  consts propss)]
-                           | NONE => specs ())
+                             (props,
+                              [ICoPred (if classif = Spec_Rules.Inductive then BNF_Util.Least_FP
+                                 else BNF_Util.Greatest_FP,
+                               length consts = 1 andalso
+                               is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout
+                                 (the_single consts) poly_props,
+                               map2 (fn const => fn props => {const = const, props = props})
+                                 consts propss)])
+                           | NONE => def_or_spec ())
                          else
-                           specs ();
+                           def_or_spec ();
                      in
                        ((seenS, seenT, union (op aconv) consts seen), cmds @ prob)
-                       |> fold (consider_term (depth + 1)) props
+                       |> fold (consider_term (depth + 1)) props'
                      end
                    | NONE =>
                      (case definition_of thy x of

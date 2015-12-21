@@ -17,11 +17,6 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-declare [[ML_print_depth = 100]]
-
-lemma "1 \<noteq> 0"
-nunchaku
-
 (*
 declare [[ML_print_depth = 100]]
 
