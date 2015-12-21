@@ -7,6 +7,9 @@ Adds the "nunchaku" and "nunchaku_params" commands to Isabelle/Isar's outer synt
 
 signature NUNCHAKU_COMMANDS =
 sig
+  type params = Nunchaku.params
+
+  val default_params: theory -> (string * string) list -> params
 end;
 
 structure Nunchaku_Commands : NUNCHAKU_COMMANDS =
@@ -245,12 +248,12 @@ fun string_for_raw_param (name, value) =
 
 fun nunchaku_params_trans params =
   Toplevel.theory (fold set_default_raw_param params
-    #> tap (fn thy => writeln ("Default parameters for Nunchaku:\n" ^
-      (case rev (default_raw_params thy) of
-        [] => "none"
-      | params =>
-        (map check_raw_param params;
-         params |> map string_for_raw_param |> sort_strings |> cat_lines)))));
+    #> tap (fn thy =>
+      let val params = rev (default_raw_params thy) in
+        List.app check_raw_param params;
+        writeln ("Default parameters for Nunchaku:\n" ^
+          (params |> map string_for_raw_param |> sort_strings |> cat_lines))
+      end));
 
 val _ =
   Outer_Syntax.command @{command_keyword nunchaku}

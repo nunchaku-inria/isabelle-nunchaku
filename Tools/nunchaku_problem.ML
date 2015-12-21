@@ -56,6 +56,7 @@ sig
   | NSpec of nun_consts_spec
   | NAxiom of tm
   | NGoal of tm
+  | NEval of tm
 
   type nun_problem = nun_command list list
 
@@ -156,7 +157,8 @@ datatype nun_command =
 | NRec of nun_const_spec list
 | NSpec of nun_consts_spec
 | NAxiom of tm
-| NGoal of tm;
+| NGoal of tm
+| NEval of tm;
 
 type nun_problem = nun_command list list;
 
@@ -357,7 +359,10 @@ fun fold_map_nun_command_idents f (NTVal ty) =
     #>> NAxiom
   | fold_map_nun_command_idents f (NGoal tm) =
     fold_map_tm_idents f tm
-    #>> NGoal;
+    #>> NGoal
+  | fold_map_nun_command_idents f (NEval tm) =
+    fold_map_tm_idents f tm
+    #>> NEval;
 
 fun fold_map_nun_problem_idents f =
   fold_map (fold_map (fold_map_nun_command_idents f));
@@ -614,7 +619,8 @@ fun str_of_nun_command (NTVal ty) = "val " ^ str_of_tval ty
   | str_of_nun_command (NRec specs) = "rec " ^ str_of_and_list str_of_nun_const_spec specs
   | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_consts_spec spec
   | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_tm tm
-  | str_of_nun_command (NGoal tm) = "goal " ^ str_of_tm tm;
+  | str_of_nun_command (NGoal tm) = "goal " ^ str_of_tm tm
+  | str_of_nun_command (NEval tm) = "eval " ^ str_of_tm tm;
 
 val str_of_nun_problem =
   map (cat_lines o map (suffix "." o str_of_nun_command))

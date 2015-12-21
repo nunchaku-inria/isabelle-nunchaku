@@ -39,16 +39,19 @@ sig
   | ISpec of isa_consts_spec
   | IAxiom of term
   | IGoal of term
+  | IEval of term
 
   type isa_problem = isa_command list list
 
   exception CYCLIC_DEPS of unit
   exception TOO_DEEP_DEPS of unit
   exception TOO_META of term
+  exception UNEXPECTED_POLYMORPHISM of term
+  exception UNEXPECTED_VAR of term
   exception UNSUPPORTED_FUNC of term
 
   val isa_problem_of_subgoal: Proof.context -> bool -> ((string * typ) option * bool option) list ->
-    bool -> Time.time -> term list -> term -> term list * isa_problem
+    bool -> Time.time -> term list -> term list -> term -> term list * isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -86,13 +89,16 @@ datatype isa_command =
 | IRec of isa_const_spec list
 | ISpec of isa_consts_spec
 | IAxiom of term
-| IGoal of term;
+| IGoal of term
+| IEval of term;
 
 type isa_problem = isa_command list list;
 
 exception CYCLIC_DEPS of unit;
 exception TOO_DEEP_DEPS of unit;
 exception TOO_META of term;
+exception UNEXPECTED_POLYMORPHISM of term;
+exception UNEXPECTED_VAR of term;
 exception UNSUPPORTED_FUNC of term;
 
 val key_of_typ =
@@ -142,17 +148,21 @@ fun unfold_basic_def ctxt =
 
 val has_polymorphism = exists_type (exists_subtype is_TVar);
 
-fun preprocess_prop falsify ctxt t =
+fun preprocess_term_basic falsify ctxt t =
   if has_polymorphism t then
-    raise TOO_META t
+    raise UNEXPECTED_POLYMORPHISM t
   else
     t
     |> attach_typeS
     |> Object_Logic.atomize_term ctxt
-    |> tap (fn t' => fastype_of t' = HOLogic.boolT orelse raise TOO_META t)
+    |> tap (fn t' => fastype_of t' <> @{typ prop} orelse raise TOO_META t)
     |> falsify ? HOLogic.mk_not
-    |> unfold_basic_def ctxt
-    |> close_form [];
+    |> unfold_basic_def ctxt;
+
+val check_closed = tap (fn t => null (Term.add_vars t []) orelse raise UNEXPECTED_VAR t);
+
+val preprocess_prop = close_form [] ooo preprocess_term_basic;
+val preprocess_closed_term = check_closed oo preprocess_term_basic false;
 
 val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 
@@ -499,7 +509,8 @@ fun keys_of _ (ITVal T) = [key_of_typ T]
   | keys_of ctxt (IRec specs) = map (key_of_const ctxt o #const) specs
   | keys_of ctxt (ISpec {consts, ...}) = map (key_of_const ctxt) consts
   | keys_of _ (IAxiom _) = []
-  | keys_of _ (IGoal _) = [];
+  | keys_of _ (IGoal _) = []
+  | keys_of _ (IEval _) = [];
 
 fun co_data_spec_deps_of ctxt ({ctrs, ...} : isa_co_data_spec) =
   fold (add_keys ctxt) ctrs [];
@@ -518,7 +529,8 @@ fun deps_of _ (ITVal _) = []
   | deps_of ctxt (IRec specs) = maps (const_spec_deps_of ctxt (map #const specs) o #props) specs
   | deps_of ctxt (ISpec spec) = consts_spec_deps_of ctxt spec
   | deps_of ctxt (IAxiom prop) = add_keys ctxt prop []
-  | deps_of ctxt (IGoal prop) = add_keys ctxt prop [];
+  | deps_of ctxt (IGoal prop) = add_keys ctxt prop []
+  | deps_of ctxt (IEval t) = add_keys ctxt t [];
 
 fun consts_of_rec_or_spec (IRec specs) = map #const specs
   | consts_of_rec_or_spec (ISpec {consts, ...}) = consts;
@@ -584,8 +596,9 @@ fun sort_isa_problem_topologically ctxt cmds =
       |> sort_prob;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
+    val evals = filter (can (fn IEval _ => ())) cmds;
   in
-    typedecls @ mixed @ axioms @ goals
+    typedecls @ mixed @ axioms @ goals @ evals
   end;
 
 fun group_of (ITVal _) = 1
@@ -597,7 +610,8 @@ fun group_of (ITVal _) = 1
   | group_of (IRec _) = 7
   | group_of (ISpec _) = 8
   | group_of (IAxiom _) = 9
-  | group_of (IGoal _) = 10;
+  | group_of (IGoal _) = 10
+  | group_of (IEval _) = 11;
 
 fun group_isa_commands [] = []
   | group_isa_commands [cmd] = [[cmd]]
@@ -713,7 +727,7 @@ fun is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout const intros =
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
 val axioms_max_depth = 255
 
-fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal0 =
+fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 subgoal0 =
   let
     val thy = Proof_Context.theory_of ctxt;
 
@@ -882,14 +896,14 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
     val (poly_axioms, mono_axioms0) = orphan_axioms_of ctxt
       |> List.partition has_polymorphism;
 
-    val mono_axioms_and_some_assms =
-      map (preprocess_prop false ctxt) (mono_axioms0 @ some_assms0);
+    val mono_axioms_and_some_assms = map (preprocess_prop false ctxt) (mono_axioms0 @ some_assms0);
     val subgoal = preprocess_prop falsify ctxt subgoal0;
+    val evals = map (preprocess_closed_term ctxt) evals0;
     val seens = ([], [], []);
   in
     (poly_axioms,
-     (seens, map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal])
-     |> fold (consider_term 0) (subgoal :: mono_axioms_and_some_assms)
+     (seens, map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal] @ map IEval evals)
+     |> fold (consider_term 0) (subgoal :: evals @ mono_axioms_and_some_assms)
      |> snd
      |> rev (* prettier *)
      |> sort_isa_problem_topologically ctxt
@@ -933,8 +947,9 @@ fun str_of_isa_command ctxt (ITVal T) = "type " ^ Syntax.string_of_typ ctxt T
   | str_of_isa_command ctxt (IRec specs) =
     "rec " ^ str_of_and_list (str_of_isa_const_spec ctxt) specs
   | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_consts_spec ctxt spec
-  | str_of_isa_command ctxt (IAxiom t) = "axiom " ^ Syntax.string_of_term ctxt t
-  | str_of_isa_command ctxt (IGoal t) = "goal " ^ Syntax.string_of_term ctxt t;
+  | str_of_isa_command ctxt (IAxiom prop) = "axiom " ^ Syntax.string_of_term ctxt prop
+  | str_of_isa_command ctxt (IGoal prop) = "goal " ^ Syntax.string_of_term ctxt prop
+  | str_of_isa_command ctxt (IEval t) = "eval " ^ Syntax.string_of_term ctxt t;
 
 fun str_of_isa_problem ctxt =
   map (cat_lines o map (suffix "." o str_of_isa_command ctxt))

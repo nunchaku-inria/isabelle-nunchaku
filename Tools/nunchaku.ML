@@ -134,7 +134,7 @@ val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state
     ({mode_of_operation_params = {falsify, assms, spy, overlord, expect},
-      scope_of_search_params = {wfs, ...}, output_format_params = {verbose, debug, ...},
+      scope_of_search_params = {wfs, ...}, output_format_params = {verbose, debug, evals, ...},
       timeout_params = {timeout, wf_timeout}, ...})
     mode i all_assms subgoal =
   let
@@ -156,7 +156,7 @@ fun run_chaku_on_prop state
         val outcome as (outcome_code, _) =
           let
             val (poly_axioms, isa_prob) =
-              isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout
+              isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals
                 (if assms then all_assms else []) subgoal;
 val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
             val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
@@ -216,8 +216,14 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
           | TOO_META t =>
             (print_n ("Formula too meta for Nunchaku:\n" ^ Syntax.string_of_term ctxt t);
              (unknownN, []))
+          | UNEXPECTED_POLYMORPHISM t =>
+            (print_n ("Unexpected polymorphism in term\n" ^ Syntax.string_of_term ctxt t);
+             (unknownN, []))
+          | UNEXPECTED_VAR t =>
+            (print_n ("Unexpected schematic variables in term\n" ^ Syntax.string_of_term ctxt t);
+             (unknownN, []))
           | UNSUPPORTED_FUNC t =>
-            (print_n ("Unsupported low-level function in problem: " ^ Syntax.string_of_term ctxt t);
+            (print_n ("Unsupported low-level constant in problem: " ^ Syntax.string_of_term ctxt t);
              (unknownN, []));
       in
         if expect = "" orelse outcome_code = expect then outcome
