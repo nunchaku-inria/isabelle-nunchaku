@@ -1,8 +1,6 @@
 Isabelle frontend:
 
   * configuration option to keep generated files around (with line numbers in file name)
-  * implement "eval"
-  * inline trivial "copy" types
 
   * parse models
 
