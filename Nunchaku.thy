@@ -17,10 +17,10 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+(*
 lemma "hd [] = x"
 nunchaku [eval = "[x, x]"]
 
-(*
 declare [[ML_print_depth = 100]]
 
 ML {*
