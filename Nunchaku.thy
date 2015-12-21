@@ -18,7 +18,7 @@ ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
 lemma "hd [] = x"
-nunchaku [eval = "hd []:: 'a list"]
+nunchaku [eval = "[x, x]"]
 
 (*
 declare [[ML_print_depth = 100]]
