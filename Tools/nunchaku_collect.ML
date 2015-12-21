@@ -99,7 +99,7 @@ val key_of_typ =
   let
     fun key_of (Type (s, [])) = s
       | key_of (Type (s, Ts)) = s ^ "(" ^ commas (map key_of Ts) ^ ")"
-      | key_of (TFree (s, _)) = s
+      | key_of (TFree (s, _)) = s;
   in
     prefix "y" o key_of
   end;
