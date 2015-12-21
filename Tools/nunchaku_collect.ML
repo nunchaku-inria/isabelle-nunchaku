@@ -42,7 +42,10 @@ sig
 
   type isa_problem = isa_command list list
 
+  exception CYCLIC_DEPS of unit
+  exception TOO_DEEP_DEPS of unit
   exception TOO_META of term
+  exception STALE_FUNC of term
 
   val isa_problem_of_subgoal: Proof.context -> bool -> ((string * typ) option * bool option) list ->
     bool -> Time.time -> term list -> term -> term list * isa_problem
@@ -87,7 +90,10 @@ datatype isa_command =
 
 type isa_problem = isa_command list list;
 
+exception CYCLIC_DEPS of unit;
+exception TOO_DEEP_DEPS of unit;
 exception TOO_META of term;
+exception STALE_FUNC of term;
 
 val key_of_typ =
   let
@@ -530,7 +536,7 @@ fun merge_two (ICoData (fp, specs)) (ICoData (fp', specs')) =
   | merge_two (cmd as IRec _) (cmd' as ISpec _) = merge_two_rec_or_spec cmd cmd'
   | merge_two (cmd as ISpec _) (cmd' as IRec _) = merge_two_rec_or_spec cmd cmd'
   | merge_two (cmd as ISpec _) (cmd' as ISpec _) = merge_two_rec_or_spec cmd cmd'
-  | merge_two _ _ = raise Fail "cannot merge mutually dependent commands";
+  | merge_two _ _ = raise CYCLIC_DEPS ();
 
 fun sort_isa_problem_topologically ctxt cmds =
   let
@@ -724,7 +730,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
       if member (op =) seenS S then
         (seens, prob)
       else if depth > axioms_max_depth then
-        raise Fail "too many nested axioms"
+        raise TOO_DEEP_DEPS ()
       else
         let
           val seenS = S :: seenS;
@@ -801,7 +807,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
           if member (op aconv) seen t then
             (seens, prob)
           else if depth > axioms_max_depth then
-            raise Fail "too many nested axioms"
+            raise TOO_DEEP_DEPS ()
           else
             let
               val seen = t :: seen;
@@ -815,7 +821,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout some_assms0 subgoal
                     is_copy_rep ctxt x then
                    (seens, prob)
                  else if is_stale_copy_abs ctxt x orelse is_stale_copy_rep ctxt x then
-                   raise Fail ("stale abs or rep function: " ^ s)
+                   raise STALE_FUNC t
                  else
                    (case spec_rules_of ctxt x of
                      SOME (classif, consts, props0, poly_props) =>

@@ -209,9 +209,16 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
                (unknownN, [])))
           end
           handle
-            TOO_META t =>
-            (print_n ("Problem too meta for Nunchaku (because of proposition\n" ^
-               Syntax.string_of_term ctxt t ^ ")"); (unknownN, []));
+            CYCLIC_DEPS () =>
+            (print_n "Cyclic dependencies (or bug in Nunchaku)"; (unknownN, []))
+          | TOO_DEEP_DEPS () =>
+            (print_n "Too deep dependencies (or bug in Nunchaku)"; (unknownN, []))
+          | TOO_META t =>
+            (print_n ("Formula too meta for Nunchaku:\n" ^ Syntax.string_of_term ctxt t);
+             (unknownN, []))
+          | STALE_FUNC t =>
+            (print_n ("Stale low-level function in problem: " ^ Syntax.string_of_term ctxt t);
+             (unknownN, []));
       in
         if expect = "" orelse outcome_code = expect then outcome
         else error ("Unexpected outcome: " ^ quote outcome_code)
