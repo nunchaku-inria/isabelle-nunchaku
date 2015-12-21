@@ -118,6 +118,17 @@ fun str_of_mode Auto_Try = "Auto_Try"
 
 fun none_true assigns = forall (curry (op <>) (SOME true) o snd) assigns;
 
+fun has_lonely_bool_var (@{const Pure.conjunction} $ (@{const Trueprop} $ Free _) $ _) = true
+  | has_lonely_bool_var _ = false;
+
+val syntactic_sorts =
+  @{sort "{default,zero,one,plus,minus,uminus,times,inverse,abs,sgn,ord,equal}"} @ @{sort numeral};
+
+fun has_tfree_syntactic_sort (TFree (_, S as _ :: _)) = subset (op =) (S, syntactic_sorts)
+  | has_tfree_syntactic_sort _ = false;
+
+val has_syntactic_sorts = exists_type (exists_subtype has_tfree_syntactic_sort);
+
 (* Give the soft timeout a chance. *)
 val timeout_slack = seconds 1.0;
 
@@ -157,12 +168,21 @@ val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
               val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
               val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
 val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
+
+              fun print_any_hints () =
+                if has_lonely_bool_var subgoal then
+                  print "Hint: Maybe you forgot a colon after the lemma's name?"
+                else if has_syntactic_sorts subgoal then
+                  print "Hint: Maybe you forgot a type constraint?"
+                else
+                  ();
             in
               (case solve_nun_problem tool_params nice_nun_prob of
                 Unsat => (print_n ("No " ^ das_wort_model ^ " exists"); (noneN, []))
               | Sat (output, _) =>
                 (case (null poly_axioms, none_true wfs) of
-                  (true, true) => (print (das_wort_Model ^ ":\n" ^ output); (genuineN, []))
+                  (true, true) =>
+                  (print (das_wort_Model ^ ":\n" ^ output); print_any_hints (); (genuineN, []))
                 | (no_poly, no_wf) =>
                   let
                     val ignorings = []
@@ -176,6 +196,7 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
                         else
                           "\nIgnored axioms:\n" ^
                           cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
+                     print_any_hints ();
                      (quasi_genuineN, []))
                   end)
               | Timeout => (print_n "Time out"; (unknownN, []))

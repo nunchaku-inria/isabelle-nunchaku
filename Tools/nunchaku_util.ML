@@ -57,9 +57,7 @@ val double_lookup = Nitpick_Util.double_lookup;
 val triple_lookup = Nitpick_Util.triple_lookup;
 
 fun with_overlord_file name ext f =
-  let val path = Path.explode ("$ISABELLE_HOME_USER/" ^ name ^ "." ^ ext) in
-    f path
-  end;
+  f (Path.explode ("$ISABELLE_HOME_USER/" ^ name ^ "." ^ ext));
 
 fun with_tmp_or_overlord_file overlord =
   if overlord then with_overlord_file else Isabelle_System.with_tmp_file;
@@ -67,7 +65,7 @@ fun with_tmp_or_overlord_file overlord =
 val num_binder_types = BNF_Util.num_binder_types
 val strip_fun_type = BNF_Util.strip_fun_type;
 
-(* Clone from "HOL/Tools/inductive_realizer.ML" *)
+(* Clone from "HOL/Tools/inductive_realizer.ML". *)
 val attach_typeS =
   map_types (map_atyps
     (fn TFree (s, []) => TFree (s, @{sort type})
