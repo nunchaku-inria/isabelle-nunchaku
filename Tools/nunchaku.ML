@@ -172,7 +172,8 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
                 ();
           in
             (case solve_nun_problem tool_params nice_nun_prob of
-              Unsat => (print_n ("No " ^ das_wort_model ^ " exists"); (noneN, []))
+              Unsat =>
+              (print_n ("No " ^ das_wort_model ^ " exists (the goal is a theorem)"); (noneN, []))
             | Sat (output, _) =>
               (case (null poly_axioms, none_true wfs) of
                 (true, true) =>

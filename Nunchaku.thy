@@ -17,7 +17,37 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+(* nunchaku[verbose] *)
+
 (*
+consts lhs :: 'a
+consts rhs1 :: 'a
+consts rhs2 :: 'a
+consts c1 :: bool
+
+lemma "rev ([a, b, c] @ xs) = [x, y] @ [c, b, a]"
+nunchaku[verbose, debug]
+oops
+
+fun split where
+  "split 0 xs = ([], xs)"
+| "split _ [] = ([], [])"
+| "split (Suc n) (x # xs) = (let (ys, zs) = split n xs in (x # ys, zs))"
+
+lemma
+  assumes "split k as = ([a, b, c], [x, y])"
+    and "split l bs = ([x, y], [c, b, a])"
+  shows "rev as = bs"
+nunchaku[verbose, debug]
+oops
+
+lemma
+  assumes "take k as = [a, b, c]" and "drop k as = [x, y]"
+    and "take l bs = [x, y]" and "drop l bs = [c, b, a]"
+  shows "rev as = bs"
+nunchaku[verbose, debug]
+oops
+
 lemma "hd [] = x"
 nunchaku [eval = "[x, x]"]
 

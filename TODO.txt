@@ -7,7 +7,6 @@ Isabelle frontend:
   * numeric types
     * do something about big 'nat's? cf. 'binary_ints'
     * avoid numerals if possible
-  * other definitional mechanisms?
   * BNF-style nesting (through functions, mixed FPs, etc.)?
 
 Middleware:
