@@ -9,6 +9,8 @@ Isabelle frontend:
     * avoid numerals if possible
   * BNF-style nesting (through functions, mixed FPs, etc.)?
 
+  * annotate monotone (stably infinite) uninterpreted types
+
 Middleware:
 
   * leverage empty sorts
