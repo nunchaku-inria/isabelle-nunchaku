@@ -427,10 +427,7 @@ theorem wf_insort\<^sub>1_nat:
 t = N 1 1 \<Lambda> \<Lambda> \<Longrightarrow>
 x = 0 \<Longrightarrow>
 wf (insort\<^sub>1 t (x :: nat))"
-nunchaku[overlord]
-(*
-nunchaku [eval = "insort\<^sub>1 t x", expect = genuine, debug, verbose]
-*)
+nunchaku [eval = "insort\<^sub>1 t x", expect = genuine]
 oops
 
 primrec insort\<^sub>2 where

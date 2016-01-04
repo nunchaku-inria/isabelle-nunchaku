@@ -15,6 +15,7 @@ Middleware:
 
   * syntax for models
   * specialization
+    * also for "spec"? "eps" and "the"
   * simplification (like simplifier, after specialization in the pipeline -- 'rec [wf]' and/or bound)
   * heuristic inlining of definitions
   * (co)inductive predicates

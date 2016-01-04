@@ -17,9 +17,14 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-(* nunchaku[verbose] *)
+lemma "card (set [a, b]) = Suc (Suc 0)"
 
 (*
+
+axiomatization eps :: "('a \<Rightarrow> bool) \<Rightarrow> 'a" where
+  "\<exists>x. P eps P = ()
+
+
 consts lhs :: 'a
 consts rhs1 :: 'a
 consts rhs2 :: 'a
