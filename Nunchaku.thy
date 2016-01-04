@@ -17,9 +17,8 @@ ML_file "Tools/nunchaku_model.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-lemma "card (set [a, b]) = Suc (Suc 0)"
-
 (*
+lemma "card (set [a, b]) = Suc (Suc 0)"
 
 axiomatization eps :: "('a \<Rightarrow> bool) \<Rightarrow> 'a" where
   "\<exists>x. P eps P = ()
