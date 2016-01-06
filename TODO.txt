@@ -25,7 +25,6 @@ Middleware:
     * and "inline" trivial quotient types?
   * numeric types
   * BNF-style nesting (through functions, mixed FPs, etc.)?
-  * polarity for other predicates
   * description operators
     * leverage polarities
   * almost true / almost false predicate inference?
