@@ -11,6 +11,9 @@ Isabelle frontend:
 
   * annotate monotone (stably infinite) uninterpreted types
 
+  * "finite": make it possible to find counterexamples for infinite sets!
+    (e.g. mset_to_set)
+
 Middleware:
 
   * leverage empty sorts
