@@ -83,9 +83,10 @@ fun nun_tm_of_isa ctxt t =
             val min_args = num_f_args + 1;
             val var_counts = map (num_binder_types o snd) ctrs;
 
-            val tm = tm_of bounds (Free (Name.uu, T)) (* dummy *);
+            val dummy_free = Free (Name.uu, T);
+            val tm = tm_of bounds dummy_free;
             val tm' = eta_expandN_tm min_args tm;
-            val (vars, body) = strip_nun_abs min_args tm'
+            val (vars, body) = strip_nun_abs min_args tm';
             val (_, (f_args, obj :: other_args)) = strip_nun_comb body ||> chop num_f_args;
             val f_args' = map2 eta_expandN_tm var_counts f_args;
 
@@ -123,7 +124,7 @@ fun nun_tm_of_isa ctxt t =
           NAbs (tm_of bounds' x, tm_of bounds' (subst_bound (x, t)))
         end
       | tm_of bounds (t $ u) = NApp (tm_of bounds t, tm_of bounds u)
-      | tm_of _ (Bound _) = raise Fail "unexpected Bound"
+      | tm_of _ (Bound _) = raise Fail "unexpected Bound";
   in
     t
     |> tm_of Name.context
