@@ -147,6 +147,7 @@ fun run_chaku_on_prop state
     val print = writeln;
     val print_n = if mode = Normal then writeln else K ();
     fun print_v f = if verbose then writeln (f ()) else ();
+    fun print_d f = if debug then writeln (f ()) else ();
 
     val das_wort_Model = if falsify then "Countermodel" else "Model";
     val das_wort_model = if falsify then "countermodel" else "model";
@@ -160,14 +161,10 @@ fun run_chaku_on_prop state
             val (poly_axioms, isa_prob) =
               isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals
                 (if assms then all_assms else []) subgoal;
-            (*
-            val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
-            *)
+            val _ = print_d (fn () => "*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
             val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
             val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
-            (*
-            val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
-            *)
+            val _ = print_d (fn () => "*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
 
             fun print_any_hints () =
               if has_lonely_bool_var subgoal then
