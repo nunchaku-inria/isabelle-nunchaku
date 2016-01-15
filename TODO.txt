@@ -18,6 +18,8 @@ Middleware:
 
   * leverage empty sorts
 
+  * have Nunchaku split disjunctions (also under exists, and implications,
+    ...) and produce several CVC4 problems
   * syntax for models
   * specialization
     * also for "spec"? "eps" and "the"

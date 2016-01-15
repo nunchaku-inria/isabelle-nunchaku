@@ -53,6 +53,8 @@ sig
   val unknownN: string
   val no_nunchakuN: string
 
+  val run_chaku_on_prop: Proof.state -> params -> mode -> int -> term list -> term ->
+    string * string list
   val run_chaku_on_subgoal: Proof.state -> params -> mode -> int -> string * string list
 end;
 
@@ -158,10 +160,14 @@ fun run_chaku_on_prop state
             val (poly_axioms, isa_prob) =
               isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals
                 (if assms then all_assms else []) subgoal;
-val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
+            (*
+            val _ = tracing ("*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
+            *)
             val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
             val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
-val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
+            (*
+            val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
+            *)
 
             fun print_any_hints () =
               if has_lonely_bool_var subgoal then
@@ -177,6 +183,7 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
             | Sat (output, _) =>
               (case (null poly_axioms, none_true wfs) of
                 (true, true) =>
+                (* FIXME: return something else than [] *)
                 (print (das_wort_Model ^ ":\n" ^ output); print_any_hints (); (genuineN, []))
               | (no_poly, no_wf) =>
                 let
@@ -192,6 +199,7 @@ val _ = tracing ("*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
                         "\nIgnored axioms:\n" ^
                         cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
                    print_any_hints ();
+                   (* FIXME: return something else than [] *)
                    (quasi_genuineN, []))
                 end)
             | Timeout => (print_n "Time out"; (unknownN, []))

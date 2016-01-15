@@ -1,0 +1,9 @@
+for var in "$@"
+do
+  cvc4 --lang smt2 --finite-model-find --tlimit=50 "$var"
+  if [ $? -eq 0 ]; then
+    echo OK
+  else
+    rm "$var"
+  fi
+done
