@@ -35,10 +35,6 @@ lemma "rot n \<noteq> n"
 nunchaku [expect = none]
 sorry
 
-lemma "rot Nibble2 \<noteq> Nibble3"
-nunchaku [expect = genuine]
-oops
-
 lemma "(rot ^^ 15) n \<noteq> n"
 nunchaku [expect = none]
 sorry
@@ -49,7 +45,7 @@ oops
 
 lemma "(rot ^^ 16) n = n"
 nunchaku [expect = none]
-oops
+sorry
 
 datatype ('a, 'b) pd = Pd "'a \<times> 'b"
 

@@ -1,7 +1,5 @@
 Isabelle frontend:
 
-  * configuration option to keep generated files around (with line numbers in file name)
-
   * parse models
 
   * numeric types
@@ -13,6 +11,8 @@ Isabelle frontend:
 
   * "finite": make it possible to find counterexamples for infinite sets!
     (e.g. mset_to_set)
+
+  * nunchaku for proving, with induction and without rec encoding
 
 Middleware:
 
