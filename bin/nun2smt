@@ -1,0 +1,7 @@
+for var in "$@"
+do
+  nunchaku --timeout 0 --print-smt "$var" > /tmp/nun2smt.smt
+  if [ $? -eq 0 ]; then
+    cat /tmp/nun2smt.smt | grep '^ ' > "$var".smt2
+  fi
+done
