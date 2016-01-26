@@ -137,9 +137,11 @@ fun close_form except t =
       HOLogic.all_const T $ Abs (s, T, abstract_over (Var ((s, i), T), t')))
     (Term.add_vars t [] |> subtract (op =) except) t;
 
+(* "imp_conjL[symmetric]" is important for inductive predicates with multiple assumptions. *)
 val basic_defs =
   @{thms Ex1_def Let_def case_bool_if} @
-  map (fn th => th RS @{thm eq_reflection}) @{thms Ball_def Bex_def rmember_def[symmetric]};
+  map (fn th => th RS @{thm eq_reflection})
+    @{thms Ball_def Bex_def rmember_def[symmetric] imp_conjL[symmetric]};
 
 fun unfold_basic_def ctxt =
   let val thy = Proof_Context.theory_of ctxt in
