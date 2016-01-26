@@ -231,8 +231,9 @@ val parse_value =
 val parse_param = parse_key -- Scan.optional (@{keyword "="} |-- parse_value) [];
 val parse_params = Scan.optional (@{keyword "["} |-- Parse.list parse_param --| @{keyword "]"}) [];
 
-fun run_chaku override_params mode i state =
+fun run_chaku override_params mode i state0 =
   let
+    val state = Proof.map_contexts (Try0.silence_methods false) state0;
     val thy = Proof.theory_of state;
     val ctxt = Proof.context_of state;
     val _ = List.app check_raw_param override_params;
