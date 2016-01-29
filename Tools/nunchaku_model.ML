@@ -69,7 +69,7 @@ fun fold_map_nun_model_idents f {type_model, const_model, skolem_model} =
 fun swap_name_pool ({nice_of_ugly, ugly_of_nice} : name_pool) =
   {nice_of_ugly = ugly_of_nice, ugly_of_nice = nice_of_ugly};
 
-val allocate_ugly = allocate_nice o swap_name_pool;
+fun allocate_ugly pool = allocate_nice (swap_name_pool pool) ##> swap_name_pool;
 
 fun ugly_ident nice (pool as {ugly_of_nice, ...}) =
   (case Symtab.lookup ugly_of_nice nice of
