@@ -17,15 +17,14 @@ sig
      skolem_model: term_entry list,
      const_model: term_entry list}
 
-  val empty_isa_model: isa_model
-
-  val isa_model_of_nun: nun_model -> isa_model
+  val isa_model_of_nun: Proof.context -> nun_model -> isa_model
 end;
 
 structure Nunchaku_Reconstruct : NUNCHAKU_RECONSTRUCT =
 struct
 
 open Nunchaku_Problem;
+open Nunchaku_Translate;
 open Nunchaku_Model;
 
 type typ_entry = typ * typ list;
@@ -36,17 +35,36 @@ type isa_model =
    skolem_model: term_entry list,
    const_model: term_entry list};
 
-val empty_isa_model = {type_model = [], skolem_model = [], const_model = []};
-
-fun typ_of_nun (NType (id, tys)) = raise Fail "";
+fun typ_of_nun ctxt =
+  let
+    fun typ_of (NType (id, tys)) =
+      let val Ts = map typ_of tys in
+        if id = nun_prop then
+          @{typ bool}
+        else if id = nun_fun then
+          Type (@{type_name fun}, Ts)
+        else
+          (case try str_of_nun_const id of
+            SOME s =>
+            let
+              val s' = s; (* FIXME *)
+              val Ts' = []; (* FIXME *)
+            in
+              Type (s', Ts')
+            end
+          | NONE =>
+            (case try str_of_nun_var id of
+              SOME s => TFree (Proof_Context.check_tfree ctxt (flip_quote s, dummyS))
+            | NONE => raise Fail "unknown type identifier"))
+      end;
+  in
+    typ_of
+  end;
 
 (*
 fun ty_of_isa (Type (s, Ts)) =
     let val tys = map ty_of_isa Ts in
       (case s of
-        @{type_name bool} => nun_prop_ty
-      | @{type_name fun} => NType (nun_fun, tys)
-      | _ =>
         let
           val id = nun_tconst_of_str s;
           val args' = space_implode (ascii_of ",") (map str_of_ty tys);
@@ -55,14 +73,19 @@ fun ty_of_isa (Type (s, Ts)) =
           NType (id', [])
         end)
     end
-  | ty_of_isa (TFree (s, _)) = NType (nun_tconst_of_str (flip_quote s), [])
+  | ty_of_isa (TFree (s, _)) = NType (nun_tfree_of_str (flip_quote s), [])
 *)
 
-fun term_of_nun (NConst (id, tys, ty)) = raise Fail ""
-  | term_of_nun (NVar (id, ty)) = raise Fail ""
-  | term_of_nun (NAbs (var, body)) = raise Fail ""
-  | term_of_nun (NMatch _) = raise Fail ""
-  | term_of_nun (NApp (func, arg)) = raise Fail "";
+fun term_of_nun ctxt =
+  let
+    fun term_of (NConst (id, tys, ty)) = raise Fail ""
+      | term_of (NVar (id, ty)) = raise Fail ""
+      | term_of (NAbs (var, body)) = raise Fail ""
+      | term_of (NMatch _) = raise Fail ""
+      | term_of (NApp (func, arg)) = raise Fail "";
+  in
+    term_of
+  end;
 
 (*
 fun tm_of_isa ctxt t =
@@ -143,15 +166,15 @@ fun tm_of_isa ctxt t =
   end;
 *)
 
-fun isa_typ_entry_of_nun (ty, atoms) =
-  (typ_of_nun ty, map term_of_nun atoms);
+fun isa_typ_entry_of_nun ctxt (ty, atoms) =
+  (typ_of_nun ctxt ty, map (term_of_nun ctxt) atoms);
 
-fun isa_term_entry_of_nun (tm, value) =
-  (term_of_nun tm, term_of_nun value);
+fun isa_term_entry_of_nun ctxt (tm, value) =
+  (term_of_nun ctxt tm, term_of_nun ctxt value);
 
-fun isa_model_of_nun {type_model, skolem_model, const_model} =
-  {type_model = map isa_typ_entry_of_nun type_model,
-   skolem_model = map isa_term_entry_of_nun skolem_model,
-   const_model = map isa_term_entry_of_nun const_model};
+fun isa_model_of_nun ctxt {type_model, skolem_model, const_model} =
+  {type_model = map (isa_typ_entry_of_nun ctxt) type_model,
+   skolem_model = map (isa_term_entry_of_nun ctxt) skolem_model,
+   const_model = map (isa_term_entry_of_nun ctxt) const_model};
 
 end;

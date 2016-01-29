@@ -35,7 +35,7 @@ val default_default_params =
    ("timeout", "30"),
    ("verbose", "false"),
    ("wf", "smart"),
-   ("wf_timeout", "0.5")]
+   ("wf_timeout", "0.5")];
 
 val negated_params =
   [("dont_specialize", "specialize"),
@@ -47,7 +47,7 @@ val negated_params =
    ("non_mono", "mono"),
    ("non_wf", "wf"),
    ("quiet", "verbose"),
-   ("satisfy", "falsify")]
+   ("satisfy", "falsify")];
 
 fun is_known_raw_param s =
   AList.defined (op =) default_default_params s orelse

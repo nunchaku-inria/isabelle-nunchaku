@@ -186,7 +186,7 @@ fun run_chaku_on_prop state
               let
                 val nice_nun_model = nun_model_of_str output;
                 val ugly_nun_model = ugly_nun_model pool nice_nun_model;
-                val isa_model = isa_model_of_nun ugly_nun_model;
+                val isa_model = isa_model_of_nun ctxt ugly_nun_model;
                 val model_str = Pretty.string_of (pretty_of_isa_model isa_model);
               in
                 (case (null poly_axioms, none_true wfs) of

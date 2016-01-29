@@ -79,10 +79,10 @@ sig
   val nun_not: ident
   val nun_true: ident
 
-  val nun_tconst_of_str: string -> ident
-  val nun_tvar_of_str: string -> ident
   val nun_const_of_str: string -> ident
   val nun_var_of_str: string -> ident
+  val str_of_nun_const: ident -> string
+  val str_of_nun_var: ident -> string
 
   val nun_prop_ty: ty
 
@@ -206,31 +206,14 @@ val nun_builtin_arity =
 
 val arity_of_nun_builtin = AList.lookup (op =) nun_builtin_arity #> the_default 0;
 
-val is_nun_builtin = AList.defined (op =) nun_builtin_arity;
+val nun_const_prefix = "c.";
+val nun_var_prefix = "V.";
+val nun_custom_id_suffix = "_";
 
-fun gen_nun_const_of_str pre suf s =
-  let val s' = ascii_of s ^ suf in
-    if Char.isLower (String.sub (s', 0)) then s' else pre ^ s'
-  end;
-
-fun gen_nun_var_of_str pre suf s =
-  let val s' = ascii_of s ^ suf in
-    if Char.isUpper (String.sub (s', 0)) then s' else pre ^ s'
-  end;
-
-val tconst_prefix = "y.";
-val tvar_prefix = "A.";
-val const_prefix = "c.";
-val var_prefix = "V.";
-
-val custom_id_suffix = "_";
-
-fun nun_tconst_of_str s = tconst_prefix ^ s ^ custom_id_suffix;
-fun nun_tvar_of_str s = tvar_prefix ^ s ^ custom_id_suffix;
-fun nun_const_of_str s = const_prefix ^ s ^ custom_id_suffix;
-fun nun_var_of_str s = var_prefix ^ s ^ custom_id_suffix;
-
-val is_custom_id = String.isSuffix custom_id_suffix;
+val nun_const_of_str = prefix nun_const_prefix o suffix nun_custom_id_suffix;
+val nun_var_of_str = prefix nun_var_prefix o suffix nun_custom_id_suffix;
+val str_of_nun_const = unsuffix nun_custom_id_suffix o unprefix nun_const_prefix;
+val str_of_nun_var = unsuffix nun_custom_id_suffix o unprefix nun_var_prefix;
 
 fun index_name s 0 = s
   | index_name s j =
@@ -549,7 +532,7 @@ val (str_of_tmty, str_of_tm) =
 val empty_name_pool = {nice_of_ugly = Symtab.empty, ugly_of_nice = Symtab.empty};
 
 val nice_of_ugly_suggestion =
-  unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix custom_id_suffix
+  unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix nun_custom_id_suffix
   #> (fn s => if s = "" orelse not (Char.isAlpha (String.sub (s, 0))) then "x" ^ s else s);
 
 fun allocate_nice ({nice_of_ugly, ugly_of_nice} : name_pool) (ugly, nice_sugg0) =
@@ -568,7 +551,7 @@ fun allocate_nice ({nice_of_ugly, ugly_of_nice} : name_pool) (ugly, nice_sugg0) 
   end;
 
 fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
-  if is_custom_id ugly then
+  if String.isSuffix nun_custom_id_suffix ugly then
     (case Symtab.lookup nice_of_ugly ugly of
       NONE => allocate_nice pool (ugly, nice_of_ugly_suggestion ugly)
     | SOME nice => (nice, pool))

@@ -47,14 +47,14 @@ fun ty_of_isa (Type (s, Ts)) =
       | @{type_name fun} => NType (nun_fun, tys)
       | _ =>
         let
-          val id = nun_tconst_of_str s;
+          val id = nun_const_of_str s;
           val args' = space_implode (ascii_of ",") (map str_of_ty tys);
           val id' = ascii_of "(" ^ args' ^ ascii_of ")." ^ id;
         in
           NType (id', [])
         end)
     end
-  | ty_of_isa (TFree (s, _)) = NType (nun_tvar_of_str (flip_quote s), [])
+  | ty_of_isa (TFree (s, _)) = NType (nun_var_of_str (flip_quote s), [])
   | ty_of_isa (TVar (x, _)) = raise Fail "unexpected TVar";
 
 fun tm_of_isa ctxt t =
