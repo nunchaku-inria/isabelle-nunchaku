@@ -38,8 +38,8 @@ val strip_nun_comb =
     strip []
   end;
 
-fun nun_ty_of_isa (Type (s, Ts)) =
-    let val tys = map nun_ty_of_isa Ts in
+fun ty_of_isa (Type (s, Ts)) =
+    let val tys = map ty_of_isa Ts in
       (case s of
         @{type_name bool} => nun_prop_ty
       | @{type_name fun} => NType (nun_fun, tys)
@@ -52,10 +52,10 @@ fun nun_ty_of_isa (Type (s, Ts)) =
           NType (id', [])
         end)
     end
-  | nun_ty_of_isa (TFree (s, _)) = NType (nun_tconst_of_str (flip_quote s), [])
-  | nun_ty_of_isa (TVar (x, _)) = NTVar (nun_tvar_of_str (flip_quote (string_of_indexname x)));
+  | ty_of_isa (TFree (s, _)) = NType (nun_tconst_of_str (flip_quote s), [])
+  | ty_of_isa (TVar (x, _)) = NTVar (nun_tvar_of_str (flip_quote (string_of_indexname x)));
 
-fun nun_tm_of_isa ctxt t =
+fun tm_of_isa ctxt t =
   let
     val thy = Proof_Context.theory_of ctxt;
 
@@ -64,7 +64,7 @@ fun nun_tm_of_isa ctxt t =
         val Ts = Sign.const_typargs thy x;
 
         val id = nun_const_of_str s;
-        val tys = map nun_ty_of_isa Ts;
+        val tys = map ty_of_isa Ts;
         val args' = space_implode (ascii_of ",") (map str_of_ty tys);
       in
         ascii_of "(" ^ args' ^ ascii_of ")." ^ id
@@ -112,10 +112,10 @@ fun nun_tm_of_isa ctxt t =
               | @{const_name True} => nun_true
               | _ => id'_of_const x);
           in
-            NConst (id', [], nun_ty_of_isa T)
+            NConst (id', [], ty_of_isa T)
           end)
-      | tm_of _ (Free (s, T)) = NConst (nun_const_of_str s, [], nun_ty_of_isa T)
-      | tm_of _ (Var (x, T)) = NVar (nun_var_of_str (string_of_indexname x), nun_ty_of_isa T)
+      | tm_of _ (Free (s, T)) = NConst (nun_const_of_str s, [], ty_of_isa T)
+      | tm_of _ (Var (x, T)) = NVar (nun_var_of_str (string_of_indexname x), ty_of_isa T)
       | tm_of bounds (Abs (s, T, t)) =
         let
           val (s', bounds') = Name.variant s bounds;
@@ -133,31 +133,31 @@ fun nun_tm_of_isa ctxt t =
   end;
 
 fun nun_type_spec_of_isa ctxt {abs_typ, rep_typ, wrt, abs, rep} =
-  {abs_ty = nun_ty_of_isa abs_typ, rep_ty = nun_ty_of_isa rep_typ, wrt = nun_tm_of_isa ctxt wrt,
-   abs = nun_tm_of_isa ctxt abs, rep = nun_tm_of_isa ctxt rep};
+  {abs_ty = ty_of_isa abs_typ, rep_ty = ty_of_isa rep_typ, wrt = tm_of_isa ctxt wrt,
+   abs = tm_of_isa ctxt abs, rep = tm_of_isa ctxt rep};
 
 fun nun_ctr_of_isa ctxt ctr =
-  {ctr = nun_tm_of_isa ctxt ctr, arg_tys = map nun_ty_of_isa (binder_types (fastype_of ctr))};
+  {ctr = tm_of_isa ctxt ctr, arg_tys = map ty_of_isa (binder_types (fastype_of ctr))};
 
 fun nun_co_data_spec_of_isa ctxt {typ, ctrs} =
-  {ty = nun_ty_of_isa typ, ctrs = map (nun_ctr_of_isa ctxt) ctrs};
+  {ty = ty_of_isa typ, ctrs = map (nun_ctr_of_isa ctxt) ctrs};
 
 fun nun_const_spec_of_isa ctxt {const, props} =
-  {const = nun_tm_of_isa ctxt const, props = map (nun_tm_of_isa ctxt) props};
+  {const = tm_of_isa ctxt const, props = map (tm_of_isa ctxt) props};
 
 fun nun_consts_spec_of_isa ctxt {consts, props} =
-  {consts = map (nun_tm_of_isa ctxt) consts, props = map (nun_tm_of_isa ctxt) props};
+  {consts = map (tm_of_isa ctxt) consts, props = map (tm_of_isa ctxt) props};
 
 fun nun_problem_of_isa ctxt =
   let
     fun cmd_of cmd =
       (case cmd of
-        ITVal T => NTVal (nun_ty_of_isa T)
+        ITVal T => NTVal (ty_of_isa T)
       | ICopy spec => NCopy (nun_type_spec_of_isa ctxt spec)
       | IQuotient spec => NQuotient (nun_type_spec_of_isa ctxt spec)
       | ICoData (fp, specs) =>
         BNF_Util.case_fp fp NData NCodata (map (nun_co_data_spec_of_isa ctxt) specs)
-      | IVal t => NVal (nun_tm_of_isa ctxt t, nun_ty_of_isa (fastype_of t))
+      | IVal t => NVal (tm_of_isa ctxt t, ty_of_isa (fastype_of t))
       | ICoPred (fp, wf, specs) =>
         (if wf then curry NPred true
          else if fp = BNF_Util.Least_FP then curry NPred false
@@ -168,9 +168,9 @@ fun nun_problem_of_isa ctxt =
         else NSpec (nun_consts_spec_of_isa ctxt {consts = [const], props = props})
       | IRec specs => NRec (map (nun_const_spec_of_isa ctxt) specs)
       | ISpec spec => NSpec (nun_consts_spec_of_isa ctxt spec)
-      | IAxiom prop => NAxiom (nun_tm_of_isa ctxt prop)
-      | IGoal prop => NGoal (nun_tm_of_isa ctxt prop)
-      | IEval t => NEval (nun_tm_of_isa ctxt t));
+      | IAxiom prop => NAxiom (tm_of_isa ctxt prop)
+      | IGoal prop => NGoal (tm_of_isa ctxt prop)
+      | IEval t => NEval (tm_of_isa ctxt t));
   in
     map (map cmd_of)
   end;
