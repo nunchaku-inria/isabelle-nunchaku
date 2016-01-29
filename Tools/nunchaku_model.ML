@@ -16,8 +16,8 @@ sig
 
   type nun_model =
     {type_model: ty_entry list,
-     skolem_model: tm_entry list,
-     const_model: tm_entry list}
+     const_model: tm_entry list,
+     skolem_model: tm_entry list}
 
   val allocate_ugly: name_pool -> string * string -> string * name_pool
 
@@ -35,8 +35,8 @@ type tm_entry = tm * tm;
 
 type nun_model =
   {type_model: ty_entry list,
-   skolem_model: tm_entry list,
-   const_model: tm_entry list};
+   const_model: tm_entry list,
+   skolem_model: tm_entry list};
 
 fun fold_map_ty_entry_idents f (ty, atoms) =
   fold_map_ty_idents f ty
@@ -46,12 +46,12 @@ fun fold_map_tm_entry_idents f (tm, value) =
   fold_map_tm_idents f tm
   ##>> fold_map_tm_idents f value;
 
-fun fold_map_nun_model_idents f {type_model, skolem_model, const_model} =
+fun fold_map_nun_model_idents f {type_model, const_model, skolem_model} =
   fold_map (fold_map_ty_entry_idents f) type_model
-  ##>> fold_map (fold_map_tm_entry_idents f) skolem_model
   ##>> fold_map (fold_map_tm_entry_idents f) const_model
-  #>> (fn ((type_model, skolem_model), const_model) =>
-    {type_model = type_model, skolem_model = skolem_model, const_model = const_model});
+  ##>> fold_map (fold_map_tm_entry_idents f) skolem_model
+  #>> (fn ((type_model, const_model), skolem_model) =>
+    {type_model = type_model, const_model = const_model, skolem_model = skolem_model});
 
 fun swap_name_pool ({nice_of_ugly, ugly_of_nice} : name_pool) =
   {nice_of_ugly = ugly_of_nice, ugly_of_nice = nice_of_ugly};
@@ -163,18 +163,18 @@ val parse_model =
   parse_tok (Ident "SAT") |-- parse_tok Colon |-- parse_tok Left_Brace |--
   Scan.repeat parse_entry --| parse_tok Right_Brace;
 
-fun add_entry entry ({type_model, skolem_model, const_model} : nun_model) =
+fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =
   (case entry of
     Type_Entry e =>
-    {type_model = e :: type_model, skolem_model = skolem_model, const_model = const_model}
+    {type_model = e :: type_model, const_model = const_model, skolem_model = skolem_model}
   | Skolem_Entry e =>
-    {type_model = type_model, skolem_model = e :: skolem_model, const_model = const_model}
+    {type_model = type_model, const_model = const_model, skolem_model = e :: skolem_model}
   | Const_Entry e =>
-    {type_model = type_model, skolem_model = skolem_model, const_model = e :: const_model});
+    {type_model = type_model, const_model = e :: const_model, skolem_model = skolem_model});
 
 fun nun_model_of_str str =
   let val entries = fst (parse_model (tokenize str)) in
-    fold_rev add_entry entries {type_model = [], skolem_model = [], const_model = []}
+    fold_rev add_entry entries {type_model = [], const_model = [], skolem_model = []}
   end;
 
 end;

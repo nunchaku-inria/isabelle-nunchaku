@@ -14,8 +14,9 @@ sig
 
   type isa_model =
     {type_model: typ_entry list,
-     skolem_model: term_entry list,
-     const_model: term_entry list}
+     free_model: term_entry list,
+     const_model: term_entry list,
+     skolem_model: term_entry list}
 
   val isa_model_of_nun: Proof.context -> nun_model -> isa_model
 end;
@@ -32,8 +33,9 @@ type term_entry = term * term;
 
 type isa_model =
   {type_model: typ_entry list,
-   skolem_model: term_entry list,
-   const_model: term_entry list};
+   free_model: term_entry list,
+   const_model: term_entry list,
+   skolem_model: term_entry list};
 
 fun typ_of_nun ctxt =
   let
@@ -83,83 +85,19 @@ fun term_of_nun ctxt =
     term_of
   end;
 
-(*
-fun tm_of_isa ctxt t =
-  let
-    val thy = Proof_Context.theory_of ctxt;
-
-    fun id'_of_const (x as (s, _)) =
-      let
-        val Ts = Sign.const_typargs thy x;
-
-        val id = nun_const_of_str s;
-        val tys = map ty_of_isa Ts;
-        val args' = space_implode (ascii_of ",") (map str_of_ty tys);
-      in
-        ascii_of "(" ^ args' ^ ascii_of ")." ^ id
-      end;
-
-    fun tm_of_branch ctr_id var_count f_arg_tm =
-      let val (vars, body) = strip_nun_abs var_count f_arg_tm in
-        (ctr_id, vars, body)
-      end;
-
-    fun tm_of bounds (Const (x as (s, T))) =
-        (case try (dest_co_datatype_case ctxt) x of
-          SOME ctrs =>
-          let
-            val num_f_args = length ctrs;
-            val min_args = num_f_args + 1;
-            val var_counts = map (num_binder_types o snd) ctrs;
-
-            val dummy_free = Free (Name.uu, T);
-            val tm = tm_of bounds dummy_free;
-            val tm' = eta_expandN_tm min_args tm;
-            val (vars, body) = strip_nun_abs min_args tm';
-            val (_, (f_args, obj :: other_args)) = strip_nun_comb body ||> chop num_f_args;
-            val f_args' = map2 eta_expandN_tm var_counts f_args;
-
-            val ctr_ids = map id'_of_const ctrs;
-          in
-            NMatch (obj, @{map 3} tm_of_branch ctr_ids var_counts f_args')
-            |> rcomb_tms other_args
-            |> abs_tms vars
-          end
-        | NONE =>
-          let
-            val id' =
-              (case s of
-                @{const_name All} => nun_forall
-              | @{const_name conj} => nun_conj
-              | @{const_name disj} => nun_disj
-              | @{const_name HOL.eq} => nun_equals
-              | @{const_name Ex} => nun_exists
-              | @{const_name False} => nun_false
-              | @{const_name If} => nun_if
-              | @{const_name implies} => nun_implies
-              | @{const_name Not} => nun_not
-              | @{const_name True} => nun_true
-              | _ => id'_of_const x);
-          in
-            NConst (id', [], ty_of_isa T)
-          end)
-  in
-    t
-    |> tm_of Name.context
-    |> beta_reduce_tm
-    |> eta_expand_builtin_tm
-  end;
-*)
-
 fun isa_typ_entry_of_nun ctxt (ty, atoms) =
   (typ_of_nun ctxt ty, map (term_of_nun ctxt) atoms);
 
 fun isa_term_entry_of_nun ctxt (tm, value) =
   (term_of_nun ctxt tm, term_of_nun ctxt value);
 
-fun isa_model_of_nun ctxt {type_model, skolem_model, const_model} =
-  {type_model = map (isa_typ_entry_of_nun ctxt) type_model,
-   skolem_model = map (isa_term_entry_of_nun ctxt) skolem_model,
-   const_model = map (isa_term_entry_of_nun ctxt) const_model};
+fun isa_model_of_nun ctxt {type_model, const_model, skolem_model} =
+  let
+    val const_model' = map (isa_term_entry_of_nun ctxt) const_model;
+    val (free_model, const_model'') = List.partition (is_Free o fst) const_model';
+  in
+    {type_model = map (isa_typ_entry_of_nun ctxt) type_model, free_model = free_model,
+     const_model = const_model'', skolem_model = map (isa_term_entry_of_nun ctxt) skolem_model}
+  end;
 
 end;

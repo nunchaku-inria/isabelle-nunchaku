@@ -141,7 +141,8 @@ val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state
     ({mode_of_operation_params = {falsify, assms, spy, overlord, expect},
-      scope_of_search_params = {wfs, ...}, output_format_params = {verbose, debug, evals, ...},
+      scope_of_search_params = {wfs, ...},
+      output_format_params = {verbose, debug, show_consts, evals, ...},
       timeout_params = {timeout, wf_timeout}, ...})
     mode i all_assms subgoal =
   let
@@ -187,7 +188,7 @@ fun run_chaku_on_prop state
                 val nice_nun_model = nun_model_of_str output;
                 val ugly_nun_model = ugly_nun_model pool nice_nun_model;
                 val isa_model = isa_model_of_nun ctxt ugly_nun_model;
-                val model_str = Pretty.string_of (pretty_of_isa_model isa_model);
+                val model_str = pretty_of_isa_model ctxt show_consts isa_model |> Pretty.string_of;
               in
                 (case (null poly_axioms, none_true wfs) of
                   (true, true) =>

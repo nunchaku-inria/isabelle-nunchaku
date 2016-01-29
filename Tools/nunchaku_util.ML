@@ -21,6 +21,7 @@ sig
   val unascii_of: string -> string
   val double_lookup: ('a * 'a -> bool) -> ('a option * 'b) list -> 'a -> 'b option
   val triple_lookup: (''a * ''a -> bool) -> (''a option * 'b) list -> ''a -> 'b option
+  val plural_s_for_list: 'a list -> string
   val with_overlord_file: string -> string -> (Path.T -> 'a) -> 'a
   val with_tmp_or_overlord_file: bool -> string -> string -> (Path.T -> 'a) -> 'a
   val num_binder_types: typ -> int
@@ -55,6 +56,7 @@ val ascii_of = ATP_Problem_Generate.ascii_of;
 val unascii_of = ATP_Problem_Generate.unascii_of;
 val double_lookup = Nitpick_Util.double_lookup;
 val triple_lookup = Nitpick_Util.triple_lookup;
+val plural_s_for_list = Nitpick_Util.plural_s_for_list;
 
 fun with_overlord_file name ext f =
   f (Path.explode ("$ISABELLE_HOME_USER/" ^ name ^ "." ^ ext));
