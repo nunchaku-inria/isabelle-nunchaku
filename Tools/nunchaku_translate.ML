@@ -116,8 +116,8 @@ fun tm_of_isa ctxt t =
           in
             NConst (id', [], ty_of_isa T)
           end)
-      | tm_of _ (Free (s, T)) = NConst (nun_const_of_str s, [], ty_of_isa T)
-      | tm_of _ (Var (x, T)) = NVar (nun_var_of_str (string_of_indexname x), ty_of_isa T)
+      | tm_of _ (Free (s, T)) = NConst (nun_var_of_str s, [], ty_of_isa T)
+      | tm_of _ (Var ((s, _), T)) = NVar (nun_var_of_str s, ty_of_isa T)
       | tm_of bounds (Abs (s, T, t)) =
         let
           val (s', bounds') = Name.variant s bounds;

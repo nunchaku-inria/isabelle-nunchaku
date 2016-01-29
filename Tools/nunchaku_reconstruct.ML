@@ -9,7 +9,7 @@ signature NUNCHAKU_RECONSTRUCT =
 sig
   type nun_model = Nunchaku_Model.nun_model
 
-  type typ_entry = typ * typ list
+  type typ_entry = typ * term list
   type term_entry = term * term
 
   type isa_model =
@@ -27,7 +27,7 @@ open Nunchaku_Problem;
 open Nunchaku_Translate;
 open Nunchaku_Model;
 
-type typ_entry = typ * typ list;
+type typ_entry = typ * term list;
 type term_entry = term * term;
 
 type isa_model =
@@ -61,28 +61,22 @@ fun typ_of_nun ctxt =
     typ_of
   end;
 
-(*
-fun ty_of_isa (Type (s, Ts)) =
-    let val tys = map ty_of_isa Ts in
-      (case s of
-        let
-          val id = nun_tconst_of_str s;
-          val args' = space_implode (ascii_of ",") (map str_of_ty tys);
-          val id' = ascii_of "(" ^ args' ^ ascii_of ")." ^ id;
-        in
-          NType (id', [])
-        end)
-    end
-  | ty_of_isa (TFree (s, _)) = NType (nun_tfree_of_str (flip_quote s), [])
-*)
-
 fun term_of_nun ctxt =
   let
-    fun term_of (NConst (id, tys, ty)) = raise Fail ""
-      | term_of (NVar (id, ty)) = raise Fail ""
-      | term_of (NAbs (var, body)) = raise Fail ""
-      | term_of (NMatch _) = raise Fail ""
-      | term_of (NApp (func, arg)) = raise Fail "";
+    val typ_of = typ_of_nun ctxt;
+
+    fun term_of (NConst (id, tys, ty)) =
+        (* FIXME *)
+        (case try str_of_nun_var id of
+          SOME s => Free (s, typ_of ty)
+        | NONE => raise Fail "unknown term identifier")
+      | term_of (NVar (id, ty)) =
+        (case try str_of_nun_var id of
+          SOME s => Var ((s, 0), typ_of ty)
+        | NONE => raise Fail "unknown term identifier")
+      | term_of (NAbs (var, body)) = lambda (term_of var) (term_of body)
+      | term_of (NMatch _) = raise Fail "match not supported"
+      | term_of (NApp (func, arg)) = term_of func $ term_of arg;
   in
     term_of
   end;
@@ -147,17 +141,6 @@ fun tm_of_isa ctxt t =
           in
             NConst (id', [], ty_of_isa T)
           end)
-      | tm_of _ (Free (s, T)) = NConst (nun_const_of_str s, [], ty_of_isa T)
-      | tm_of _ (Var (x, T)) = NVar (nun_var_of_str (string_of_indexname x), ty_of_isa T)
-      | tm_of bounds (Abs (s, T, t)) =
-        let
-          val (s', bounds') = Name.variant s bounds;
-          val x = Var ((s', 0), T);
-        in
-          NAbs (tm_of bounds' x, tm_of bounds' (subst_bound (x, t)))
-        end
-      | tm_of bounds (t $ u) = NApp (tm_of bounds t, tm_of bounds u)
-      | tm_of _ (Bound _) = raise Fail "unexpected Bound";
   in
     t
     |> tm_of Name.context

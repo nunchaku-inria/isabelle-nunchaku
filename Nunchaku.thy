@@ -8,6 +8,20 @@ begin
 definition rmember :: "'a set \<Rightarrow> 'a \<Rightarrow> bool" where
   "rmember A x \<longleftrightarrow> x \<in> A"
 
+
+locale foo =
+  fixes f :: "'b :: zero"
+begin
+
+ML {*
+Proof_Context.check_tfree @{context} ("'b", dummyS)
+*}
+ML {*
+Proof_Context.infer_type @{context} ("f", dummyT)
+*}
+
+end
+
 ML_file "Tools/nunchaku_util.ML"
 ML_file "Tools/nunchaku_collect.ML"
 ML_file "Tools/nunchaku_problem.ML"
