@@ -55,7 +55,7 @@ fun typ_of_nun ctxt =
           | NONE =>
             (case try str_of_nun_var id of
               SOME s => TFree (Proof_Context.check_tfree ctxt (flip_quote s, dummyS))
-            | NONE => raise Fail "unknown type identifier"))
+            | NONE => raise Fail ("unknown type identifier: " ^ quote id)))
       end;
   in
     typ_of
@@ -69,11 +69,11 @@ fun term_of_nun ctxt =
         (* FIXME *)
         (case try str_of_nun_var id of
           SOME s => Free (s, typ_of ty)
-        | NONE => raise Fail "unknown term identifier")
+        | NONE => raise Fail ("unknown term identifier: " ^ quote id))
       | term_of (NVar (id, ty)) =
         (case try str_of_nun_var id of
           SOME s => Var ((s, 0), typ_of ty)
-        | NONE => raise Fail "unknown term identifier")
+        | NONE => raise Fail ("unknown term identifier: " ^ quote id))
       | term_of (NAbs (var, body)) = lambda (term_of var) (term_of body)
       | term_of (NMatch _) = raise Fail "match not supported"
       | term_of (NApp (func, arg)) = term_of func $ term_of arg;
