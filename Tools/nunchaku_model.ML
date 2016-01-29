@@ -66,7 +66,9 @@ fun ugly_ident nice (pool as {ugly_of_nice, ...}) =
 fun ugly_nun_model pool model =
   fst (fold_map_nun_model_idents ugly_ident model pool);
 
+fun parse_model
+
 fun nun_model_of_str str =
-  {type_model = [], skolem_model = [], const_model = []};
+  parse_model str {type_model = [], skolem_model = [], const_model = []};
 
 end;
