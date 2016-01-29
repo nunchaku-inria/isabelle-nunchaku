@@ -63,6 +63,8 @@ sig
     {nice_of_ugly: string Symtab.table,
      ugly_of_nice: string Symtab.table}
 
+  val nun_dummy: ident
+
   val nun_fun: ident
   val nun_prop: ident
 
@@ -83,7 +85,9 @@ sig
   val nun_var_of_str: string -> ident
   val str_of_nun_const: ident -> string
   val str_of_nun_var: ident -> string
+  val str_of_nun_atom: ident -> string
 
+  val nun_dummy_ty: ty
   val nun_prop_ty: ty
 
   val fold_map_ty_idents: (string -> 'a -> string * 'a) -> ty -> 'a -> ty * 'a
@@ -171,6 +175,8 @@ type name_pool =
   {nice_of_ugly: string Symtab.table,
    ugly_of_nice: string Symtab.table};
 
+val nun_dummy = "_";
+
 val nun_type = "type";
 
 val nun_fun = "->";
@@ -214,6 +220,7 @@ val nun_const_of_str = prefix nun_const_prefix o suffix nun_custom_id_suffix;
 val nun_var_of_str = prefix nun_var_prefix o suffix nun_custom_id_suffix;
 val str_of_nun_const = unsuffix nun_custom_id_suffix o unprefix nun_const_prefix;
 val str_of_nun_var = unsuffix nun_custom_id_suffix o unprefix nun_var_prefix;
+fun str_of_nun_atom s = s;
 
 fun index_name s 0 = s
   | index_name s j =
@@ -224,6 +231,7 @@ fun index_name s 0 = s
       String.substring (s, 0, m) ^ string_of_int j ^ String.substring (s, m, n - m)
     end;
 
+val nun_dummy_ty = NType (nun_dummy, []);
 val nun_prop_ty = NType (nun_prop, []);
 
 fun nun_domain_ty (NType (id, [ty, _])) = if id = nun_fun then ty else raise Fail "non-fun"

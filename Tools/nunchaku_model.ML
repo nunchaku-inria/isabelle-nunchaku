@@ -38,10 +38,6 @@ type nun_model =
    skolem_model: tm_entry list,
    const_model: tm_entry list};
 
-val nun_dummy = "_";
-
-val nun_dummy_ty = NType (nun_dummy, []);
-
 fun fold_map_ty_entry_idents f (ty, atoms) =
   fold_map_ty_idents f ty
   ##>> fold_map (fold_map_tm_idents f) atoms;

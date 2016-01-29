@@ -39,7 +39,9 @@ fun typ_of_nun ctxt =
   let
     fun typ_of (NType (id, tys)) =
       let val Ts = map typ_of tys in
-        if id = nun_prop then
+        if id = nun_dummy then
+          dummyT
+        else if id = nun_prop then
           @{typ bool}
         else if id = nun_fun then
           Type (@{type_name fun}, Ts)
@@ -69,7 +71,7 @@ fun term_of_nun ctxt =
         (* FIXME *)
         (case try str_of_nun_var id of
           SOME s => Free (s, typ_of ty)
-        | NONE => raise Fail ("unknown term identifier: " ^ quote id))
+        | NONE => Free (str_of_nun_atom id, typ_of ty))
       | term_of (NVar (id, ty)) =
         (case try str_of_nun_var id of
           SOME s => Var ((s, 0), typ_of ty)
