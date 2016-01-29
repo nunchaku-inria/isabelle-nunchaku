@@ -51,8 +51,8 @@ fun pretty_of_isa_model ctxt show_consts {type_model, free_model, const_model, s
     val chunks = chunks_of_entries sorting_str_of_typ pretty_of_typ_entry "Type" type_model @
       chunks_of_entries sorting_str_of_term pretty_of_term_entry "Free variable" free_model @
       (if show_consts then
-         chunks_of_entries sorting_str_of_term pretty_of_term_entry "Constant" free_model @
-         chunks_of_entries sorting_str_of_term pretty_of_term_entry "Skolem constant" free_model
+         chunks_of_entries sorting_str_of_term pretty_of_term_entry "Constant" const_model @
+         chunks_of_entries sorting_str_of_term pretty_of_term_entry "Skolem constant" skolem_model
        else
          []);
   in

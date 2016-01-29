@@ -18,6 +18,8 @@ sig
      const_model: term_entry list,
      skolem_model: term_entry list}
 
+  val str_of_isa_model: Proof.context -> isa_model -> string
+
   val isa_model_of_nun: Proof.context -> nun_model -> isa_model
 end;
 
@@ -36,6 +38,18 @@ type isa_model =
    free_model: term_entry list,
    const_model: term_entry list,
    skolem_model: term_entry list};
+
+fun str_of_typ_entry ctxt (T, ts) =
+  "type " ^ Syntax.string_of_typ ctxt T  ^
+  " := {" ^ commas (map (Syntax.string_of_term ctxt) ts) ^ "}.";
+
+fun str_of_term_entry ctxt (tm, value) =
+  "val " ^ Syntax.string_of_term ctxt tm ^ " := " ^ Syntax.string_of_term ctxt value ^ ".";
+
+fun str_of_isa_model ctxt {type_model, free_model, const_model, skolem_model} =
+  map (str_of_typ_entry ctxt) type_model @ "" :: map (str_of_term_entry ctxt) free_model @ "" ::
+  map (str_of_term_entry ctxt) const_model @ "" :: map (str_of_term_entry ctxt) skolem_model
+  |> cat_lines;
 
 fun typ_of_nun ctxt =
   let

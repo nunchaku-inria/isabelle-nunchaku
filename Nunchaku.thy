@@ -21,8 +21,8 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) rmember
 
-lemma "x = y"
-nunchaku[overlord]
+lemma "aaa = bbb \<or> aaa = ccc \<or> bbb = ccc"
+nunchaku[overlord, debug]
 oops
 
 end

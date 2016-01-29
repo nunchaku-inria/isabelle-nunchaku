@@ -19,6 +19,8 @@ sig
      const_model: tm_entry list,
      skolem_model: tm_entry list}
 
+  val str_of_nun_model: nun_model -> string
+
   val allocate_ugly: name_pool -> string * string -> string * name_pool
 
   val ugly_nun_model: name_pool -> nun_model -> nun_model
@@ -37,6 +39,17 @@ type nun_model =
   {type_model: ty_entry list,
    const_model: tm_entry list,
    skolem_model: tm_entry list};
+
+fun str_of_ty_entry (ty, tms) =
+  "type " ^ str_of_ty ty ^ " := {" ^ commas (map str_of_tm tms) ^ "}.";
+
+fun str_of_tm_entry (tm, value) =
+  "val " ^ str_of_tm tm ^ " := " ^ str_of_tm value ^ ".";
+
+fun str_of_nun_model {type_model, const_model, skolem_model} =
+  map str_of_ty_entry type_model @ "" :: map str_of_tm_entry const_model @ "" ::
+  map str_of_tm_entry skolem_model
+  |> cat_lines;
 
 fun fold_map_ty_entry_idents f (ty, atoms) =
   fold_map_ty_idents f ty
