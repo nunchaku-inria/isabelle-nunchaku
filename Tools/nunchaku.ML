@@ -7,6 +7,8 @@ The core of the Nunchaku integration in Isabelle.
 
 signature NUNCHAKU =
 sig
+  type isa_model = Nunchaku_Reconstruct.isa_model
+
   datatype mode = Auto_Try | Try | Normal
 
   type mode_of_operation_params =
@@ -54,8 +56,8 @@ sig
   val no_nunchakuN: string
 
   val run_chaku_on_prop: Proof.state -> params -> mode -> int -> term list -> term ->
-    string * string list
-  val run_chaku_on_subgoal: Proof.state -> params -> mode -> int -> string * string list
+    string * isa_model option
+  val run_chaku_on_subgoal: Proof.state -> params -> mode -> int -> string * isa_model option
 end;
 
 structure Nunchaku : NUNCHAKU =
@@ -65,6 +67,9 @@ open Nunchaku_Util;
 open Nunchaku_Collect;
 open Nunchaku_Problem;
 open Nunchaku_Translate;
+open Nunchaku_Model;
+open Nunchaku_Reconstruct;
+open Nunchaku_Display;
 open Nunchaku_Tool;
 
 datatype mode = Auto_Try | Try | Normal;
@@ -158,13 +163,13 @@ fun run_chaku_on_prop state
       let
         val outcome as (outcome_code, _) =
           let
-            val (poly_axioms, isa_prob) =
+            val (poly_axioms, isa_problem) =
               isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals
                 (if assms then all_assms else []) subgoal;
-            val _ = print_d (fn () => "*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_prob);
-            val ugly_nun_prob = nun_problem_of_isa ctxt isa_prob;
-            val (nice_nun_prob, pool) = nice_nun_problem ugly_nun_prob;
-            val _ = print_d (fn () => "*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_prob);
+            val _ = print_d (fn () => "*** ISA PROB ***\n" ^ str_of_isa_problem ctxt isa_problem);
+            val ugly_nun_problem = nun_problem_of_isa ctxt isa_problem;
+            val (nice_nun_problem, pool) = nice_nun_problem ugly_nun_problem;
+            val _ = print_d (fn () => "*** NUN PROB ***\n" ^ str_of_nun_problem nice_nun_problem);
 
             fun print_any_hints () =
               if has_lonely_bool_var subgoal then
@@ -174,63 +179,69 @@ fun run_chaku_on_prop state
               else
                 ();
           in
-            (case solve_nun_problem tool_params nice_nun_prob of
+            (case solve_nun_problem tool_params nice_nun_problem of
               Unsat =>
-              (print_n ("No " ^ das_wort_model ^ " exists (the goal is a theorem)"); (noneN, []))
+              (print_n ("No " ^ das_wort_model ^ " exists (the goal is a theorem)"); (noneN, NONE))
             | Sat (output, _) =>
-              (case (null poly_axioms, none_true wfs) of
-                (true, true) =>
-                (* FIXME: return something else than [] *)
-                (print (das_wort_Model ^ ":\n" ^ output); print_any_hints (); (genuineN, []))
-              | (no_poly, no_wf) =>
-                let
-                  val ignorings = []
-                    |> not no_poly ? cons "polymorphic axioms"
-                    |> not no_wf ? cons "unchecked well-foundedness";
-                in
-                  (print (das_wort_Model ^ " (ignoring " ^ space_implode " and " ignorings ^
-                     "):\n" ^ output ^
-                     (if no_poly then
-                        ""
-                      else
-                        "\nIgnored axioms:\n" ^
-                        cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
-                   print_any_hints ();
-                   (* FIXME: return something else than [] *)
-                   (quasi_genuineN, []))
-                end)
-            | Timeout => (print_n "Time out"; (unknownN, []))
+              let
+                val nice_nun_model = nun_model_of_str output;
+                val ugly_nun_model = ugly_nun_model pool nice_nun_model;
+                val isa_model = isa_model_of_nun ugly_nun_model;
+                val model_str = Pretty.string_of (pretty_of_isa_model isa_model);
+              in
+                (case (null poly_axioms, none_true wfs) of
+                  (true, true) =>
+                  (print (das_wort_Model ^ ":\n" ^ model_str); print_any_hints ();
+                   (genuineN, SOME isa_model))
+                | (no_poly, no_wf) =>
+                  let
+                    val ignorings = []
+                      |> not no_poly ? cons "polymorphic axioms"
+                      |> not no_wf ? cons "unchecked well-foundedness";
+                  in
+                    (print (das_wort_Model ^ " (ignoring " ^ space_implode " and " ignorings ^
+                       "):\n" ^ model_str ^
+                       (if no_poly then
+                          ""
+                        else
+                          "\nIgnored axioms:\n" ^
+                          cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
+                     print_any_hints ();
+                     (quasi_genuineN, SOME isa_model))
+                  end)
+              end
+            | Timeout => (print_n "Time out"; (unknownN, NONE))
             | Nunchaku_Var_Not_Set =>
-              (print_n ("Variable $" ^ nunchaku_env_var ^ " not set"); (unknownN, []))
+              (print_n ("Variable $" ^ nunchaku_env_var ^ " not set"); (unknownN, NONE))
             | Nunchaku_Cannot_Execute =>
-              (print_n "External tool \"nunchaku\" cannot execute"; (unknownN, []))
+              (print_n "External tool \"nunchaku\" cannot execute"; (unknownN, NONE))
             | Nunchaku_Not_Found =>
-              (print_n "External tool \"nunchaku\" not found"; (unknownN, []))
+              (print_n "External tool \"nunchaku\" not found"; (unknownN, NONE))
             | CVC4_Cannot_Execute =>
-              (print_n "External tool \"cvc4\" cannot execute"; (unknownN, []))
-            | CVC4_Not_Found => (print_n "External tool \"cvc4\" not found"; (unknownN, []))
+              (print_n "External tool \"cvc4\" cannot execute"; (unknownN, NONE))
+            | CVC4_Not_Found => (print_n "External tool \"cvc4\" not found"; (unknownN, NONE))
             | Unknown_Error (code, msg) =>
               (print_n ("Unknown error: " ^ msg ^
                  (if code = 0 then "" else " (code " ^ string_of_int code ^ ")"));
-               (unknownN, [])))
+               (unknownN, NONE)))
           end
           handle
             CYCLIC_DEPS () =>
-            (print_n "Cyclic dependencies (or bug in Nunchaku)"; (unknownN, []))
+            (print_n "Cyclic dependencies (or bug in Nunchaku)"; (unknownN, NONE))
           | TOO_DEEP_DEPS () =>
-            (print_n "Too deep dependencies (or bug in Nunchaku)"; (unknownN, []))
+            (print_n "Too deep dependencies (or bug in Nunchaku)"; (unknownN, NONE))
           | TOO_META t =>
             (print_n ("Formula too meta for Nunchaku:\n" ^ Syntax.string_of_term ctxt t);
-             (unknownN, []))
+             (unknownN, NONE))
           | UNEXPECTED_POLYMORPHISM t =>
             (print_n ("Unexpected polymorphism in term\n" ^ Syntax.string_of_term ctxt t);
-             (unknownN, []))
+             (unknownN, NONE))
           | UNEXPECTED_VAR t =>
             (print_n ("Unexpected schematic variables in term\n" ^ Syntax.string_of_term ctxt t);
-             (unknownN, []))
+             (unknownN, NONE))
           | UNSUPPORTED_FUNC t =>
             (print_n ("Unsupported low-level constant in problem: " ^ Syntax.string_of_term ctxt t);
-             (unknownN, []));
+             (unknownN, NONE));
       in
         if expect = "" orelse outcome_code = expect then outcome
         else error ("Unexpected outcome: " ^ quote outcome_code)
@@ -240,7 +251,7 @@ fun run_chaku_on_prop state
 
     val outcome as (outcome_code, _) =
       TimeLimit.timeLimit (Time.+ (timeout, timeout_slack)) run ()
-      handle TimeLimit.TimeOut => (print_n "Time out"; (unknownN, []));
+      handle TimeLimit.TimeOut => (print_n "Time out"; (unknownN, NONE));
 
     val _ = print_v (fn () => "Total time: " ^ string_of_time (Timer.checkRealTimer timer));
 
@@ -256,7 +267,7 @@ fun run_chaku_on_subgoal state params mode i =
     val goal = Thm.prop_of (#goal (Proof.raw_goal state));
   in
     if Logic.count_prems goal = 0 then
-      (writeln "No subgoal!"; (noneN, []))
+      (writeln "No subgoal!"; (noneN, NONE))
     else
       let
         val subgoal = fst (Logic.goal_params goal i);

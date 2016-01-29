@@ -240,7 +240,7 @@ fun run_chaku override_params mode i state0 =
     val params = extract_params ctxt mode (default_raw_params thy) override_params;
   in
     (if mode = Auto_Try then perhaps o try else fn f => fn x => f x)
-      (fn _ => run_chaku_on_subgoal state params mode i) (unknownN, [])
+      (fn _ => run_chaku_on_subgoal state params mode i) (unknownN, NONE)
     |> `(fn (outcome_code, _) => outcome_code = genuineN)
   end;
 

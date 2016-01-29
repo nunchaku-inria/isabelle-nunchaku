@@ -562,7 +562,7 @@ fun sort_isa_problem_topologically ctxt cmds =
 
     fun merge_scc (cmd :: cmds) = fold merge_two cmds cmd;
 
-    fun sort_prob cmds =
+    fun sort_problem cmds =
       let
         val keyss = map (keys_of ctxt) cmds;
         val normal_keys = Symtab.make (maps normal_pairs keyss);
@@ -587,7 +587,7 @@ fun sort_isa_problem_topologically ctxt cmds =
         val cmd_sccs = rev (Graph.strong_conn G)
           |> map (map cmd_of_key);
       in
-        if exists (can (fn _ :: _ :: _ => ())) cmd_sccs then sort_prob (map merge_scc cmd_sccs)
+        if exists (can (fn _ :: _ :: _ => ())) cmd_sccs then sort_problem (map merge_scc cmd_sccs)
         else Graph.schedule (K snd) G
       end;
 
@@ -595,7 +595,7 @@ fun sort_isa_problem_topologically ctxt cmds =
     val mixed =
       filter (can (fn ICopy _ => () | IQuotient _ => () | ICoData _ => () | IVal _ => ()
         | ICoPred _ => () | IRec _ => () | ISpec _ => ())) cmds
-      |> sort_prob;
+      |> sort_problem;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
     val evals = filter (can (fn IEval _ => ())) cmds;
@@ -742,9 +742,9 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
         [] => t
       | [(x, S)] => Envir.subst_term_types (Vartab.make [(x, (S, T))]) t);
 
-    fun consider_sort depth T S (seens as (seenS, seenT, seen), prob) =
+    fun consider_sort depth T S (seens as (seenS, seenT, seen), problem) =
       if member (op =) seenS S then
-        (seens, prob)
+        (seens, problem)
       else if depth > axioms_max_depth then
         raise TOO_DEEP_DEPS ()
       else
@@ -756,7 +756,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
           val axioms0 = maps (map Thm.prop_of o axioms_of_class) supers;
           val axioms = map (preprocess_prop false ctxt o monomorphize_class_axiom T) axioms0;
         in
-          (seens, map IAxiom axioms @ prob)
+          (seens, map IAxiom axioms @ problem)
           |> fold (consider_term (depth + 1)) axioms
         end
     and consider_type depth T =
@@ -765,9 +765,9 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
         if is_type_builtin s then fold (consider_type depth) Ts
         else consider_non_builtin_type depth T
       | _ => consider_non_builtin_type depth T)
-    and consider_non_builtin_type depth T (seens as (seenS, seenT, seen), prob) =
+    and consider_non_builtin_type depth T (seens as (seenS, seenT, seen), problem) =
       if member (op =) seenT T then
-        (seens, prob)
+        (seens, problem)
       else
         let
           val seenT = T :: seenT;
@@ -789,7 +789,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
               #> consider_term (depth + 1) wrt
             end;
         in
-          (seens, prob)
+          (seens, problem)
           |> (case T of
                TFree (_, S) =>
                apsnd (cons (ITVal T))
@@ -803,8 +803,8 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
                       val (fp, fpTs, ctrss) = mutual_co_datatypes_of ctxt (s, Ts);
                       val specs = map2 (fn T => fn ctrs => {typ = T, ctrs = ctrs}) fpTs ctrss;
                     in
-                      (fn ((seenS, seenT, seen), prob) =>
-                          ((seenS, union (op =) fpTs seenT, seen), ICoData (fp, specs) :: prob))
+                      (fn ((seenS, seenT, seen), problem) =>
+                          ((seenS, union (op =) fpTs seenT, seen), ICoData (fp, specs) :: problem))
                       #> fold (fold (consider_type (depth + 1) o fastype_of)) ctrss
                     end
                   | Quotient => consider_quotient_or_copy quotient_of s
@@ -819,9 +819,9 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
       | Abs (_, T, t') =>
         consider_term depth t'
         #> consider_type depth T
-      | _ => (fn (seens as (seenS, seenT, seen), prob) =>
+      | _ => (fn (seens as (seenS, seenT, seen), problem) =>
           if member (op aconv) seen t then
-            (seens, prob)
+            (seens, problem)
           else if depth > axioms_max_depth then
             raise TOO_DEEP_DEPS ()
           else
@@ -835,7 +835,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
                     is_co_datatype_case ctxt x orelse is_quotient_abs ctxt x orelse
                     is_quotient_rep ctxt x orelse is_copy_abs ctxt x orelse
                     is_copy_rep ctxt x then
-                   (seens, prob)
+                   (seens, problem)
                  else if is_stale_copy_abs ctxt x orelse is_stale_copy_rep ctxt x then
                    raise UNSUPPORTED_FUNC t
                  else
@@ -878,20 +878,20 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
                          else
                            def_or_spec ();
                      in
-                       ((seenS, seenT, union (op aconv) consts seen), cmds @ prob)
+                       ((seenS, seenT, union (op aconv) consts seen), cmds @ problem)
                        |> fold (consider_term (depth + 1)) props'
                      end
                    | NONE =>
                      (case definition_of thy x of
                        SOME eq0 =>
                        let val eq = preprocess_prop false ctxt eq0 in
-                         (seens, IRec [{const = t, props = [eq]}] :: prob)
+                         (seens, IRec [{const = t, props = [eq]}] :: problem)
                          |> consider_term (depth + 1) eq
                        end
-                     | NONE => (seens, IVal t :: prob))))
+                     | NONE => (seens, IVal t :: problem))))
                 |> consider_type depth T
               | Free (_, T) =>
-                (seens, IVal t :: prob)
+                (seens, IVal t :: problem)
                 |> consider_type depth T)
             end));
 

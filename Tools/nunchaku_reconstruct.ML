@@ -17,6 +17,8 @@ sig
      skolem_model: term_entry list,
      const_model: term_entry list}
 
+  val empty_isa_model: isa_model
+
   val isa_model_of_nun: nun_model -> isa_model
 end;
 
@@ -33,7 +35,9 @@ type isa_model =
    skolem_model: term_entry list,
    const_model: term_entry list};
 
+val empty_isa_model = {typ_model = [], skolem_model = [], const_model = []};
+
 fun isa_model_of_nun {ty_model, skolem_model, const_model} =
-  {typ_model = [], skolem_model = [], const_model = []};
+  empty_isa_model;
 
 end;
