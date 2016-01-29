@@ -48,11 +48,20 @@ consts
   isin :: "state \<Rightarrow> room \<Rightarrow> guest \<Rightarrow> bool"
   safe :: "state \<Rightarrow> room \<Rightarrow> bool"
 
+definition "next" where
+  "next s s' =
+   ((s = S1 \<and> s' = S2) \<or>
+    (s = S2 \<and> s' = S3) \<or>
+    (s = S3 \<and> s' = S4) \<or>
+    (s = S4 \<and> s' = S5) \<or>
+    (s = S5 \<and> s' = S6))"
+
 consts buggy :: bool
 
 inductive reach :: "state \<Rightarrow> bool" where
 init:
-  "(\<forall>r. owns s r = None) \<Longrightarrow>
+  "s = S1 \<Longrightarrow>
+   (\<forall>r. owns s r = None) \<Longrightarrow>
    (\<forall>r. \<forall>r'. currk s r = currk s r' \<longrightarrow> r = r') \<Longrightarrow>
    (\<forall>k. issued s k \<longleftrightarrow> (\<exists>r. currk s r = k)) \<Longrightarrow>
    (\<forall>g c. \<not> cards s g c) \<Longrightarrow>
@@ -60,7 +69,8 @@ init:
    (\<forall>r g. \<not> isin s r g) \<Longrightarrow>
    (\<forall>r. safe s r) \<Longrightarrow> reach s"
 | check_in:
-  "reach s \<Longrightarrow>
+  "next s s' \<Longrightarrow>
+   reach s \<Longrightarrow>
    \<not> issued s K \<Longrightarrow>
    fst C = currk s R \<Longrightarrow>
    snd C = K \<Longrightarrow>
@@ -73,7 +83,8 @@ init:
    (\<forall>r. safe s' r = (r \<noteq> R \<and> safe s r)) \<Longrightarrow>
    reach s'"
 | enter_room:
-  "reach s \<Longrightarrow>
+  "next s s' \<Longrightarrow>
+   reach s \<Longrightarrow>
    cards s G C \<Longrightarrow>
    fst C = K \<Longrightarrow>
    snd C = K' \<Longrightarrow>
@@ -88,7 +99,8 @@ init:
       else safe s r)) \<Longrightarrow>
    reach s'"
 | exit_room:
-  "reach s \<Longrightarrow>
+  "next s s' \<Longrightarrow>
+   reach s \<Longrightarrow>
    isin s R G \<Longrightarrow>
    (\<forall>r. owns s' r = owns s r) \<Longrightarrow>
    (\<forall>r. currk s' r = currk s r) \<Longrightarrow>
@@ -99,10 +111,61 @@ init:
    (\<forall>r. safe s' r = safe s r) \<Longrightarrow>
    reach s'"
 
-theorem safe: "~ buggy \<Longrightarrow> reach s \<Longrightarrow> safe s r \<Longrightarrow> isin s r g \<Longrightarrow> owns s r = Some g"
-(* nitpick[card = 10] *)
-nunchakxu [overlord, timeout = 5]
-(*  *)
+axiomatization reach' where
+reach': "reach' a \<Longrightarrow>
+((\<exists>s. a = s \<and>
+      s = S1 \<and>
+      (\<forall>r. owns s r = None) \<and>
+      (\<forall>r r'. currk s r = currk s r' \<longrightarrow> r = r') \<and>
+      (\<forall>k. issued s k = (\<exists>r. currk s r = k)) \<and>
+      (\<forall>g c. \<not> cards s g c) \<and> (\<forall>r. roomk s r = currk s r) \<and> (\<forall>r g. \<not> isin s r g) \<and> (\<forall>r. safe s r)) \<or>
+ (\<exists>s s' K C R G.
+     a = s' \<and>
+     next s s' \<and>
+     reach' s \<and>
+     \<not> issued s K \<and>
+     Hotel_Nuns_FO.fst C = currk s R \<and>
+     Hotel_Nuns_FO.snd C = K \<and>
+     (\<forall>r. owns s' r = (if r = R then Some G else owns s r)) \<and>
+     (\<forall>r. currk s' r = (if r = R then K else currk s r)) \<and>
+     (\<forall>k. issued s' k = (k = K \<or> issued s k)) \<and>
+     (\<forall>g c. cards s' g c = (g = G \<and> c = C \<or> cards s g c)) \<and>
+     (\<forall>r. roomk s' r = roomk s r) \<and>
+     (\<forall>r g. isin s' r g = isin s r g) \<and> (\<forall>r. safe s' r = (r \<noteq> R \<and> safe s r))) \<or>
+ (\<exists>s s' G C K K' r R.
+     a = s' \<and>
+     next s s' \<and>
+     reach' s \<and>
+     cards s G C \<and>
+     Hotel_Nuns_FO.fst C = K \<and>
+     Hotel_Nuns_FO.snd C = K' \<and>
+     (roomk s r = K \<or> roomk s r = K') \<and>
+     (\<forall>r. owns s' r = owns s r) \<and>
+     (\<forall>r. currk s' r = currk s r) \<and>
+     (\<forall>k. issued s' k = issued s k) \<and>
+     (\<forall>g c. cards s' g c = cards s g c) \<and>
+     (\<forall>r. roomk s' r = (if r = R then K' else roomk s r)) \<and>
+     (\<forall>r g. isin s' r g = (r = R \<and> g = G \<or> isin s r g)) \<and>
+     (\<forall>r. safe s' r =
+          (if r = R then owns s R = Some G \<and> (\<forall>r g. \<not> isin s r g) \<and> (buggy \<or> K' = currk s R) \<or> safe s R
+           else safe s r))) \<or>
+ (\<exists>s s' R G.
+     a = s' \<and>
+     next s s' \<and>
+     reach' s \<and>
+     isin s R G \<and>
+     (\<forall>r. owns s' r = owns s r) \<and>
+     (\<forall>r. currk s' r = currk s r) \<and>
+     (\<forall>k. issued s' k = issued s k) \<and>
+     (\<forall>g c. cards s' g c = cards s g c) \<and>
+     (\<forall>r. roomk s' r = roomk s r) \<and>
+     (\<forall>r g. isin s' r g = ((r \<noteq> R \<or> g \<noteq> G) \<and> isin s r g)) \<and> (\<forall>r. safe s' r = safe s r)))"
+
+theorem safe: "buggy \<Longrightarrow> reach' s \<Longrightarrow> safe s r \<Longrightarrow> isin s r g \<Longrightarrow> owns s r = Some g"
+nunchaku [wf, overlord, timeout = 60]
+(* nitpick[card = 100] *)
+(* nitpick[wf, card = 100, debug] *)
+(* nitpick[card = 10, datatype_sym_break = 0, kodkod_sym_break = 0, timeout = 300] *)
 (*
 *)
 (* nitpick[card = 10] *)

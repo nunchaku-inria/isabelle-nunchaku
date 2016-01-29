@@ -56,13 +56,16 @@ sorry
 primrec depth :: "'a tree \<Rightarrow> 'a \<Rightarrow> nat" where
 "depth (Leaf w b) a = 0" |
 "depth (InnerNode w t1 t2) a =
-     (if alphabet t1 a then depth t1 a + 1
-      else if alphabet t2 a then depth t2 a + 1
+     (if alphabet t1 a then Suc (depth t1 a)
+      else if alphabet t2 a then Suc (depth t2 a)
       else 0)"
 
 primrec height :: "'a tree \<Rightarrow> nat" where
 "height (Leaf w a) = 0" |
-"height (InnerNode w t1 t2) = max (height t1) (height t2) + 1"
+"height (InnerNode w t1 t2) = Suc (max (height t1) (height t2))"
+
+lemma "height t \<noteq> Suc (Suc (Suc (Suc 0)))"
+nxunchaku[overlord]
 
 primrec heightF :: "'a forest \<Rightarrow> nat" where
 "heightF [] = 0" |
