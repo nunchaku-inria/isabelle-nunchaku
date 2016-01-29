@@ -36,6 +36,10 @@ fun pretty_of_isa_model ctxt show_consts {type_model, free_model, const_model, s
       Pretty.block (Pretty.breaks [Syntax.pretty_typ ctxt T, Pretty.str "=",
          Pretty.enum "," "{" "}" (map (Syntax.pretty_term ctxt) atoms)]);
 
+    fun pretty_of_term_entry (t, value) =
+      Pretty.block (Pretty.breaks [Syntax.pretty_term ctxt t, Pretty.str "=",
+         Syntax.pretty_term ctxt value]);
+
     fun chunks_of_entries sorting_str_of pretty_of title entries =
       if not (null entries) then
         Pretty.str (title ^ plural_s_for_list entries ^ ":")
@@ -44,7 +48,13 @@ fun pretty_of_isa_model ctxt show_consts {type_model, free_model, const_model, s
       else
         [];
 
-    val chunks = chunks_of_entries sorting_str_of_typ pretty_of_typ_entry "Type" type_model;
+    val chunks = chunks_of_entries sorting_str_of_typ pretty_of_typ_entry "Type" type_model @
+      chunks_of_entries sorting_str_of_term pretty_of_term_entry "Free variable" free_model @
+      (if show_consts then
+         chunks_of_entries sorting_str_of_term pretty_of_term_entry "Constant" free_model @
+         chunks_of_entries sorting_str_of_term pretty_of_term_entry "Skolem constant" free_model
+       else
+         []);
   in
     Pretty.chunks (if null chunks then [Pretty.str "Empty assignment"] else chunks)
   end;

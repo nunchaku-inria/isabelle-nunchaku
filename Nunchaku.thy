@@ -21,8 +21,8 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) rmember
 
-lemma "(ALL x y :: 'b. x = y)"
-nunchaku[overlord, satisfy]
+lemma "x = y"
+nunchaku[overlord]
 oops
 
 end
