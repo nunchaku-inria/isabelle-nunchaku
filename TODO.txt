@@ -1,6 +1,8 @@
 Isabelle frontend:
 
   * parse models
+  * keep track of "unsat" vs. "unknown" in translation (e.g. for codatatypes represented as
+    datatypes, use of unchecked "wf") in frontend's translator
 
   * numeric types
     * do something about big 'nat's? cf. 'binary_ints'

@@ -22,7 +22,7 @@ sig
   val allocate_ugly: name_pool -> string * string -> string * name_pool
 
   val ugly_nun_model: name_pool -> nun_model -> nun_model
-(*  val nun_model_of_str: string -> nun_model *)
+  val nun_model_of_str: string -> nun_model
 end;
 
 structure Nunchaku_Model : NUNCHAKU_MODEL =
@@ -63,9 +63,10 @@ fun ugly_ident nice (pool as {ugly_of_nice, ...}) =
     NONE => allocate_ugly pool (nice, nice)
   | SOME ugly => (ugly, pool));
 
-fun ugly_nun_model name_pool model =
-  fst (fold_map_nun_model_idents ugly_ident model name_pool);
+fun ugly_nun_model pool model =
+  fst (fold_map_nun_model_idents ugly_ident model pool);
 
-(* fun nun_model_of_str: string -> nun_model *)
+fun nun_model_of_str str =
+  {ty_model = [], skolem_model = [], const_model = []};
 
 end;
