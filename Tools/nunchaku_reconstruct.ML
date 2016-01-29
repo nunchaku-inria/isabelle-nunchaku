@@ -38,8 +38,7 @@ type isa_model =
 
 val empty_isa_model = {type_model = [], skolem_model = [], const_model = []};
 
-fun typ_of_nun (NType (id, tys)) = raise Fail ""
-  | typ_of_nun (NTVar id) = raise Fail "";
+fun typ_of_nun (NType (id, tys)) = raise Fail "";
 
 (*
 fun ty_of_isa (Type (s, Ts)) =
@@ -57,7 +56,6 @@ fun ty_of_isa (Type (s, Ts)) =
         end)
     end
   | ty_of_isa (TFree (s, _)) = NType (nun_tconst_of_str (flip_quote s), [])
-  | ty_of_isa (TVar (x, _)) = NTVar (nun_tvar_of_str (flip_quote (string_of_indexname x)));
 *)
 
 fun term_of_nun (NConst (id, tys, ty)) = raise Fail ""

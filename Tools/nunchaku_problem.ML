@@ -11,7 +11,6 @@ sig
 
   datatype ty =
     NType of ident * ty list
-  | NTVar of ident
 
   datatype tm =
     NConst of ident * ty list * ty
@@ -119,8 +118,7 @@ open Nunchaku_Util;
 type ident = string;
 
 datatype ty =
-  NType of ident * ty list
-| NTVar of ident;
+  NType of ident * ty list;
 
 datatype tm =
   NConst of ident * ty list * ty
@@ -220,18 +218,19 @@ fun gen_nun_var_of_str pre suf s =
     if Char.isUpper (String.sub (s', 0)) then s' else pre ^ s'
   end;
 
-val nun_tconst_prefix = "y.";
-val nun_tvar_prefix = "A.";
-val nun_const_prefix = "c.";
-val nun_var_prefix = "V.";
+val tconst_prefix = "y.";
+val tvar_prefix = "A.";
+val const_prefix = "c.";
+val var_prefix = "V.";
 
-val nun_type_suffix = "__";
-val nun_const_suffix = "_";
+val custom_id_suffix = "_";
 
-val nun_tconst_of_str = gen_nun_const_of_str nun_tconst_prefix nun_type_suffix;
-val nun_tvar_of_str = gen_nun_var_of_str nun_tvar_prefix nun_type_suffix;
-val nun_const_of_str = gen_nun_const_of_str nun_const_prefix nun_const_suffix;
-val nun_var_of_str = gen_nun_var_of_str nun_var_prefix nun_const_suffix;
+fun nun_tconst_of_str s = tconst_prefix ^ s ^ custom_id_suffix;
+fun nun_tvar_of_str s = tvar_prefix ^ s ^ custom_id_suffix;
+fun nun_const_of_str s = const_prefix ^ s ^ custom_id_suffix;
+fun nun_var_of_str s = var_prefix ^ s ^ custom_id_suffix;
+
+val is_custom_id = String.isSuffix custom_id_suffix;
 
 fun index_name s 0 = s
   | index_name s j =
@@ -270,10 +269,7 @@ fun strip_nun_binders binder (app as NApp (NConst (id, _, _), NAbs (var, body)))
 fun fold_map_ty_idents f (NType (id, tys)) =
     f id
     ##>> fold_map (fold_map_ty_idents f) tys
-    #>> NType
-  | fold_map_ty_idents f (NTVar id) =
-    f id
-    #>> NTVar;
+    #>> NType;
 
 fun fold_map_match_branch_idents f (id, vars, body) =
     f id
@@ -468,7 +464,6 @@ val str_of_ty =
           [ty, ty'] => maybe_parens (str_of parens ty ^ " " ^ nun_fun ^ " " ^ str_of I ty'))
       else
         id ^ str_of_arg_list (str_of I) tys
-    | str_of _ (NTVar id) = str_of_ident id
   in
     str_of I
   end;
@@ -553,10 +548,8 @@ val (str_of_tmty, str_of_tm) =
 
 val empty_name_pool = {nice_of_ugly = Symtab.empty, ugly_of_nice = Symtab.empty};
 
-val nicifiable = String.isSuffix "_";
-
 val nice_of_ugly_suggestion =
-  unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_"
+  unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix custom_id_suffix
   #> (fn s => if s = "" orelse not (Char.isAlpha (String.sub (s, 0))) then "x" ^ s else s);
 
 fun allocate_nice ({nice_of_ugly, ugly_of_nice} : name_pool) (ugly, nice_sugg0) =
@@ -575,7 +568,7 @@ fun allocate_nice ({nice_of_ugly, ugly_of_nice} : name_pool) (ugly, nice_sugg0) 
   end;
 
 fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
-  if nicifiable ugly then
+  if is_custom_id ugly then
     (case Symtab.lookup nice_of_ugly ugly of
       NONE => allocate_nice pool (ugly, nice_of_ugly_suggestion ugly)
     | SOME nice => (nice, pool))

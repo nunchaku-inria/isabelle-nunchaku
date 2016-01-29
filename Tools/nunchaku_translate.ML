@@ -10,6 +10,8 @@ sig
   type isa_problem = Nunchaku_Collect.isa_problem
   type nun_problem = Nunchaku_Problem.nun_problem
 
+  val flip_quote: string -> string
+
   val nun_problem_of_isa: Proof.context -> isa_problem -> nun_problem
 end;
 
@@ -52,8 +54,8 @@ fun ty_of_isa (Type (s, Ts)) =
           NType (id', [])
         end)
     end
-  | ty_of_isa (TFree (s, _)) = NType (nun_tconst_of_str (flip_quote s), [])
-  | ty_of_isa (TVar (x, _)) = NTVar (nun_tvar_of_str (flip_quote (string_of_indexname x)));
+  | ty_of_isa (TFree (s, _)) = NType (nun_tvar_of_str (flip_quote s), [])
+  | ty_of_isa (TVar (x, _)) = raise Fail "unexpected TVar";
 
 fun tm_of_isa ctxt t =
   let
