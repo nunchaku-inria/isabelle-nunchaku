@@ -1,6 +1,6 @@
 (*  Title:      HOL/Tools/Nunchaku/nunchaku_problem.ML
     Author:     Jasmin Blanchette, Inria Nancy, LORIA, MPII
-    Copyright   2015
+    Copyright   2015, 2016
 
 Abstract syntax tree for Nunchaku problems.
 *)
@@ -62,7 +62,7 @@ sig
 
   type name_pool =
     {nice_of_ugly: string Symtab.table,
-     nice_but_taken: unit Symtab.table}
+     ugly_of_nice: string Symtab.table}
 
   val nun_fun: ident
   val nun_prop: ident
@@ -76,6 +76,7 @@ sig
   val nun_if: ident
   val nun_implies: ident
   val nun_match: ident
+  val nun_mu: ident
   val nun_not: ident
   val nun_true: ident
 
@@ -86,8 +87,14 @@ sig
 
   val nun_prop_ty: ty
 
+  val fold_map_ty_idents: (string -> 'a -> string * 'a) -> ty -> 'a -> ty * 'a
+  val fold_map_tm_idents: (string -> 'a -> string * 'a) -> tm -> 'a -> tm * 'a
+  val fold_map_nun_command_idents: (string -> 'a -> string * 'a) -> nun_command -> 'a ->
+    nun_command * 'a
   val fold_map_nun_problem_idents: (string -> 'a -> string * 'a) -> nun_problem -> 'a ->
     nun_problem * 'a
+
+  val allocate_nice: name_pool -> string * string -> string * name_pool
 
   val rcomb_tms: tm list -> tm -> tm
   val abs_tms: tm list -> tm -> tm
@@ -164,7 +171,7 @@ type nun_problem = nun_command list list;
 
 type name_pool =
   {nice_of_ugly: string Symtab.table,
-   nice_but_taken: unit Symtab.table};
+   ugly_of_nice: string Symtab.table};
 
 val nun_type = "type";
 
@@ -180,6 +187,7 @@ val nun_forall = "forall";
 val nun_if = "if";
 val nun_implies = "=>";
 val nun_match = "match";
+val nun_mu = "mu";
 val nun_not = "~";
 val nun_true = "true";
 
@@ -543,7 +551,7 @@ val (str_of_tmty, str_of_tm) =
     (str_of_tmty, str_of NONE)
   end;
 
-val empty_name_pool = {nice_of_ugly = Symtab.empty, nice_but_taken = Symtab.empty};
+val empty_name_pool = {nice_of_ugly = Symtab.empty, ugly_of_nice = Symtab.empty};
 
 val nicifiable = String.isSuffix "_";
 
@@ -551,16 +559,16 @@ val nice_of_ugly_suggestion =
   unascii_of #> Long_Name.base_name #> ascii_of #> unsuffix "_"
   #> (fn s => if s = "" orelse not (Char.isAlpha (String.sub (s, 0))) then "x" ^ s else s);
 
-fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
+fun allocate_nice ({nice_of_ugly, ugly_of_nice} : name_pool) (ugly, nice_sugg0) =
   let
     fun alloc j =
       let val nice_sugg = index_name nice_sugg0 j in
-        (case Symtab.lookup nice_but_taken nice_sugg of
+        (case Symtab.lookup ugly_of_nice nice_sugg of
           NONE =>
           (nice_sugg,
            {nice_of_ugly = Symtab.update_new (ugly, nice_sugg) nice_of_ugly,
-            nice_but_taken = Symtab.update_new (nice_sugg, ()) nice_but_taken})
-        | SOME () => alloc (j + 1))
+            ugly_of_nice = Symtab.update_new (nice_sugg, ugly) ugly_of_nice})
+        | SOME _ => alloc (j + 1))
       end;
   in
     alloc 0
@@ -569,16 +577,13 @@ fun allocate_nice ugly ({nice_of_ugly, nice_but_taken} : name_pool) nice_sugg0 =
 fun nice_ident ugly (pool as {nice_of_ugly, ...}) =
   if nicifiable ugly then
     (case Symtab.lookup nice_of_ugly ugly of
-      NONE =>
-      let val nice_sugg = nice_of_ugly_suggestion ugly in
-        allocate_nice ugly pool nice_sugg
-      end
+      NONE => allocate_nice pool (ugly, nice_of_ugly_suggestion ugly)
     | SOME nice => (nice, pool))
   else
     (ugly, pool);
 
-fun nice_nun_problem prob =
-  fold_map_nun_problem_idents nice_ident prob empty_name_pool;
+fun nice_nun_problem problem =
+  fold_map_nun_problem_idents nice_ident problem empty_name_pool;
 
 fun str_of_tval (NType (id, tys)) =
     str_of_ident id ^ " : " ^ fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type

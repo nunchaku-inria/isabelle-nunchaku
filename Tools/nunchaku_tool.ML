@@ -1,6 +1,6 @@
 (*  Title:      HOL/Tools/Nunchaku/nunchaku_tool.ML
     Author:     Jasmin Blanchette, Inria Nancy, LORIA, MPII
-    Copyright   2015
+    Copyright   2015, 2016
 
 Interface to the external "nunchaku" tool.
 *)

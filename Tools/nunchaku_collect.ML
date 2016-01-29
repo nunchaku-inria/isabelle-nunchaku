@@ -1,6 +1,6 @@
 (*  Title:      HOL/Tools/Nunchaku/nunchaku_collect.ML
     Author:     Jasmin Blanchette, Inria Nancy, LORIA, MPII
-    Copyright   2015
+    Copyright   2015, 2016
 
 Collecting of Isabelle/HOL definitions etc. for Nunchaku.
 *)
