@@ -137,6 +137,10 @@ val parse_id = parse_tok o Ident;
 val parse_sym = parse_tok o Symbol;
 val parse_atom = Scan.some (try (fn Atom id_j => id_j));
 
+val confusing_ids = [nun_else, nun_then, nun_with];
+
+val parse_confusing_id = Scan.some (try (fn Ident id => member (op =) confusing_ids id));
+
 fun parse_ty toks =
   (parse_ident >> (rpair [] #> NType)) toks;
 
@@ -146,7 +150,7 @@ fun parse_tm toks =
       >> (fn (tm, NONE) => tm
         | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))) toks
 and parse_comb toks =
-  (parse_arg -- Scan.repeat (Scan.unless (parse_id nun_then || parse_id nun_with) parse_arg)
+  (parse_arg -- Scan.repeat (Scan.unless parse_confusing_id parse_arg)
    >> napps) toks
 and parse_arg toks =
   (parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else -- parse_tm
@@ -181,12 +185,8 @@ fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =
     {type_model = type_model, const_model = e :: const_model, skolem_model = skolem_model});
 
 fun nun_model_of_str str =
-  let val str = "SAT:{val f_ := fun v/1. v/1.}"
-val _ = tracing (@{make_string} (drop 6 (tokenize str)))
-in
   try (parse_model o tokenize) str
   |> Option.map (fn (entries, _) =>
-    fold_rev add_entry entries {type_model = [], const_model = [], skolem_model = []})
-end;
+    fold_rev add_entry entries {type_model = [], const_model = [], skolem_model = []});
 
 end;
