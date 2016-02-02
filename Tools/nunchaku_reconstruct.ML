@@ -72,7 +72,7 @@ fun typ_of_nun ctxt =
           | NONE =>
             (case try str_of_nun_var id of
               SOME s => TFree (Proof_Context.check_tfree ctxt (flip_quote s, dummyS))
-            | NONE => raise Fail ("unknown type identifier: " ^ quote (str_of_ident id))))
+            | NONE => raise Fail ("unknown type constructor: " ^ quote (str_of_ident id))))
       end;
   in
     typ_of
@@ -101,16 +101,21 @@ fun term_of_nun ctxt atomss =
 
     fun term_of (NAtom (j, ty)) = let val T = typ_of ty in Var ((nth_atom T j, 0), T) end
       | term_of (NConst (id, tys0, ty)) =
-        (case try str_of_nun_const id of
-          SOME (args, s) =>
-          (* TODO: more precise type *)
-          let val tys = map (K nun_dummy_ty) args in
-            Sign.mk_const thy (s, map typ_of (tys @ tys0))
-          end
-        | NONE =>
-          (case try str_of_nun_var id of
-            SOME s => Free (s, typ_of ty)
-          | NONE => Var ((str_of_ident id, 0), typ_of ty) (* atom name *)))
+        if id = nun_false then
+          @{const False}
+        else if id = nun_true then
+          @{const True}
+        else
+          (case try str_of_nun_const id of
+            SOME (args, s) =>
+            (* TODO: more precise type *)
+            let val tys = map (K nun_dummy_ty) args in
+              Sign.mk_const thy (s, map typ_of (tys @ tys0))
+            end
+          | NONE =>
+            (case try str_of_nun_var id of
+              SOME s => Free (s, typ_of ty)
+            | NONE => raise Fail ("unknown constant: " ^ quote (str_of_ident id))))
       | term_of (NVar (id, ty)) =
         (case try str_of_nun_var id of
           SOME s => Var ((s, 0), typ_of ty)
