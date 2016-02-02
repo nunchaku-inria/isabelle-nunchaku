@@ -103,6 +103,8 @@ fun ident_or_atom s =
 
 fun is_alnum_etc_char c = Char.isAlphaNum c orelse c = #"_" orelse c = #"/";
 
+val multi_ids = [nun_assign, nun_conj, nun_disj, nun_unknown];
+
 fun next_token [] = (End_of_Stream, [])
   | next_token (c :: cs) =
     if Char.isSpace c then
@@ -111,12 +113,24 @@ fun next_token [] = (End_of_Stream, [])
       let val n = find_index (not o is_alnum_etc_char) cs in
         (if n = ~1 then (cs, []) else chop n cs) |>> (cons c #> String.implode #> ident_or_atom)
       end
-    else if c = #"?" andalso is_prefix (op =) [#"_", #"_"] cs then
-      (Symbol (ident_of_str nun_unknown), drop 2 cs)
-    else if c = #":" andalso is_prefix (op =) [#"="] cs then
-      (Symbol (ident_of_str nun_assign), tl cs)
     else
-      (Symbol (ident_of_str (String.str c)), cs);
+      let
+        fun next_multi id =
+          let
+            val s = str_of_ident id;
+            val n = String.size s - 1;
+          in
+            if c = String.sub (s, 0) andalso
+                is_prefix (op =) (String.explode (String.substring (s, 1, n))) cs then
+              SOME (Symbol id, drop n cs)
+            else
+              NONE
+          end;
+      in
+        (case get_first next_multi multi_ids of
+          SOME res => res
+        | NONE => (Symbol (ident_of_str (String.str c)), cs))
+      end;
 
 val tokenize =
   let
@@ -145,13 +159,24 @@ fun parse_ty toks =
   (parse_ident >> (rpair [] #> NType)) toks;
 
 fun parse_tm toks =
-  (parse_id nun_fun |-- parse_tm --| parse_sym nun_dot -- parse_tm >> NAbs
+  (parse_id nun_fun |-- Scan.repeat parse_arg --| parse_sym nun_dot -- parse_tm
+     >> Library.foldr NAbs
    || parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else
        -- parse_tm
      >> (fn ((cond, th), el) => napps (NConst (nun_if, [], safe_ty_of th), [cond, th, el]))
-   || parse_comb -- Scan.option (parse_sym nun_equals -- parse_comb)
-     >> (fn (tm, NONE) => tm
-       | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
+   || parse_disj) toks
+and parse_disj toks =
+  (parse_conj -- Scan.option (parse_sym nun_disj -- parse_disj)
+   >> (fn (tm, NONE) => tm
+     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
+and parse_conj toks =
+  (parse_equals -- Scan.option (parse_sym nun_conj -- parse_conj)
+   >> (fn (tm, NONE) => tm
+     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
+and parse_equals toks =
+  (parse_comb -- Scan.option (parse_sym nun_equals -- parse_comb)
+   >> (fn (tm, NONE) => tm
+     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
 and parse_comb toks =
   (parse_arg -- Scan.repeat (Scan.unless parse_confusing_id parse_arg) >> napps) toks
 and parse_arg toks =

@@ -342,11 +342,11 @@ fun index_name s 0 = s
 val nun_dummy_ty = NType (nun_dummy, []);
 val nun_prop_ty = NType (nun_prop, []);
 
-fun domain_ty (NType (id, [ty, _])) = if id = nun_arrow then ty else raise Fail "non-arrow"
-  | domain_ty _ = raise Fail "non-arrow";
+fun domain_ty (NType (_, [ty, _])) = ty
+  | domain_ty ty = ty;
 
-fun range_ty (NType (id, [_, ty])) = if id = nun_arrow then ty else raise Fail "non-arrow"
-  | range_ty _ = raise Fail "non-arrow";
+fun range_ty (NType (_, [_, ty])) = ty
+  | range_ty ty = ty;
 
 fun domain_tys 0 _ = []
   | domain_tys n ty = domain_ty ty :: domain_tys (n - 1) (range_ty ty);

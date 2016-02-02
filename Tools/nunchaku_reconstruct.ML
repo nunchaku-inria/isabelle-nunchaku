@@ -104,7 +104,11 @@ fun term_of_nun ctxt atomss =
 
     fun term_of bounds (NAtom (j, ty)) = let val T = typ_of ty in Var ((nth_atom T j, 0), T) end
       | term_of bounds (NConst (id, tys0, ty)) =
-        if id = nun_equals then
+        if id = nun_conj then
+          HOLogic.conj
+        else if id = nun_disj then
+          HOLogic.disj
+        else if id = nun_equals then
           Const (@{const_name HOL.eq}, typ_of ty)
         else if id = nun_false then
           @{const False}
