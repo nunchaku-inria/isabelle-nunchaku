@@ -141,25 +141,19 @@ fun parse_ty toks =
   (parse_ident >> (rpair [] #> NType)) toks;
 
 fun parse_tm toks =
-(tracing ("TM: " ^ @{make_string} toks);
   (parse_id nun_fun |-- parse_tm --| parse_sym nun_dot -- parse_tm >> NAbs
    || parse_comb -- Scan.option (parse_sym nun_equals |-- parse_comb)
       >> (fn (tm, NONE) => tm
         | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))) toks
-)
 and parse_comb toks =
-(tracing ("COMB: " ^ @{make_string} toks);
   (parse_arg -- Scan.repeat (Scan.unless (parse_id nun_then || parse_id nun_with) parse_arg)
    >> napps) toks
-)
 and parse_arg toks =
-(tracing ("ARG: " ^ @{make_string} toks);
   (parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else -- parse_tm
      >> (fn ((cond, th), el) => napps (NConst (nun_if, [], ty_of th), [cond, th, el]))
    || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
    || parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen
-   || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks
-);
+   || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks;
 
 datatype entry =
   Type_Entry of ty_entry
