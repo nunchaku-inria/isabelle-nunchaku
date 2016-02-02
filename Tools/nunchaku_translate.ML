@@ -44,7 +44,7 @@ fun ty_of_isa (Type (s, Ts)) =
     let val tys = map ty_of_isa Ts in
       (case s of
         @{type_name bool} => nun_prop_ty
-      | @{type_name fun} => NType (nun_fun, tys)
+      | @{type_name fun} => NType (nun_arrow, tys)
       | _ =>
         let
           val args = map str_of_ty tys;

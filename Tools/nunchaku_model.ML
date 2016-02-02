@@ -133,26 +133,33 @@ fun parse_enum sep scan = scan ::: Scan.repeat (sep |-- scan);
 fun parse_tok tok = Scan.one (curry (op =) tok);
 
 val parse_ident = Scan.some (try (fn Ident id => id));
-val parse_atom = Scan.some (try (fn Atom id_j => id_j));
 val parse_id = parse_tok o Ident;
 val parse_sym = parse_tok o Symbol;
+val parse_atom = Scan.some (try (fn Atom id_j => id_j));
 
-fun parse_ty tok =
-  (parse_ident >> (rpair [] #> NType)) tok;
+fun parse_ty toks =
+  (parse_ident >> (rpair [] #> NType)) toks;
 
-fun parse_tm tok =
-  (parse_comb -- Scan.option (parse_sym nun_equals |-- parse_comb)
-   >> (fn (tm, NONE) => tm
-     | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))
-   || parse_id nun_fun |-- parse_tm --| parse_sym nun_dot -- parse_tm >> NAbs) tok
-and parse_comb tok =
-  (parse_arg -- Scan.repeat parse_arg >> napps) tok
-and parse_arg tok =
+fun parse_tm toks =
+(tracing ("TM: " ^ @{make_string} toks);
+  (parse_id nun_fun |-- parse_tm --| parse_sym nun_dot -- parse_tm >> NAbs
+   || parse_comb -- Scan.option (parse_sym nun_equals |-- parse_comb)
+      >> (fn (tm, NONE) => tm
+        | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))) toks
+)
+and parse_comb toks =
+(tracing ("COMB: " ^ @{make_string} toks);
+  (parse_arg -- Scan.repeat (Scan.unless (parse_id nun_then || parse_id nun_with) parse_arg)
+   >> napps) toks
+)
+and parse_arg toks =
+(tracing ("ARG: " ^ @{make_string} toks);
   (parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else -- parse_tm
      >> (fn ((cond, th), el) => napps (NConst (nun_if, [], ty_of th), [cond, th, el]))
    || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
-   || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))
-   || parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen) tok;
+   || parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen
+   || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks
+);
 
 datatype entry =
   Type_Entry of ty_entry
@@ -180,8 +187,12 @@ fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =
     {type_model = type_model, const_model = e :: const_model, skolem_model = skolem_model});
 
 fun nun_model_of_str str =
+  let val str = "SAT:{val f_ := fun f_. f_.}"
+val _ = tracing (@{make_string} (drop 6 (tokenize str)))
+in
   try (parse_model o tokenize) str
   |> Option.map (fn (entries, _) =>
-    fold_rev add_entry entries {type_model = [], const_model = [], skolem_model = []});
+    fold_rev add_entry entries {type_model = [], const_model = [], skolem_model = []})
+end;
 
 end;

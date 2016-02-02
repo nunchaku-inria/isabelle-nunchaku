@@ -66,6 +66,7 @@ sig
 
   val nun_abs: string
   val nun_and: string
+  val nun_arrow: string
   val nun_assign: string
   val nun_at: string
   val nun_atom: string
@@ -216,6 +217,7 @@ type name_pool =
 
 val nun_abs = "abs";
 val nun_and = "and";
+val nun_arrow = "->";
 val nun_assign = ":=";
 val nun_at = "@";
 val nun_atom = "$";
@@ -238,7 +240,7 @@ val nun_eval = "eval";
 val nun_exists = "exists";
 val nun_false = "false";
 val nun_forall = "forall";
-val nun_fun = "->";
+val nun_fun = "fun";
 val nun_goal = "goal";
 val nun_if = "if";
 val nun_implies = "=>";
@@ -339,11 +341,11 @@ fun index_name s 0 = s
 val nun_dummy_ty = NType (nun_dummy, []);
 val nun_prop_ty = NType (nun_prop, []);
 
-fun domain_ty (NType (id, [ty, _])) = if id = nun_fun then ty else raise Fail "non-fun"
-  | domain_ty _ = raise Fail "non-fun";
+fun domain_ty (NType (id, [ty, _])) = if id = nun_arrow then ty else raise Fail "non-arrow"
+  | domain_ty _ = raise Fail "non-arrow";
 
-fun range_ty (NType (id, [_, ty])) = if id = nun_fun then ty else raise Fail "non-fun"
-  | range_ty _ = raise Fail "non-fun";
+fun range_ty (NType (id, [_, ty])) = if id = nun_arrow then ty else raise Fail "non-arrow"
+  | range_ty _ = raise Fail "non-arrow";
 
 fun domain_tys 0 _ = []
   | domain_tys n ty = domain_ty ty :: domain_tys (n - 1) (range_ty ty);
@@ -351,7 +353,7 @@ fun domain_tys 0 _ = []
 fun ty_of (NAtom (_, ty)) = ty
   | ty_of (NConst (_, _, ty)) = ty
   | ty_of (NVar (_, ty)) = ty
-  | ty_of (NAbs (var, body)) = NType (nun_fun, [ty_of var, ty_of body])
+  | ty_of (NAbs (var, body)) = NType (nun_arrow, [ty_of var, ty_of body])
   | ty_of (NMatch (obj, (_, _, body1) :: _)) = ty_of body1
   | ty_of (NApp (const, _)) = range_ty (ty_of const);
 
@@ -559,9 +561,9 @@ val eta_expand_builtin_tm =
 val str_of_ty =
   let
     fun str_of maybe_parens (NType (id, tys)) =
-      if id = nun_fun then
+      if id = nun_arrow then
         (case tys of
-          [ty, ty'] => maybe_parens (str_of nun_parens ty ^ " " ^ nun_fun ^ " " ^ str_of I ty'))
+          [ty, ty'] => maybe_parens (str_of nun_parens ty ^ " " ^ nun_arrow ^ " " ^ str_of I ty'))
       else
         id ^ str_of_nun_arg_list (str_of I) tys
   in
@@ -583,7 +585,7 @@ val (str_of_tmty, str_of_tm) =
     fun str_of_app ty_opt const arg =
       let
         val ty_opt' =
-          try (Option.map (fn ty => NType (nun_fun, [ty_of arg, ty]))) ty_opt
+          try (Option.map (fn ty => NType (nun_arrow, [ty_of arg, ty]))) ty_opt
           |> the_default NONE;
       in
         (str_of ty_opt' const |> (case const of NAbs _ => nun_parens | _ => I)) ^
@@ -591,7 +593,7 @@ val (str_of_tmty, str_of_tm) =
       end
     and str_of_br ty_opt (id, vars, body) =
       " " ^ nun_bar ^ " " ^ id ^ space_implode "" (map (prefix " " o str_of NONE) vars) ^ " " ^
-      nun_fun ^ " " ^ str_of ty_opt body
+      nun_arrow ^ " " ^ str_of ty_opt body
     and str_of_tmty tm =
       let val ty = ty_of tm in
         str_of (SOME ty) tm ^ " " ^ nun_colon ^ " " ^ str_of_ty ty
@@ -681,7 +683,7 @@ fun nice_nun_problem problem =
 
 fun str_of_tval (NType (id, tys)) =
     str_of_ident id ^ " " ^ nun_colon ^ " " ^
-    fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
+    fold (K (prefix (nun_type ^ " " ^ nun_arrow ^ " "))) tys nun_type
   | str_of_tval _ = raise Fail "non-NType";
 
 fun is_triv_wrt (NAbs (_, body)) = is_triv_wrt body
