@@ -228,7 +228,9 @@ fun decode_args s =
       | delta _ = 0;
 
     fun dec _ [] _ = raise Fail ("ill-formed arguments in " ^ quote s)
+      | dec 0 (#"(" :: #")" :: cs) _ = ([], String.implode cs)
       | dec 0 (#"(" :: cs) [] = dec 1 cs [[]]
+      | dec 0 _ _ = raise Fail ("ill-formed arguments in " ^ quote s)
       | dec 1 (#")" :: cs) args = (rev (map (String.implode o rev) args), String.implode cs)
       | dec n (#"," :: cs) args = dec n cs ([] :: args)
       | dec n (c :: cs) (arg :: args) = dec (n + delta c) cs ((c :: arg) :: args);

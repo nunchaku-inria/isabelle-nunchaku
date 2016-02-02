@@ -64,10 +64,9 @@ fun typ_of_nun ctxt =
         else
           (case try str_of_nun_const id of
             SOME (args, s) =>
-            let
-              val ty = []; (* FIXME map ty_of_str args; *)
-            in
-              Type (s, map typ_of ty)
+            (* TODO: more precise type *)
+            let val tys = map (K nun_dummy_ty) args in
+              Type (s, map typ_of tys)
             end
           | NONE =>
             (case try str_of_nun_var id of
