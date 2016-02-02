@@ -112,6 +112,9 @@ fun term_of_nun ctxt atomss =
           Const (@{const_name If}, typ_of ty)
         else if id = nun_true then
           @{const True}
+        else if id = nun_unknown then
+          list_comb (Var (("unknown", 0), map (typ_of o ty_of) bounds ---> typ_of ty),
+            map Bound (length bounds - 1 downto 0))
         else
           (case try str_of_nun_const id of
             SOME (args, s) =>

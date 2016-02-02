@@ -156,6 +156,7 @@ and parse_arg toks =
   (parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else -- parse_tm
      >> (fn ((cond, th), el) => napps (NConst (nun_if, [], ty_of th), [cond, th, el]))
    || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
+   || parse_sym nun_unknown >> (fn _ => NConst (nun_unknown, [], nun_dummy_ty))
    || parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks;
 
