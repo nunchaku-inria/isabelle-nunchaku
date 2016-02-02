@@ -109,7 +109,7 @@ fun next_token [] = (End_of_Stream, [])
   | next_token (c :: cs) =
     if Char.isSpace c then
       next_token cs
-    else if Char.isAlpha c then
+    else if is_alnum_etc_char c then
       let val n = find_index (not o is_alnum_etc_char) cs in
         (if n = ~1 then (cs, []) else chop n cs) |>> (cons c #> String.implode #> ident_or_atom)
       end
@@ -186,8 +186,13 @@ and parse_comb toks =
 and parse_arg toks =
   (parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
    || parse_sym nun_unknown >> (fn _ => NConst (nun_unknown, [], nun_dummy_ty))
-   || parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen
+   || parse_sym nun_lparen |-- parse_tm --| Scan.option (parse_sym nun_colon |-- parse_ty)
+     --| parse_sym nun_rparen
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks;
+
+val parse_witness =
+  parse_id nun__witness_of |-- parse_sym nun_lparen |-- (parse_id nun_forall || parse_id nun_exists)
+  |-- parse_arg --| Scan.repeat (Scan.one (curry (op <>) (Symbol nun_assign)));
 
 datatype entry =
   Type_Entry of ty_entry
@@ -198,6 +203,7 @@ val parse_entry =
   (parse_id nun_type |-- parse_ty --| parse_sym nun_assign --| parse_sym nun_lbrace --
        parse_enum (parse_sym nun_comma) parse_tm --| parse_sym nun_rbrace
      >> Type_Entry
+   || parse_id nun_val |-- parse_witness --| parse_sym nun_assign -- parse_tm >> Skolem_Entry
    || parse_id nun_val |-- parse_tm --| parse_sym nun_assign -- parse_tm >> Const_Entry)
   --| parse_sym nun_dot;
 

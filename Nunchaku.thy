@@ -21,15 +21,8 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) rmember
 
-typedecl xxx
-datatype yy = Y xxx | Z
-
-consts bbb :: yy
-
-declare [[ML_exception_trace]]
-
-lemma "rev [] = [Suc 0]"
-nunchaku[overlord]
+lemma "\<And>xs ys. rev xs = ys"
+nunchaku[overlord, debug]
 
 oops
 

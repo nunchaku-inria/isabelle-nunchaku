@@ -117,6 +117,7 @@ sig
   val nun_wf: string
   val nun_with: string
   val nun_wrt: string
+  val nun__witness_of: string
 
   val ident_of_str: string -> ident
   val str_of_ident: ident -> string
@@ -269,6 +270,7 @@ val nun_val = "val";
 val nun_wf = "wf";
 val nun_with = "with";
 val nun_wrt = "wrt";
+val nun__witness_of = "_witness_of";
 
 val nun_parens = enclose nun_lparen nun_rparen;
 
