@@ -18,7 +18,8 @@ Isabelle frontend:
 
 Middleware:
 
-  * better cvc4 kill
+  * better cvc4 kill (find out what's wrong in cvc4, also for Sledgehammer)
+  * "eval"
   * detect selectors/discriminator specifications ("rec" or "spec") and
     reuse built-in ones when possible? or maybe this is the same as inlining
     once recursion is expressed as a single equation
