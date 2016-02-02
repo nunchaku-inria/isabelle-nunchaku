@@ -79,13 +79,21 @@ fun typ_of_nun ctxt =
 
 fun term_of_nun ctxt =
   let
+    val thy = Proof_Context.theory_of ctxt;
+
     val typ_of = typ_of_nun ctxt;
 
-    fun term_of (NConst (id, tys, ty)) =
-        (* FIXME *)
-        (case try str_of_nun_var id of
-          SOME s => Free (s, typ_of ty)
-        | NONE => Free (str_of_ident id, typ_of ty))
+    fun term_of (NConst (id, tys0, ty)) =
+        (case try str_of_nun_const id of
+          SOME (args, s) =>
+          (* TODO: more precise type *)
+          let val tys = map (K nun_dummy_ty) args in
+            Sign.mk_const thy (s, map typ_of (tys @ tys0))
+          end
+        | NONE =>
+          (case try str_of_nun_var id of
+            SOME s => Free (s, typ_of ty)
+          | NONE => Free (str_of_ident id, typ_of ty) (* probably an atom *)))
       | term_of (NVar (id, ty)) =
         (case try str_of_nun_var id of
           SOME s => Var ((s, 0), typ_of ty)

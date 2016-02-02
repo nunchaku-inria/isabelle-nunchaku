@@ -26,7 +26,9 @@ typedecl xxx
 consts bbb :: xxx
 
 lemma "aaa = bbb"
-nunchaku[overlord, debug]
+nitpick[show_all]
+oops
+nxunchaku[overlord, debug]
 oops
 
 end
