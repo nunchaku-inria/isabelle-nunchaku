@@ -157,10 +157,6 @@ fun nun_problem_of_isa ctxt =
         (if wf then curry NPred true
          else if fp = BNF_Util.Least_FP then curry NPred false
          else NCopred) (map (nun_const_spec_of_isa ctxt) specs)
-      | IRec [spec as {const, props as [_]}] =>
-        (* TODO: remove once "nunchaku" tool has become smarter about "rec" *)
-        if can dest_funT (fastype_of const) then NRec [nun_const_spec_of_isa ctxt spec]
-        else NSpec (nun_consts_spec_of_isa ctxt {consts = [const], props = props})
       | IRec specs => NRec (map (nun_const_spec_of_isa ctxt) specs)
       | ISpec spec => NSpec (nun_consts_spec_of_isa ctxt spec)
       | IAxiom prop => NAxiom (tm_of_isa ctxt prop)
