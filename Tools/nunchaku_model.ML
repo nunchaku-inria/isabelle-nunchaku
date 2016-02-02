@@ -181,7 +181,7 @@ fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =
     {type_model = type_model, const_model = e :: const_model, skolem_model = skolem_model});
 
 fun nun_model_of_str str =
-  let val str = "SAT:{val f_ := fun f_. f_.}"
+  let val str = "SAT:{val f_ := fun v/1. v/1.}"
 val _ = tracing (@{make_string} (drop 6 (tokenize str)))
 in
   try (parse_model o tokenize) str

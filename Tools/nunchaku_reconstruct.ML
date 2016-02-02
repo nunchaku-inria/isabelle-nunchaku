@@ -40,6 +40,9 @@ type isa_model =
    const_model: term_entry list,
    skolem_model: term_entry list};
 
+fun id_of_const (NConst (id, _, _)) = id
+  | id_of_const _ = nun_dummy;
+
 fun str_of_typ_entry ctxt (T, ts) =
   "type " ^ Syntax.string_of_typ ctxt T  ^
   " := {" ^ commas (map (Syntax.string_of_term ctxt) ts) ^ "}.";
@@ -78,20 +81,20 @@ fun typ_of_nun ctxt =
     typ_of
   end;
 
+fun one_letter_of s =
+  let val c = String.sub (Long_Name.base_name s, 0) in
+    String.str (if Char.isAlpha c then c else #"x")
+  end;
+
+fun base_of_typ (Type (s, _)) = s
+  | base_of_typ (TFree (s, _)) = flip_quote s
+  | base_of_typ (TVar ((s, _), _)) = flip_quote s;
+
 fun term_of_nun ctxt atomss =
   let
     val thy = Proof_Context.theory_of ctxt;
 
     val typ_of = typ_of_nun ctxt;
-
-    fun one_letter_of s =
-      let val c = String.sub (Long_Name.base_name s, 0) in
-        String.str (if Char.isAlpha c then c else #"x")
-      end;
-
-    fun base_of_typ (Type (s, _)) = s
-      | base_of_typ (TFree (s, _)) = flip_quote s
-      | base_of_typ (TVar ((s, _), _)) = flip_quote s;
 
     fun nth_atom T j =
       let val ss = these (triple_lookup (typ_match thy) atomss T) in
@@ -99,8 +102,8 @@ fun term_of_nun ctxt atomss =
         else one_letter_of (base_of_typ T) ^ nat_subscript (j + 1)
       end;
 
-    fun term_of (NAtom (j, ty)) = let val T = typ_of ty in Var ((nth_atom T j, 0), T) end
-      | term_of (NConst (id, tys0, ty)) =
+    fun term_of bounds (NAtom (j, ty)) = let val T = typ_of ty in Var ((nth_atom T j, 0), T) end
+      | term_of bounds (NConst (id, tys0, ty)) =
         if id = nun_false then
           @{const False}
         else if id = nun_true then
@@ -115,16 +118,19 @@ fun term_of_nun ctxt atomss =
           | NONE =>
             (case try str_of_nun_var id of
               SOME s => Free (s, typ_of ty)
-            | NONE => raise Fail ("unknown constant: " ^ quote (str_of_ident id))))
-      | term_of (NVar (id, ty)) =
-        (case try str_of_nun_var id of
-          SOME s => Var ((s, 0), typ_of ty)
-        | NONE => Var ((str_of_ident id, 1), typ_of ty) (* Nunchaku-generated bound variable *))
-      | term_of (NAbs (var, body)) = lambda (term_of var) (term_of body)
-      | term_of (tm as NMatch _) = Var (("case", 0), typ_of (ty_of tm)) (* TODO *)
-      | term_of (NApp (func, arg)) = term_of func $ term_of arg;
+            | NONE =>
+              (case find_index (fn bound => id_of_const bound = id) bounds of
+                ~1 => raise Fail ("unknown constant: " ^ quote (str_of_ident id))
+              | j => Bound j)))
+      | term_of bounds (NAbs (var, body)) =
+        let val T = typ_of (ty_of var) in
+          Abs (one_letter_of (base_of_typ T), T, term_of (var :: bounds) body)
+        end
+      | term_of bounds (tm as NMatch _) = Var (("case", 0), typ_of (ty_of tm)) (* TODO *)
+      | term_of bounds (NApp (func, arg)) = term_of bounds func $ term_of bounds arg
+      | term_of bounds (NVar _) = raise Fail "unexpected var";
   in
-    term_of
+    term_of []
   end;
 
 fun isa_typ_entry_of_nun ctxt atomss (ty, atoms) =
