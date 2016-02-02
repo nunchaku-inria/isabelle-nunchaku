@@ -21,16 +21,4 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) rmember
 
-lemma "xs = (ys :: 'a list)"
-nunchaku
-
-(*
-TODO:
-  * "eval" (and auto eval of equalities)
-*)
-
-lemma "1 + 1 = 3"
-xnunchaku
-oops
-
 end

@@ -729,7 +729,7 @@ fun str_of_nun_command (NTVal ty) = nun_val ^ " " ^ str_of_tval ty
   | str_of_nun_command (NSpec spec) = nun_spec ^ " " ^ str_of_nun_consts_spec spec
   | str_of_nun_command (NAxiom tm) = nun_axiom ^ " " ^ str_of_tm tm
   | str_of_nun_command (NGoal tm) = nun_goal ^ " " ^ str_of_tm tm
-  | str_of_nun_command (NEval tm) = nun_eval ^ " " ^ str_of_tm tm;
+  | str_of_nun_command (NEval tm) = "# " ^ nun_eval ^ " " ^ str_of_tm tm;
 
 val str_of_nun_problem =
   map (cat_lines o map (suffix nun_dot o str_of_nun_command))

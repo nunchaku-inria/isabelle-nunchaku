@@ -898,13 +898,29 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
     val (poly_axioms, mono_axioms0) = orphan_axioms_of ctxt
       |> List.partition has_polymorphism;
 
+    fun implicit_evals_of pol (@{const Not} $ t) = implicit_evals_of (not pol) t
+      | implicit_evals_of pol (@{const implies} $ t $ u) =
+        (case implicit_evals_of pol u of
+          [] => implicit_evals_of (not pol) t
+        | ts => ts)
+      | implicit_evals_of pol (@{const conj} $ t $ u) =
+        union (op aconv) (implicit_evals_of pol t) (implicit_evals_of pol u)
+      | implicit_evals_of pol (@{const disj} $ t $ u) =
+        union (op aconv) (implicit_evals_of pol t) (implicit_evals_of pol u)
+      | implicit_evals_of false (Const (@{const_name HOL.eq}, _) $ t $ u) =
+        distinct (op aconv) [t, u]
+      | implicit_evals_of true (Const (@{const_name HOL.eq}, _) $ t $ u) = [t]
+      | implicit_evals_of _ _ = [];
+
     val mono_axioms_and_some_assms = map (preprocess_prop false ctxt) (mono_axioms0 @ some_assms0);
     val subgoal = preprocess_prop falsify ctxt subgoal0;
+    val implicit_evals = implicit_evals_of true subgoal;
     val evals = map (preprocess_closed_term ctxt) evals0;
     val seens = ([], [], []);
   in
     (poly_axioms,
-     (seens, map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal] @ map IEval evals)
+     (seens,
+      map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal] @ map IEval (implicit_evals @ evals))
      |> fold (consider_term 0) (subgoal :: evals @ mono_axioms_and_some_assms)
      |> snd
      |> rev (* prettier *)
