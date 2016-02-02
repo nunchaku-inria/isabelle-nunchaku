@@ -22,7 +22,7 @@ ML_file "Tools/nunchaku_commands.ML"
 hide_const (open) rmember
 
 lemma "xs = (ys :: 'a list)"
-nunchaku
+nunchaku[eval = "xs @ ys"]
 
 (*
 TODO:

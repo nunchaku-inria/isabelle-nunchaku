@@ -164,8 +164,7 @@ fun nun_problem_of_isa ctxt =
       | IRec specs => NRec (map (nun_const_spec_of_isa ctxt) specs)
       | ISpec spec => NSpec (nun_consts_spec_of_isa ctxt spec)
       | IAxiom prop => NAxiom (tm_of_isa ctxt prop)
-      | IGoal prop => NGoal (tm_of_isa ctxt prop)
-      | IEval t => NEval (tm_of_isa ctxt t));
+      | IGoal prop => NGoal (tm_of_isa ctxt prop));
   in
     map (map cmd_of)
   end;

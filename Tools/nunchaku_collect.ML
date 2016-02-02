@@ -39,7 +39,6 @@ sig
   | ISpec of isa_consts_spec
   | IAxiom of term
   | IGoal of term
-  | IEval of term
 
   type isa_problem = isa_command list list
 
@@ -89,8 +88,7 @@ datatype isa_command =
 | IRec of isa_const_spec list
 | ISpec of isa_consts_spec
 | IAxiom of term
-| IGoal of term
-| IEval of term;
+| IGoal of term;
 
 type isa_problem = isa_command list list;
 
@@ -514,8 +512,7 @@ fun keys_of _ (ITVal T) = [key_of_typ T]
   | keys_of ctxt (IRec specs) = map (key_of_const ctxt o #const) specs
   | keys_of ctxt (ISpec {consts, ...}) = map (key_of_const ctxt) consts
   | keys_of _ (IAxiom _) = []
-  | keys_of _ (IGoal _) = []
-  | keys_of _ (IEval _) = [];
+  | keys_of _ (IGoal _) = [];
 
 fun co_data_spec_deps_of ctxt ({ctrs, ...} : isa_co_data_spec) =
   fold (add_keys ctxt) ctrs [];
@@ -534,8 +531,7 @@ fun deps_of _ (ITVal _) = []
   | deps_of ctxt (IRec specs) = maps (const_spec_deps_of ctxt (map #const specs) o #props) specs
   | deps_of ctxt (ISpec spec) = consts_spec_deps_of ctxt spec
   | deps_of ctxt (IAxiom prop) = add_keys ctxt prop []
-  | deps_of ctxt (IGoal prop) = add_keys ctxt prop []
-  | deps_of ctxt (IEval t) = add_keys ctxt t [];
+  | deps_of ctxt (IGoal prop) = add_keys ctxt prop [];
 
 fun consts_of_rec_or_spec (IRec specs) = map #const specs
   | consts_of_rec_or_spec (ISpec {consts, ...}) = consts;
@@ -601,9 +597,8 @@ fun sort_isa_problem_topologically ctxt cmds =
       |> sort_problem;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
-    val evals = filter (can (fn IEval _ => ())) cmds;
   in
-    typedecls @ mixed @ axioms @ goals @ evals
+    typedecls @ mixed @ axioms @ goals
   end;
 
 fun group_of (ITVal _) = 1
@@ -615,8 +610,7 @@ fun group_of (ITVal _) = 1
   | group_of (IRec _) = 7
   | group_of (ISpec _) = 8
   | group_of (IAxiom _) = 9
-  | group_of (IGoal _) = 10
-  | group_of (IEval _) = 11;
+  | group_of (IGoal _) = 10;
 
 fun group_isa_commands [] = []
   | group_isa_commands [cmd] = [[cmd]]
@@ -904,7 +898,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
     val seens = ([], [], []);
   in
     (poly_axioms,
-     (seens, map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal] @ map IEval evals)
+     (seens, map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal])
      |> fold (consider_term 0) (subgoal :: evals @ mono_axioms_and_some_assms)
      |> snd
      |> rev (* prettier *)
@@ -950,8 +944,7 @@ fun str_of_isa_command ctxt (ITVal T) = "type " ^ Syntax.string_of_typ ctxt T
     "rec " ^ str_of_and_list (str_of_isa_const_spec ctxt) specs
   | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_consts_spec ctxt spec
   | str_of_isa_command ctxt (IAxiom prop) = "axiom " ^ Syntax.string_of_term ctxt prop
-  | str_of_isa_command ctxt (IGoal prop) = "goal " ^ Syntax.string_of_term ctxt prop
-  | str_of_isa_command ctxt (IEval t) = "eval " ^ Syntax.string_of_term ctxt t;
+  | str_of_isa_command ctxt (IGoal prop) = "goal " ^ Syntax.string_of_term ctxt prop;
 
 fun str_of_isa_problem ctxt =
   map (cat_lines o map (suffix "." o str_of_isa_command ctxt))

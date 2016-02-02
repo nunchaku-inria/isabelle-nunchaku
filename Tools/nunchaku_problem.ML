@@ -55,7 +55,6 @@ sig
   | NSpec of nun_consts_spec
   | NAxiom of tm
   | NGoal of tm
-  | NEval of tm
 
   type nun_problem = nun_command list list
 
@@ -84,7 +83,6 @@ sig
   val nun_else: string
   val nun_end: string
   val nun_equals: string
-  val nun_eval: string
   val nun_exists: string
   val nun_false: string
   val nun_forall: string
@@ -208,8 +206,7 @@ datatype nun_command =
 | NRec of nun_const_spec list
 | NSpec of nun_consts_spec
 | NAxiom of tm
-| NGoal of tm
-| NEval of tm;
+| NGoal of tm;
 
 type nun_problem = nun_command list list;
 
@@ -238,7 +235,6 @@ val nun_dummy = "_";
 val nun_else = "else";
 val nun_end = "end";
 val nun_equals = "=";
-val nun_eval = "eval";
 val nun_exists = "exists";
 val nun_false = "false";
 val nun_forall = "forall";
@@ -468,10 +464,7 @@ fun fold_map_nun_command_idents f (NTVal ty) =
     #>> NAxiom
   | fold_map_nun_command_idents f (NGoal tm) =
     fold_map_tm_idents f tm
-    #>> NGoal
-  | fold_map_nun_command_idents f (NEval tm) =
-    fold_map_tm_idents f tm
-    #>> NEval;
+    #>> NGoal;
 
 fun fold_map_nun_problem_idents f =
   fold_map (fold_map (fold_map_nun_command_idents f));
@@ -728,8 +721,7 @@ fun str_of_nun_command (NTVal ty) = nun_val ^ " " ^ str_of_tval ty
     nun_rec ^ " " ^ str_of_nun_and_list str_of_nun_const_spec specs
   | str_of_nun_command (NSpec spec) = nun_spec ^ " " ^ str_of_nun_consts_spec spec
   | str_of_nun_command (NAxiom tm) = nun_axiom ^ " " ^ str_of_tm tm
-  | str_of_nun_command (NGoal tm) = nun_goal ^ " " ^ str_of_tm tm
-  | str_of_nun_command (NEval tm) = nun_eval ^ " " ^ str_of_tm tm;
+  | str_of_nun_command (NGoal tm) = nun_goal ^ " " ^ str_of_tm tm;
 
 val str_of_nun_problem =
   map (cat_lines o map (suffix nun_dot o str_of_nun_command))
