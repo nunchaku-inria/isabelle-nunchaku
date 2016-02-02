@@ -26,11 +26,10 @@ typedecl xxx
 consts bbb :: xxx
 
 lemma "aaa = bbb"
-nunchaku[overlord, debug]
+nunchaku[overlord, debug, atoms xxx = a b c]
 oops
 
 (*
-declare atom names;
 honor "atoms" option
 *)
 

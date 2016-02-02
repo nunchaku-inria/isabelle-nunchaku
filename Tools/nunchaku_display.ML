@@ -30,8 +30,10 @@ fun sorting_str_of_term (Const (s, T)) = "b" ^ s ^ sorting_str_of_typ T
   | sorting_str_of_term (Abs (_, T, t)) = "c" ^ sorting_str_of_typ T ^ " " ^ sorting_str_of_term t
   | sorting_str_of_term _ = "X";
 
-fun pretty_of_isa_model ctxt show_consts {type_model, free_model, const_model, skolem_model} =
+fun pretty_of_isa_model ctxt0 show_consts {type_model, free_model, const_model, skolem_model} =
   let
+    val ctxt = ctxt0 |> Config.put show_question_marks false;
+
     fun pretty_of_typ_entry (T, atoms) =
       Pretty.block (Pretty.breaks [Syntax.pretty_typ ctxt T, Pretty.str "=",
          Pretty.enum "," "{" "}" (map (Syntax.pretty_term ctxt) atoms)]);

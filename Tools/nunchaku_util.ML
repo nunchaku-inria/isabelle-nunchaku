@@ -29,6 +29,7 @@ sig
   val strip_fun_type: typ -> typ list * typ
   val attach_typeS: term -> term
   val specialize_type: theory -> string * typ -> term -> term
+  val const_match: theory -> (string * typ) * (string * typ) -> bool
   val DETERM_TIMEOUT: Time.time -> tactic -> tactic
   val spying: bool -> (unit -> Proof.state * int * string) -> unit
 end;
@@ -77,6 +78,9 @@ val attach_typeS =
       | T => T));
 
 val specialize_type = ATP_Util.specialize_type;
+
+fun const_match thy xx =
+  can (Pattern.match thy (apply2 Const xx)) (Vartab.empty, Vartab.empty);
 
 val DETERM_TIMEOUT = Nitpick_Util.DETERM_TIMEOUT;
 

@@ -93,7 +93,7 @@ fun term_of_nun ctxt =
         | NONE =>
           (case try str_of_nun_var id of
             SOME s => Free (s, typ_of ty)
-          | NONE => Free (str_of_ident id, typ_of ty) (* probably an atom *)))
+          | NONE => Var ((str_of_ident id, 0), typ_of ty)))
       | term_of (NVar (id, ty)) =
         (case try str_of_nun_var id of
           SOME s => Var ((s, 0), typ_of ty)

@@ -73,13 +73,15 @@ fun swap_name_pool ({nice_of_ugly, ugly_of_nice} : name_pool) =
 fun allocate_ugly pool (nice, ugly_sugg) =
   allocate_nice (swap_name_pool pool) (nice, ugly_sugg) ||> swap_name_pool;
 
+(* "Uglifying" effectively means "prettifying" here, because the Nunchaku-generated atom names are
+   not as nice as the ones presented to Isabelle users. *)
 fun uglify_atom_name name =
   (case first_field "__" name of
     SOME (pre, suf) =>
     if pre <> "" then
       let val c = String.sub (pre, 0) in
-        (case (Char.isAlpha c, Int.fromString suf) of
-          (true, SOME j) => String.str c ^ nat_subscript j
+        (case Int.fromString suf of
+          SOME j => String.str (if Char.isAlpha c then c else #"x") ^ nat_subscript j
         | _ => name)
       end
     else

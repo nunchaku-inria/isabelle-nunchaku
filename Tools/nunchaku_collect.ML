@@ -677,9 +677,6 @@ val cached_wf_props = Synchronized.var "Nunchaku_Collect.cached_wf_props" ([] : 
 
 val termination_tacs = [Lexicographic_Order.lex_order_tac true, ScnpReconstruct.sizechange_tac];
 
-fun const_match thy xx =
-  can (Pattern.match thy (apply2 Const xx)) (Vartab.empty, Vartab.empty);
-
 fun is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout const intros =
   let
     val thy = Proof_Context.theory_of ctxt;
