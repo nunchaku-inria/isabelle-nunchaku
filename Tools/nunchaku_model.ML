@@ -30,6 +30,7 @@ end;
 structure Nunchaku_Model : NUNCHAKU_MODEL =
 struct
 
+open Nunchaku_Util;
 open Nunchaku_Problem;
 
 type ty_entry = ty * tm list;
@@ -69,11 +70,25 @@ fun fold_map_nun_model_idents f {type_model, const_model, skolem_model} =
 fun swap_name_pool ({nice_of_ugly, ugly_of_nice} : name_pool) =
   {nice_of_ugly = ugly_of_nice, ugly_of_nice = nice_of_ugly};
 
-fun allocate_ugly pool = allocate_nice (swap_name_pool pool) ##> swap_name_pool;
+fun allocate_ugly pool (nice, ugly_sugg) =
+  allocate_nice (swap_name_pool pool) (nice, ugly_sugg) ||> swap_name_pool;
+
+fun uglify_atom_name name =
+  (case first_field "__" name of
+    SOME (pre, suf) =>
+    if pre <> "" then
+      let val c = String.sub (pre, 0) in
+        (case (Char.isAlpha c, Int.fromString suf) of
+          (true, SOME j) => String.str c ^ nat_subscript j
+        | _ => name)
+      end
+    else
+      name
+  | NONE => name);
 
 fun ugly_ident nice (pool as {ugly_of_nice, ...}) =
   (case Symtab.lookup ugly_of_nice nice of
-    NONE => allocate_ugly pool (nice, nice)
+    NONE => allocate_ugly pool (nice, uglify_atom_name nice)
   | SOME ugly => (ugly, pool));
 
 fun ugly_nun_model pool model =

@@ -26,9 +26,12 @@ typedecl xxx
 consts bbb :: xxx
 
 lemma "aaa = bbb"
-nitpick[show_all]
+nunchaku[overlord, debug]
 oops
-nxunchaku[overlord, debug]
-oops
+
+(*
+declare atom names;
+honor "atoms" option
+*)
 
 end

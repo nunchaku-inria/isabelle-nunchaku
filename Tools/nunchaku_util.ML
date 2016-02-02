@@ -10,6 +10,7 @@ sig
   val parens: string -> string
   val parens_if_space: string -> string
   val elide_string: int -> string -> string
+  val nat_subscript: int -> string
   val timestamp: unit -> string
   val str_of_arg_list: ('a -> string) -> 'a list -> string
   val str_of_and_list: ('a -> string) -> 'a list -> string
@@ -40,6 +41,7 @@ val parens = enclose "(" ")";
 fun parens_if_space s = s |> String.isSubstring " " s ? parens;
 
 val elide_string = ATP_Util.elide_string;
+val nat_subscript = Nitpick_Util.nat_subscript;
 val timestamp = ATP_Util.timestamp;
 
 fun str_of_arg_list str_of_arg =
