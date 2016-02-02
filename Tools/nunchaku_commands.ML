@@ -29,7 +29,7 @@ val default_default_params =
    ("max_potential", "1"),
    ("mono", "smart"),
    ("overlord", "false"),
-   ("show_consts", "false"),
+   ("show_consts", "smart"),
    ("specialize", "true"),
    ("spy", "false"),
    ("timeout", "30"),
@@ -111,7 +111,9 @@ fun extract_params ctxt mode default_params override_params =
       (case lookup name of
         SOME s => parse_bool_option option name s
       | NONE => default_value);
+
     val lookup_bool = the o general_lookup_bool false (SOME false);
+    val lookup_bool_option = general_lookup_bool true NONE;
 
     fun do_int name value =
       (case value of
@@ -186,7 +188,7 @@ fun extract_params ctxt mode default_params override_params =
     val timeout = lookup_time "timeout";
     val wf_timeout = lookup_time "wf_timeout";
     val multithread = mode = Normal andalso lookup_bool "multithread";
-    val show_consts = debug orelse lookup_bool "show_consts";
+    val show_consts = if debug then SOME true else lookup_bool_option "show_consts";
     val evals = these (lookup_term_list_option_polymorphic "eval");
     val formats = lookup_ints_assigns read_term_polymorphic "format" 0;
     val atomss = lookup_strings_assigns read_type_polymorphic "atoms";

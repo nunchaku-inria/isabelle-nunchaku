@@ -28,12 +28,15 @@ consts bbb :: yy
 
 declare [[ML_exception_trace]]
 
-lemma "tl xs = xs"
-nunchaku[overlord, debug]
+lemma "rev [] = [Suc 0]"
+nunchaku[overlord]
+
 oops
 
 (*
-TODO: Cleaner handling of "_" suffix (in problem/model, not translate/reconstruct)
+TODO:
+  * Cleaner handling of "_" suffix (in problem/model, not translate/reconstruct)
+  * "eval" (and auto eval of equalities)
 *)
 
 lemma "1 + 1 = 3"

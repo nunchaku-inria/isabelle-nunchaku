@@ -25,7 +25,7 @@ sig
   type output_format_params =
     {verbose: bool,
      debug: bool,
-     show_consts: bool,
+     show_consts: bool option,
      max_potential: int,
      max_genuine: int,
      evals: term list,
@@ -88,7 +88,7 @@ type scope_of_search_params =
 type output_format_params =
   {verbose: bool,
    debug: bool,
-   show_consts: bool,
+   show_consts: bool option,
    max_potential: int,
    max_genuine: int,
    evals: term list,
