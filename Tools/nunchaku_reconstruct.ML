@@ -63,12 +63,11 @@ fun typ_of_nun ctxt =
           Type (@{type_name fun}, Ts)
         else
           (case try str_of_nun_const id of
-            SOME s =>
+            SOME (args, s) =>
             let
-              val s' = s; (* FIXME *)
-              val Ts' = []; (* FIXME *)
+              val ty = []; (* FIXME map ty_of_str args; *)
             in
-              Type (s', Ts')
+              Type (s, map typ_of ty)
             end
           | NONE =>
             (case try str_of_nun_var id of
@@ -87,7 +86,7 @@ fun term_of_nun ctxt =
         (* FIXME *)
         (case try str_of_nun_var id of
           SOME s => Free (s, typ_of ty)
-        | NONE => Free (str_of_nun_atom id, typ_of ty))
+        | NONE => Free (str_of_ident id, typ_of ty))
       | term_of (NVar (id, ty)) =
         (case try str_of_nun_var id of
           SOME s => Var ((s, 0), typ_of ty)

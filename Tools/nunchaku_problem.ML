@@ -85,9 +85,8 @@ sig
   val str_of_ident: ident -> string
   val nun_const_of_str: string list -> string -> ident
   val nun_var_of_str: string -> ident
-  val str_of_nun_const: ident -> string
+  val str_of_nun_const: ident -> string list * string
   val str_of_nun_var: ident -> string
-  val str_of_nun_atom: ident -> string
 
   val nun_dummy_ty: ty
   val nun_prop_ty: ty
@@ -217,18 +216,32 @@ val nun_const_prefix = "c.";
 val nun_var_prefix = "V.";
 val nun_custom_id_suffix = "_";
 
-val encode_args = enclose "(" ")" o commas;
-
 val ident_of_str = I : string -> ident;
 val str_of_ident = I : ident -> string;
 
-fun nun_const_of_str args =
-  prefix (encode_args args) o prefix nun_const_prefix o suffix nun_custom_id_suffix;
+val encode_args = enclose "(" ")" o commas;
 
-val nun_var_of_str = prefix nun_var_prefix o suffix nun_custom_id_suffix;
-val str_of_nun_const = unsuffix nun_custom_id_suffix o unprefix nun_const_prefix;
-val str_of_nun_var = unsuffix nun_custom_id_suffix o unprefix nun_var_prefix;
-fun str_of_nun_atom s = s;
+fun decode_args s =
+  let
+    fun delta #"(" = 1
+      | delta #")" = ~1
+      | delta _ = 0;
+
+    fun dec _ [] _ = raise Fail ("ill-formed arguments in " ^ quote s)
+      | dec 0 (#"(" :: cs) [] = dec 1 cs [[]]
+      | dec 1 (#")" :: cs) args = (rev (map (String.implode o rev) args), String.implode cs)
+      | dec n (#"," :: cs) args = dec n cs ([] :: args)
+      | dec n (c :: cs) (arg :: args) = dec (n + delta c) cs ((c :: arg) :: args);
+  in
+    dec 0 (String.explode s) []
+  end;
+
+fun nun_const_of_str args =
+  suffix nun_custom_id_suffix #> prefix nun_const_prefix #> prefix (encode_args args);
+
+val nun_var_of_str = suffix nun_custom_id_suffix #> prefix nun_var_prefix;
+val str_of_nun_const = decode_args ##> unprefix nun_const_prefix ##> unsuffix nun_custom_id_suffix;
+val str_of_nun_var = unprefix nun_var_prefix #> unsuffix nun_custom_id_suffix;
 
 fun index_name s 0 = s
   | index_name s j =
@@ -473,6 +486,7 @@ val (str_of_tmty, str_of_tm) =
       | is_triv_head (NAbs _) = false
       | is_triv_head (NMatch _) = false;
 
+    (* FIXME: get rid of this code *)
     fun str_of_at_const id tys =
       "@" ^ str_of_ident id ^ str_of_arg_list str_of_ty tys;
 
@@ -495,8 +509,7 @@ val (str_of_tmty, str_of_tm) =
     and str_of _ (NConst (id, [], _)) = str_of_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
         if ty = ty0 then str_of_ident id else str_of_at_const id tys
-      | str_of _ (NConst (id, tys, _)) =
-        str_of_at_const id tys
+      | str_of _ (NConst (id, tys, _)) = str_of_at_const id tys
       | str_of _ (NVar (id, _)) = str_of_ident id
       | str_of ty_opt (NAbs (var, body)) =
         "fun " ^
