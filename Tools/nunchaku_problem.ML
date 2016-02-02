@@ -115,7 +115,7 @@ sig
   val str_of_nun_problem: nun_problem -> string
 end;
 
-structure Nunchaku_Problem :> (*###*) NUNCHAKU_PROBLEM =
+structure Nunchaku_Problem : NUNCHAKU_PROBLEM =
 struct
 
 open Nunchaku_Util;
