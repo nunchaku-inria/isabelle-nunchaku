@@ -172,9 +172,12 @@ fun parse_ty tok =
   (parse_ident >> (rpair [] #> NType)) tok;
 
 fun parse_tm tok =
+  (parse_unapp_tm -- Scan.repeat parse_tm >> Library.foldl NApp) tok
+and parse_unapp_tm tok =
   (parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))
    || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
-   || parse_tok Fun |-- parse_tm --| parse_tok Period -- parse_tm >> NAbs) tok;
+   || parse_tok Fun |-- parse_tm --| parse_tok Period -- parse_tm >> NAbs
+   || parse_tok Left_Paren |-- parse_tm --| parse_tok Right_Paren) tok;
 
 datatype entry =
   Type_Entry of ty_entry

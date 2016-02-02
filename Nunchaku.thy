@@ -22,8 +22,9 @@ ML_file "Tools/nunchaku_commands.ML"
 hide_const (open) rmember
 
 typedecl xxx
+datatype yy = Y xxx | Z
 
-consts bbb :: xxx
+consts bbb :: yy
 
 declare [[ML_exception_trace]]
 
