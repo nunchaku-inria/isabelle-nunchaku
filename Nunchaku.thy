@@ -29,6 +29,10 @@ lemma "aaa = bbb"
 nunchaku[overlord, debug, atoms xxx = a b c]
 oops
 
+lemma "1 + 1 = 3"
+xnunchaku
+oops
+
 (*
 honor "atoms" option
 *)

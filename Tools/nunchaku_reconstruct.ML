@@ -93,11 +93,11 @@ fun term_of_nun ctxt =
         | NONE =>
           (case try str_of_nun_var id of
             SOME s => Free (s, typ_of ty)
-          | NONE => Var ((str_of_ident id, 0), typ_of ty)))
+          | NONE => Var ((str_of_ident id, 0), typ_of ty) (* atom name *)))
       | term_of (NVar (id, ty)) =
         (case try str_of_nun_var id of
           SOME s => Var ((s, 0), typ_of ty)
-        | NONE => raise Fail ("unknown term identifier: " ^ quote (str_of_ident id)))
+        | NONE => Var ((str_of_ident id, 1), typ_of ty) (* Nunchaku-generated bound variable *))
       | term_of (NAbs (var, body)) = lambda (term_of var) (term_of body)
       | term_of (NMatch _) = raise Fail "match not supported"
       | term_of (NApp (func, arg)) = term_of func $ term_of arg;
