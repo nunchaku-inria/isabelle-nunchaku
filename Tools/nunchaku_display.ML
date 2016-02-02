@@ -49,7 +49,7 @@ fun pretty_of_isa_model_opt _ _ NONE =
 
       fun chunks_of_entries sorting_str_of pretty_of title entries =
         if not (null entries) then
-          (if title = "" then [] else [Pretty.str (title ^ plural_s_for_list entries)]) @
+          (if title = "" then [] else [Pretty.str (title ^ plural_s_for_list entries ^ ":")]) @
           map (pretty_indent o pretty_of) (sort_by (sorting_str_of o fst) entries)
         else
           [];
