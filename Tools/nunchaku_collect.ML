@@ -101,6 +101,9 @@ exception UNEXPECTED_POLYMORPHISM of term;
 exception UNEXPECTED_VAR of term;
 exception UNSUPPORTED_FUNC of term;
 
+fun str_of_and_list str_of_elem =
+  map str_of_elem #> space_implode ("\nand ");
+
 val key_of_typ =
   let
     fun key_of (Type (s, [])) = s

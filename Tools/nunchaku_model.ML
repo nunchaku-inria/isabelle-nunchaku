@@ -87,19 +87,9 @@ fun ugly_nun_model pool model =
 datatype token =
   Ident of ident
 | Atom of ident * int
-| Colon
-| Assign
-| Unknown
-| Comma
-| Period
-| Left_Paren
-| Right_Paren
-| Left_Brace
-| Right_Brace
-| End_of_Stream
-| Error;
+| End_of_Stream;
 
-fun maybe_ident s =
+fun ident_or_atom s =
   (case first_field "__" s of
     SOME (pre, suf) =>
     if pre <> "" then
@@ -110,38 +100,22 @@ fun maybe_ident s =
       Ident (ident_of_str s)
   | NONE => Ident (ident_of_str s));
 
-fun is_ident_char s = Char.isAlphaNum s orelse s = #"_" orelse s = #"/";
+fun is_alnum_etc_char c = Char.isAlphaNum c orelse c = #"_" orelse c = #"/";
 
 fun next_token [] = (End_of_Stream, [])
   | next_token (c :: cs) =
     if Char.isSpace c then
       next_token cs
     else if Char.isAlpha c then
-      (case find_index (not o is_ident_char) cs of
-        ~1 => (maybe_ident (Char.toString c), [])
-      | n => chop n cs |>> (cons c #> String.implode #> maybe_ident))
-    else if c = #":" then
-      if is_prefix (op =) [#"="] cs then (Assign, tl cs)
-      else (Colon, cs)
-    else if c = #"?" then
-      if is_prefix (op =) [#"_", #"_"] cs then (Unknown, drop 2 cs)
-      else (Error, [])
-    else if c = #"=" then
-      (Ident (String.str c), cs)
-    else if c = #"," then
-      (Comma, cs)
-    else if c = #"." then
-      (Period, cs)
-    else if c = #"(" then
-      (Left_Paren, cs)
-    else if c = #")" then
-      (Right_Paren, cs)
-    else if c = #"{" then
-      (Left_Brace, cs)
-    else if c = #"}" then
-      (Right_Brace, cs)
+      let val n = find_index (not o is_alnum_etc_char) cs in
+        (if n = ~1 then (cs, []) else chop n cs) |>> (cons c #> String.implode #> ident_or_atom)
+      end
+    else if c = #"?" andalso is_prefix (op =) [#"_", #"_"] cs then
+      (Ident (ident_of_str nun_unknown), drop 2 cs)
+    else if c = #":" andalso is_prefix (op =) [#"="] cs then
+      (Ident (ident_of_str nun_assign), tl cs)
     else
-      (Error, []);
+      (Ident (ident_of_str (String.str c)), cs);
 
 val tokenize =
   let
@@ -153,32 +127,30 @@ val tokenize =
     toks o String.explode
   end;
 
-fun parse_tok tok = Scan.one (curry (op =) tok);
-
 fun parse_enum sep scan = scan ::: Scan.repeat (sep |-- scan);
+
+fun parse_tok tok = Scan.one (curry (op =) tok);
 
 val parse_ident = Scan.some (try (fn Ident id => id));
 val parse_atom = Scan.some (try (fn Atom id_j => id_j));
-
-val parse_keyword = parse_tok o Ident;
+val parse_id = parse_tok o Ident;
 
 fun parse_ty tok =
   (parse_ident >> (rpair [] #> NType)) tok;
 
 fun parse_tm tok =
-  (parse_comb -- Scan.option (parse_keyword nun_equals |-- parse_comb)
+  (parse_comb -- Scan.option (parse_id nun_equals |-- parse_comb)
    >> (fn (tm, NONE) => tm
      | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))) tok
 and parse_comb tok =
   (parse_arg -- Scan.repeat parse_arg >> napps) tok
 and parse_arg tok =
-  (parse_keyword nun_if |-- parse_tm --| parse_keyword nun_then -- parse_tm
-       --| parse_keyword nun_else -- parse_tm
+  (parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else -- parse_tm
      >> (fn ((cond, th), el) => napps (NConst (nun_if, [], ty_of th), [cond, th, el]))
    || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))
-   || parse_keyword nun_fun |-- parse_tm --| parse_tok Period -- parse_tm >> NAbs
-   || parse_tok Left_Paren |-- parse_tm --| parse_tok Right_Paren) tok;
+   || parse_id nun_fun |-- parse_tm --| parse_id nun_dot -- parse_tm >> NAbs
+   || parse_id nun_lparen |-- parse_tm --| parse_id nun_rparen) tok;
 
 datatype entry =
   Type_Entry of ty_entry
@@ -186,15 +158,15 @@ datatype entry =
 | Const_Entry of tm_entry;
 
 val parse_entry =
-  (parse_keyword nun_type |-- parse_ty --| parse_tok Assign --| parse_tok Left_Brace --
-       parse_enum (parse_tok Comma) parse_tm --| parse_tok Right_Brace
+  (parse_id nun_type |-- parse_ty --| parse_id nun_assign --| parse_id nun_lbrace --
+       parse_enum (parse_id nun_comma) parse_tm --| parse_id nun_rbrace
      >> Type_Entry
-   || parse_keyword nun_val |-- parse_tm --| parse_tok Assign -- parse_tm >> Const_Entry)
-  --| parse_tok Period;
+   || parse_id nun_val |-- parse_tm --| parse_id nun_assign -- parse_tm >> Const_Entry)
+  --| parse_id nun_dot;
 
 val parse_model =
-  parse_keyword nun_SAT |-- parse_tok Colon |-- parse_tok Left_Brace |--
-  Scan.repeat parse_entry --| parse_tok Right_Brace;
+  parse_id nun_SAT |-- parse_id nun_colon |-- parse_id nun_lbrace |-- Scan.repeat parse_entry
+  --| parse_id nun_rbrace;
 
 fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =
   (case entry of

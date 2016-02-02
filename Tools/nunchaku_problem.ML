@@ -64,37 +64,58 @@ sig
     {nice_of_ugly: string Symtab.table,
      ugly_of_nice: string Symtab.table}
 
-  val nun_dummy: ident
-  val nun_axiom: ident
-  val nun_codata: ident
-  val nun_copred: ident
-  val nun_copy: ident
-  val nun_data: ident
-  val nun_eval: ident
-  val nun_goal: ident
-  val nun_pred: ident
-  val nun_quotient: ident
-  val nun_rec: ident
-  val nun_spec: ident
-  val nun_type: ident
-  val nun_val: ident
-  val nun_wf: ident
-  val nun_fun: ident
-  val nun_prop: ident
-  val nun_conj: ident
-  val nun_disj: ident
-  val nun_else: ident
-  val nun_equals: ident
-  val nun_exists: ident
-  val nun_false: ident
-  val nun_forall: ident
-  val nun_if: ident
-  val nun_implies: ident
-  val nun_match: ident
-  val nun_mu: ident
-  val nun_not: ident
-  val nun_then: ident
-  val nun_true: ident
+  val nun_abs: string
+  val nun_and: string
+  val nun_assign: string
+  val nun_at: string
+  val nun_atom: string
+  val nun_axiom: string
+  val nun_bar: string
+  val nun_codata: string
+  val nun_colon: string
+  val nun_comma: string
+  val nun_conj: string
+  val nun_copred: string
+  val nun_copy: string
+  val nun_data: string
+  val nun_disj: string
+  val nun_dot: string
+  val nun_dummy: string
+  val nun_else: string
+  val nun_end: string
+  val nun_equals: string
+  val nun_eval: string
+  val nun_exists: string
+  val nun_false: string
+  val nun_forall: string
+  val nun_fun: string
+  val nun_goal: string
+  val nun_if: string
+  val nun_implies: string
+  val nun_lbrace: string
+  val nun_lbracket: string
+  val nun_lparen: string
+  val nun_match: string
+  val nun_mu: string
+  val nun_not: string
+  val nun_pred: string
+  val nun_prop: string
+  val nun_quotient: string
+  val nun_rbrace: string
+  val nun_rbracket: string
+  val nun_rec: string
+  val nun_rep: string
+  val nun_rparen: string
+  val nun_semicolon: string
+  val nun_spec: string
+  val nun_then: string
+  val nun_true: string
+  val nun_type: string
+  val nun_unknown: string
+  val nun_val: string
+  val nun_wf: string
+  val nun_with: string
+  val nun_wrt: string
 
   val ident_of_str: string -> ident
   val str_of_ident: ident -> string
@@ -193,40 +214,68 @@ type name_pool =
   {nice_of_ugly: string Symtab.table,
    ugly_of_nice: string Symtab.table};
 
-val nun_dummy = "_";
-
+val nun_abs = "abs";
+val nun_and = "and";
+val nun_assign = ":=";
+val nun_at = "@";
+val nun_atom = "$";
 val nun_axiom = "axiom";
+val nun_bar = "|";
 val nun_codata = "codata";
+val nun_colon = ":";
+val nun_comma = ",";
+val nun_conj = "&&";
 val nun_copred = "copred";
 val nun_copy = "copy";
 val nun_data = "data";
-val nun_eval = "eval";
-val nun_goal = "goal";
-val nun_pred = "pred";
-val nun_quotient = "quotient";
-val nun_rec = "rec";
-val nun_spec = "spec";
-val nun_type = "type";
-val nun_val = "val";
-val nun_wf = "wf";
-
-val nun_fun = "->";
-val nun_prop = "prop";
-
-val nun_conj = "&&";
 val nun_disj = "||";
+val nun_dot = ".";
+val nun_dummy = "_";
 val nun_else = "else";
+val nun_end = "end";
 val nun_equals = "=";
+val nun_eval = "eval";
 val nun_exists = "exists";
 val nun_false = "false";
 val nun_forall = "forall";
+val nun_fun = "->";
+val nun_goal = "goal";
 val nun_if = "if";
 val nun_implies = "=>";
+val nun_lbrace = "{";
+val nun_lbracket = "[";
+val nun_lparen = "(";
 val nun_match = "match";
 val nun_mu = "mu";
 val nun_not = "~";
+val nun_pred = "pred";
+val nun_prop = "prop";
+val nun_quotient = "quotient";
+val nun_rbrace = "}";
+val nun_rbracket = "]";
+val nun_rec = "rec";
+val nun_rep = "rep";
+val nun_rparen = ")";
+val nun_semicolon = ";";
+val nun_spec = "spec";
 val nun_then = "then";
 val nun_true = "true";
+val nun_type = "type";
+val nun_unknown = "?__";
+val nun_val = "val";
+val nun_wf = "wf";
+val nun_with = "with";
+val nun_wrt = "wrt";
+
+val nun_parens = enclose nun_lparen nun_rparen;
+
+fun nun_parens_if_space s = s |> String.isSubstring " " s ? nun_parens;
+
+fun str_of_nun_arg_list str_of_arg =
+  map (prefix " " o nun_parens_if_space o str_of_arg) #> space_implode "";
+
+fun str_of_nun_and_list str_of_elem =
+  map str_of_elem #> space_implode ("\n" ^ nun_and ^ " ");
 
 val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
 val is_nun_const_connective = member (op =) [nun_conj, nun_disj, nun_implies];
@@ -512,9 +561,9 @@ val str_of_ty =
     fun str_of maybe_parens (NType (id, tys)) =
       if id = nun_fun then
         (case tys of
-          [ty, ty'] => maybe_parens (str_of parens ty ^ " " ^ nun_fun ^ " " ^ str_of I ty'))
+          [ty, ty'] => maybe_parens (str_of nun_parens ty ^ " " ^ nun_fun ^ " " ^ str_of I ty'))
       else
-        id ^ str_of_arg_list (str_of I) tys
+        id ^ str_of_nun_arg_list (str_of I) tys
   in
     str_of I
   end;
@@ -529,7 +578,7 @@ val (str_of_tmty, str_of_tm) =
       | is_triv_head (NMatch _) = false;
 
     fun str_of_at_const id tys =
-      "@" ^ str_of_ident id ^ str_of_arg_list str_of_ty tys;
+      nun_at ^ str_of_ident id ^ str_of_nun_arg_list str_of_ty tys;
 
     fun str_of_app ty_opt const arg =
       let
@@ -537,44 +586,44 @@ val (str_of_tmty, str_of_tm) =
           try (Option.map (fn ty => NType (nun_fun, [ty_of arg, ty]))) ty_opt
           |> the_default NONE;
       in
-        (str_of ty_opt' const |> (case const of NAbs _ => parens | _ => I)) ^
-        str_of_arg_list (str_of NONE) [arg]
+        (str_of ty_opt' const |> (case const of NAbs _ => nun_parens | _ => I)) ^
+        str_of_nun_arg_list (str_of NONE) [arg]
       end
     and str_of_br ty_opt (id, vars, body) =
-      " | " ^ id ^ space_implode "" (map (prefix " " o str_of NONE) vars) ^ " -> " ^
-      str_of ty_opt body
+      " " ^ nun_bar ^ " " ^ id ^ space_implode "" (map (prefix " " o str_of NONE) vars) ^ " " ^
+      nun_fun ^ " " ^ str_of ty_opt body
     and str_of_tmty tm =
       let val ty = ty_of tm in
-        str_of (SOME ty) tm ^ " : " ^ str_of_ty ty
+        str_of (SOME ty) tm ^ " " ^ nun_colon ^ " " ^ str_of_ty ty
       end
-    and str_of _ (NAtom (j, _)) = "@" ^ string_of_int j
+    and str_of _ (NAtom (j, _)) = nun_atom ^ string_of_int j
       | str_of _ (NConst (id, [], _)) = str_of_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
         if ty = ty0 then str_of_ident id else str_of_at_const id tys
       | str_of _ (NConst (id, tys, _)) = str_of_at_const id tys
       | str_of _ (NVar (id, _)) = str_of_ident id
       | str_of ty_opt (NAbs (var, body)) =
-        "fun " ^
+        nun_fun ^ " " ^
         (case ty_opt of
           SOME ty => str_of (SOME (domain_ty ty))
-        | NONE => parens o str_of_tmty) var ^
-        ". " ^ str_of (Option.map range_ty ty_opt) body
+        | NONE => nun_parens o str_of_tmty) var ^
+        nun_dot ^ " " ^ str_of (Option.map range_ty ty_opt) body
       | str_of ty_opt (NMatch (obj, branches)) =
-        nun_match ^ " " ^ str_of NONE obj ^ " with" ^
-        space_implode "" (map (str_of_br ty_opt) branches) ^ " end"
+        nun_match ^ " " ^ str_of NONE obj ^ " " ^ nun_with ^ " " ^
+        space_implode "" (map (str_of_br ty_opt) branches) ^ " " ^ nun_end
       | str_of ty_opt (app as NApp (func, argN)) =
         (case (func, argN) of
           (NApp (oper as NConst (id, _, _), arg1), arg2) =>
           if id = nun_equals then
-            (str_of NONE arg1 |> not (is_triv_head arg1) ? parens) ^ " " ^ id ^ " " ^
-            (str_of (try ty_of arg2) arg2 |> not (is_triv_head arg2) ? parens)
+            (str_of NONE arg1 |> not (is_triv_head arg1) ? nun_parens) ^ " " ^ id ^ " " ^
+            (str_of (try ty_of arg2) arg2 |> not (is_triv_head arg2) ? nun_parens)
           else if is_nun_const_connective id then
             let
               val ty_opt' = SOME nun_prop_ty;
               val args = dest_rassoc_args oper arg1 arg2;
             in
               space_implode (" " ^ id ^ " ")
-                (map (fn arg => str_of NONE arg |> not (is_triv_head arg) ? parens) args)
+                (map (fn arg => str_of NONE arg |> not (is_triv_head arg) ? nun_parens) args)
             end
           else
             str_of_app ty_opt func argN
@@ -582,13 +631,13 @@ val (str_of_tmty, str_of_tm) =
           if id = nun_if then
             nun_if ^ " " ^ str_of NONE arg1 ^ " " ^ nun_then ^ " " ^ str_of NONE arg2 ^ " " ^
             nun_else ^ " " ^ str_of NONE arg3
-            |> parens
+            |> nun_parens
           else
             str_of_app ty_opt func argN
         | (NConst (id, _, _), NAbs _) =>
           if is_nun_const_quantifier id then
             let val (vars, body) = strip_nun_binders id app in
-              id ^ " " ^ space_implode " " (map (parens o str_of_tmty) vars) ^ ". " ^
+              id ^ " " ^ space_implode " " (map (nun_parens o str_of_tmty) vars) ^ nun_dot ^ " " ^
               str_of NONE body
             end
           else
@@ -631,7 +680,8 @@ fun nice_nun_problem problem =
   fold_map_nun_problem_idents nice_ident problem empty_name_pool;
 
 fun str_of_tval (NType (id, tys)) =
-    str_of_ident id ^ " : " ^ fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
+    str_of_ident id ^ " " ^ nun_colon ^ " " ^
+    fold (K (prefix (nun_type ^ " " ^ nun_fun ^ " "))) tys nun_type
   | str_of_tval _ = raise Fail "non-NType";
 
 fun is_triv_wrt (NAbs (_, body)) = is_triv_wrt body
@@ -639,45 +689,48 @@ fun is_triv_wrt (NAbs (_, body)) = is_triv_wrt body
   | is_triv_wrt _ = false;
 
 fun str_of_nun_type_spec {abs_ty, rep_ty, wrt, abs, rep} =
-  str_of_ty abs_ty ^ " := " ^ str_of_ty rep_ty ^
-  (if is_triv_wrt wrt then "" else "\n  wrt " ^ str_of_tm wrt) ^
-  "\n  abs " ^ str_of_tm abs ^
-  "\n  rep " ^ str_of_tm rep;
+  str_of_ty abs_ty ^ " " ^ nun_assign ^ " " ^ str_of_ty rep_ty ^
+  (if is_triv_wrt wrt then "" else "\n  " ^ nun_wrt ^ " " ^ str_of_tm wrt) ^
+  "\n  " ^ nun_abs ^ " " ^ str_of_tm abs ^ "\n  " ^ nun_rep ^ " " ^ str_of_tm rep;
 
 fun str_of_nun_ctr_spec {ctr, arg_tys} =
-  str_of_tm ctr ^ str_of_arg_list str_of_ty arg_tys;
+  str_of_tm ctr ^ str_of_nun_arg_list str_of_ty arg_tys;
 
 fun str_of_nun_co_data_spec {ty, ctrs} =
-  str_of_ty ty ^ " :=\n  " ^ space_implode "\n| " (map str_of_nun_ctr_spec ctrs);
+  str_of_ty ty ^ " " ^ nun_assign ^ "\n  " ^
+  space_implode ("\n" ^ nun_bar ^ " ") (map str_of_nun_ctr_spec ctrs);
 
 fun str_of_nun_const_spec {const, props} =
-  str_of_tmty const ^ " :=\n  " ^ space_implode ";\n  " (map str_of_tm props);
+  str_of_tmty const ^ " " ^ nun_assign ^ "\n  " ^
+  space_implode (nun_semicolon ^ "\n  ") (map str_of_tm props);
 
 fun str_of_nun_consts_spec {consts, props} =
-  space_implode " and\n     " (map str_of_tmty consts) ^ " :=\n  " ^
-  space_implode ";\n  " (map str_of_tm props);
+  space_implode (" " ^ nun_and ^ "\n     ") (map str_of_tmty consts) ^ " " ^ nun_assign ^ "\n  " ^
+  space_implode (nun_semicolon ^ "\n  ") (map str_of_tm props);
 
 fun str_of_nun_command (NTVal ty) = nun_val ^ " " ^ str_of_tval ty
   | str_of_nun_command (NCopy spec) = nun_copy ^ " " ^ str_of_nun_type_spec spec
   | str_of_nun_command (NQuotient spec) = nun_quotient ^ " " ^ str_of_nun_type_spec spec
   | str_of_nun_command (NData specs) =
-    nun_data ^ " " ^ str_of_and_list str_of_nun_co_data_spec specs
+    nun_data ^ " " ^ str_of_nun_and_list str_of_nun_co_data_spec specs
   | str_of_nun_command (NCodata specs) =
-    nun_codata ^ " " ^ str_of_and_list str_of_nun_co_data_spec specs
-  | str_of_nun_command (NVal (tm, ty)) = nun_val ^ " " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
+    nun_codata ^ " " ^ str_of_nun_and_list str_of_nun_co_data_spec specs
+  | str_of_nun_command (NVal (tm, ty)) =
+    nun_val ^ " " ^ str_of_tm tm ^ " " ^ nun_colon ^ " " ^ str_of_ty ty
   | str_of_nun_command (NPred (wf, specs)) =
-    nun_pred ^ " " ^ (if wf then "[" ^ nun_wf ^ "] " else "") ^
-    str_of_and_list str_of_nun_const_spec specs
+    nun_pred ^ " " ^ (if wf then nun_lbracket ^ nun_wf ^ nun_rbracket ^ " " else "") ^
+    str_of_nun_and_list str_of_nun_const_spec specs
   | str_of_nun_command (NCopred specs) =
-    nun_copred ^ " " ^ str_of_and_list str_of_nun_const_spec specs
-  | str_of_nun_command (NRec specs) = nun_rec ^ " " ^ str_of_and_list str_of_nun_const_spec specs
+    nun_copred ^ " " ^ str_of_nun_and_list str_of_nun_const_spec specs
+  | str_of_nun_command (NRec specs) =
+    nun_rec ^ " " ^ str_of_nun_and_list str_of_nun_const_spec specs
   | str_of_nun_command (NSpec spec) = nun_spec ^ " " ^ str_of_nun_consts_spec spec
   | str_of_nun_command (NAxiom tm) = nun_axiom ^ " " ^ str_of_tm tm
   | str_of_nun_command (NGoal tm) = nun_goal ^ " " ^ str_of_tm tm
   | str_of_nun_command (NEval tm) = nun_eval ^ " " ^ str_of_tm tm;
 
 val str_of_nun_problem =
-  map (cat_lines o map (suffix "." o str_of_nun_command))
+  map (cat_lines o map (suffix nun_dot o str_of_nun_command))
   #> space_implode "\n\n" #> suffix "\n";
 
 end;

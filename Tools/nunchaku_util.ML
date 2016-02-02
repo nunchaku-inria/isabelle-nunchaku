@@ -7,13 +7,9 @@ General-purpose functions used by Nunchaku.
 
 signature NUNCHAKU_UTIL =
 sig
-  val parens: string -> string
-  val parens_if_space: string -> string
   val elide_string: int -> string -> string
   val nat_subscript: int -> string
   val timestamp: unit -> string
-  val str_of_arg_list: ('a -> string) -> 'a list -> string
-  val str_of_and_list: ('a -> string) -> 'a list -> string
   val parse_bool_option: bool -> string -> string -> bool option
   val parse_time: string -> string -> Time.time
   val string_of_time: Time.time -> string
@@ -38,19 +34,9 @@ end;
 structure Nunchaku_Util : NUNCHAKU_UTIL =
 struct
 
-val parens = enclose "(" ")";
-
-fun parens_if_space s = s |> String.isSubstring " " s ? parens;
-
 val elide_string = ATP_Util.elide_string;
 val nat_subscript = Nitpick_Util.nat_subscript;
 val timestamp = ATP_Util.timestamp;
-
-fun str_of_arg_list str_of_arg =
-  map (prefix " " o parens_if_space o str_of_arg) #> space_implode "";
-
-fun str_of_and_list str_of_elem =
-  map str_of_elem #> space_implode "\nand ";
 
 val parse_bool_option = Sledgehammer_Util.parse_bool_option;
 val parse_time = Sledgehammer_Util.parse_time;
