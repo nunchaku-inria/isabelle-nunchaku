@@ -28,8 +28,8 @@ consts bbb :: yy
 
 declare [[ML_exception_trace]]
 
-lemma "aaa = bbb"
-nunchaku[overlord, debug]
+lemma "x = y"
+nunchaku[overlord]
 oops
 
 lemma "1 + 1 = 3"

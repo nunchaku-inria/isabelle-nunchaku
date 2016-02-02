@@ -86,6 +86,7 @@ fun ugly_nun_model pool model =
 
 datatype token =
   Ident of ident
+| Symbol of ident
 | Atom of ident * int
 | End_of_Stream;
 
@@ -111,11 +112,11 @@ fun next_token [] = (End_of_Stream, [])
         (if n = ~1 then (cs, []) else chop n cs) |>> (cons c #> String.implode #> ident_or_atom)
       end
     else if c = #"?" andalso is_prefix (op =) [#"_", #"_"] cs then
-      (Ident (ident_of_str nun_unknown), drop 2 cs)
+      (Symbol (ident_of_str nun_unknown), drop 2 cs)
     else if c = #":" andalso is_prefix (op =) [#"="] cs then
-      (Ident (ident_of_str nun_assign), tl cs)
+      (Symbol (ident_of_str nun_assign), tl cs)
     else
-      (Ident (ident_of_str (String.str c)), cs);
+      (Symbol (ident_of_str (String.str c)), cs);
 
 val tokenize =
   let
@@ -134,12 +135,13 @@ fun parse_tok tok = Scan.one (curry (op =) tok);
 val parse_ident = Scan.some (try (fn Ident id => id));
 val parse_atom = Scan.some (try (fn Atom id_j => id_j));
 val parse_id = parse_tok o Ident;
+val parse_sym = parse_tok o Symbol;
 
 fun parse_ty tok =
   (parse_ident >> (rpair [] #> NType)) tok;
 
 fun parse_tm tok =
-  (parse_comb -- Scan.option (parse_id nun_equals |-- parse_comb)
+  (parse_comb -- Scan.option (parse_sym nun_equals |-- parse_comb)
    >> (fn (tm, NONE) => tm
      | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))) tok
 and parse_comb tok =
@@ -149,8 +151,8 @@ and parse_arg tok =
      >> (fn ((cond, th), el) => napps (NConst (nun_if, [], ty_of th), [cond, th, el]))
    || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))
-   || parse_id nun_fun |-- parse_tm --| parse_id nun_dot -- parse_tm >> NAbs
-   || parse_id nun_lparen |-- parse_tm --| parse_id nun_rparen) tok;
+   || parse_id nun_fun |-- parse_tm --| parse_sym nun_dot -- parse_tm >> NAbs
+   || parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen) tok;
 
 datatype entry =
   Type_Entry of ty_entry
@@ -158,15 +160,15 @@ datatype entry =
 | Const_Entry of tm_entry;
 
 val parse_entry =
-  (parse_id nun_type |-- parse_ty --| parse_id nun_assign --| parse_id nun_lbrace --
-       parse_enum (parse_id nun_comma) parse_tm --| parse_id nun_rbrace
+  (parse_id nun_type |-- parse_ty --| parse_sym nun_assign --| parse_sym nun_lbrace --
+       parse_enum (parse_sym nun_comma) parse_tm --| parse_sym nun_rbrace
      >> Type_Entry
-   || parse_id nun_val |-- parse_tm --| parse_id nun_assign -- parse_tm >> Const_Entry)
-  --| parse_id nun_dot;
+   || parse_id nun_val |-- parse_tm --| parse_sym nun_assign -- parse_tm >> Const_Entry)
+  --| parse_sym nun_dot;
 
 val parse_model =
-  parse_id nun_SAT |-- parse_id nun_colon |-- parse_id nun_lbrace |-- Scan.repeat parse_entry
-  --| parse_id nun_rbrace;
+  parse_id nun_SAT |-- parse_sym nun_colon |-- parse_sym nun_lbrace |-- Scan.repeat parse_entry
+  --| parse_sym nun_rbrace;
 
 fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =
   (case entry of
