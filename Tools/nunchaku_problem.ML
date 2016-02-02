@@ -83,6 +83,7 @@ sig
   val nun_prop: ident
   val nun_conj: ident
   val nun_disj: ident
+  val nun_else: ident
   val nun_equals: ident
   val nun_exists: ident
   val nun_false: ident
@@ -92,6 +93,7 @@ sig
   val nun_match: ident
   val nun_mu: ident
   val nun_not: ident
+  val nun_then: ident
   val nun_true: ident
 
   val ident_of_str: string -> ident
@@ -213,6 +215,7 @@ val nun_prop = "prop";
 
 val nun_conj = "&&";
 val nun_disj = "||";
+val nun_else = "else";
 val nun_equals = "=";
 val nun_exists = "exists";
 val nun_false = "false";
@@ -222,6 +225,7 @@ val nun_implies = "=>";
 val nun_match = "match";
 val nun_mu = "mu";
 val nun_not = "~";
+val nun_then = "then";
 val nun_true = "true";
 
 val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
@@ -576,8 +580,8 @@ val (str_of_tmty, str_of_tm) =
             str_of_app ty_opt func argN
         | (NApp (NApp (oper as NConst (id, _, _), arg1), arg2), arg3) =>
           if id = nun_if then
-            nun_if ^ " " ^ str_of NONE arg1 ^ " then " ^ str_of NONE arg2 ^ " else " ^
-            str_of NONE arg3
+            nun_if ^ " " ^ str_of NONE arg1 ^ " " ^ nun_then ^ " " ^ str_of NONE arg2 ^ " " ^
+            nun_else ^ " " ^ str_of NONE arg3
             |> parens
           else
             str_of_app ty_opt func argN

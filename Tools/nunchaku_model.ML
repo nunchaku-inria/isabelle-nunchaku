@@ -42,6 +42,8 @@ type nun_model =
 
 val nun_SAT = str_of_ident "SAT";
 
+val napps = Library.foldl NApp;
+
 fun str_of_ty_entry (ty, tms) =
   "type " ^ str_of_ty ty ^ " := {" ^ commas (map str_of_tm tms) ^ "}.";
 
@@ -88,7 +90,6 @@ datatype token =
 | Colon
 | Assign
 | Unknown
-| Equal
 | Comma
 | Period
 | Left_Paren
@@ -126,7 +127,7 @@ fun next_token [] = (End_of_Stream, [])
       if is_prefix (op =) [#"_", #"_"] cs then (Unknown, drop 2 cs)
       else (Error, [])
     else if c = #"=" then
-      (Equal, cs)
+      (Ident (String.str c), cs)
     else if c = #"," then
       (Comma, cs)
     else if c = #"." then
@@ -165,9 +166,16 @@ fun parse_ty tok =
   (parse_ident >> (rpair [] #> NType)) tok;
 
 fun parse_tm tok =
-  (parse_unapp_tm -- Scan.repeat parse_tm >> Library.foldl NApp) tok
-and parse_unapp_tm tok =
-  (parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
+  (parse_comb -- Scan.option (parse_keyword nun_equals |-- parse_comb)
+   >> (fn (tm, NONE) => tm
+     | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))) tok
+and parse_comb tok =
+  (parse_arg -- Scan.repeat parse_arg >> napps) tok
+and parse_arg tok =
+  (parse_keyword nun_if |-- parse_tm --| parse_keyword nun_then -- parse_tm
+       --| parse_keyword nun_else -- parse_tm
+     >> (fn ((cond, th), el) => napps (NConst (nun_if, [], ty_of th), [cond, th, el]))
+   || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))
    || parse_keyword nun_fun |-- parse_tm --| parse_tok Period -- parse_tm >> NAbs
    || parse_tok Left_Paren |-- parse_tm --| parse_tok Right_Paren) tok;
@@ -198,7 +206,7 @@ fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =
     {type_model = type_model, const_model = e :: const_model, skolem_model = skolem_model});
 
 fun nun_model_of_str str =
-  let val entries = fst (parse_model (tokenize str)) in
+  let val entries = fst (Scan.catch parse_model (tokenize str)) in
     fold_rev add_entry entries {type_model = [], const_model = [], skolem_model = []}
   end;
 
