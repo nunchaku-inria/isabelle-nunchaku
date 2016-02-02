@@ -129,6 +129,7 @@ sig
   val nun_prop_ty: ty
 
   val ty_of: tm -> ty
+  val safe_ty_of: tm -> ty
 
   val fold_map_ty_idents: (string -> 'a -> string * 'a) -> ty -> 'a -> ty * 'a
   val fold_map_tm_idents: (string -> 'a -> string * 'a) -> tm -> 'a -> tm * 'a
@@ -356,6 +357,8 @@ fun ty_of (NAtom (_, ty)) = ty
   | ty_of (NAbs (var, body)) = NType (nun_arrow, [ty_of var, ty_of body])
   | ty_of (NMatch (obj, (_, _, body1) :: _)) = ty_of body1
   | ty_of (NApp (const, _)) = range_ty (ty_of const);
+
+val safe_ty_of = try ty_of #> the_default nun_dummy_ty;
 
 fun strip_nun_binders binder (app as NApp (NConst (id, _, _), NAbs (var, body))) =
     if id = binder then

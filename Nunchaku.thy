@@ -28,9 +28,13 @@ consts bbb :: yy
 
 declare [[ML_exception_trace]]
 
-lemma "f x = x"
-nunchaku[overlord, debug]
+lemma "tl xs = x"
+nunchaku[overlord, debug = false]
 oops
+
+(*
+TODO: Cleaner handling of "_" suffix (in problem/model, not translate/reconstruct)
+*)
 
 lemma "1 + 1 = 3"
 xnunchaku

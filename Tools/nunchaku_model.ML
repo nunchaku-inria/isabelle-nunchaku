@@ -24,7 +24,7 @@ sig
   val allocate_ugly: name_pool -> string * string -> string * name_pool
 
   val ugly_nun_model: name_pool -> nun_model -> nun_model
-  val nun_model_of_str: string -> nun_model option
+  val nun_model_of_str: string -> nun_model
 end;
 
 structure Nunchaku_Model : NUNCHAKU_MODEL =
@@ -139,23 +139,23 @@ val parse_atom = Scan.some (try (fn Atom id_j => id_j));
 
 val confusing_ids = [nun_else, nun_then, nun_with];
 
-val parse_confusing_id = Scan.some (try (fn Ident id => member (op =) confusing_ids id));
+val parse_confusing_id = Scan.one (fn Ident id => member (op =) confusing_ids id | _ => false);
 
 fun parse_ty toks =
   (parse_ident >> (rpair [] #> NType)) toks;
 
 fun parse_tm toks =
   (parse_id nun_fun |-- parse_tm --| parse_sym nun_dot -- parse_tm >> NAbs
+   || parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else
+       -- parse_tm
+     >> (fn ((cond, th), el) => napps (NConst (nun_if, [], safe_ty_of th), [cond, th, el]))
    || parse_comb -- Scan.option (parse_sym nun_equals |-- parse_comb)
-      >> (fn (tm, NONE) => tm
-        | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))) toks
+     >> (fn (tm, NONE) => tm
+       | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))) toks
 and parse_comb toks =
-  (parse_arg -- Scan.repeat (Scan.unless parse_confusing_id parse_arg)
-   >> napps) toks
+  (parse_arg -- Scan.repeat (Scan.unless parse_confusing_id parse_arg) >> napps) toks
 and parse_arg toks =
-  (parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else -- parse_tm
-     >> (fn ((cond, th), el) => napps (NConst (nun_if, [], ty_of th), [cond, th, el]))
-   || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
+  (parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
    || parse_sym nun_unknown >> (fn _ => NConst (nun_unknown, [], nun_dummy_ty))
    || parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks;
@@ -186,8 +186,9 @@ fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =
     {type_model = type_model, const_model = e :: const_model, skolem_model = skolem_model});
 
 fun nun_model_of_str str =
-  try (parse_model o tokenize) str
-  |> Option.map (fn (entries, _) =>
-    fold_rev add_entry entries {type_model = [], const_model = [], skolem_model = []});
+  let val (entries, _) = parse_model (tokenize str) in
+    {type_model = [], const_model = [], skolem_model = []}
+    |> fold_rev add_entry entries
+  end;
 
 end;

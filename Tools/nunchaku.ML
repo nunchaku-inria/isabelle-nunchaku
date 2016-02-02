@@ -187,18 +187,21 @@ fun run_chaku_on_prop state
               (print_n ("No " ^ das_wort_model ^ " exists (the goal is a theorem)"); (noneN, NONE))
             | Sat (output, _) =>
               let
-                val isa_model_opt = nun_model_of_str output
-                  |> Option.map (fn nice_nun_model =>
-                    let
-                      val _ = print_d (fn () => "*** Nunchaku model ***\n" ^
-                        str_of_nun_model nice_nun_model);
-                      val ugly_nun_model = ugly_nun_model pool nice_nun_model;
-                      val isa_model = isa_model_of_nun ctxt atomss ugly_nun_model;
-                      val _ = print_d (fn () => "*** Isabelle model ***\n" ^
-                        str_of_isa_model ctxt isa_model);
-                    in
-                      isa_model
-                    end);
+                fun get_isa_model_opt () =
+                  let
+                    val nice_nun_model = nun_model_of_str output;
+                    val _ = print_d (fn () => "*** Nunchaku model ***\n" ^
+                      str_of_nun_model nice_nun_model);
+                    val ugly_nun_model = ugly_nun_model pool nice_nun_model;
+                    val isa_model = isa_model_of_nun ctxt atomss ugly_nun_model;
+                    val _ = print_d (fn () => "*** Isabelle model ***\n" ^
+                      str_of_isa_model ctxt isa_model);
+                  in
+                    isa_model
+                  end;
+
+                val isa_model_opt =
+                  if debug then SOME (get_isa_model_opt ()) else try get_isa_model_opt ();
 
                 val model_str = pretty_of_isa_model_opt ctxt show_consts isa_model_opt
                   |> Pretty.string_of;

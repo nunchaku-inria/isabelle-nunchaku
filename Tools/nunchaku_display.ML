@@ -31,7 +31,7 @@ fun sorting_str_of_term (Const (s, T)) = "b" ^ s ^ sorting_str_of_typ T
   | sorting_str_of_term _ = "X";
 
 fun pretty_of_isa_model_opt _ _ NONE =
-    Pretty.indent indent_size (Pretty.str "Model unavailable (internal parse error)")
+    Pretty.indent indent_size (Pretty.str "Model unavailable (internal error)")
   | pretty_of_isa_model_opt ctxt0 show_consts
       (SOME {type_model, free_model, const_model, skolem_model}) =
     let

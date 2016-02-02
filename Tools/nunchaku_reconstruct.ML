@@ -113,7 +113,7 @@ fun term_of_nun ctxt atomss =
         else if id = nun_true then
           @{const True}
         else if id = nun_unknown then
-          list_comb (Var (("unknown", 0), map (typ_of o ty_of) bounds ---> typ_of ty),
+          list_comb (Var (("unknown", 0), map (typ_of o safe_ty_of) bounds ---> typ_of ty),
             map Bound (length bounds - 1 downto 0))
         else
           (case try str_of_nun_const id of
@@ -130,10 +130,10 @@ fun term_of_nun ctxt atomss =
                 ~1 => raise Fail ("unknown constant: " ^ quote (str_of_ident id))
               | j => Bound j)))
       | term_of bounds (NAbs (var, body)) =
-        let val T = typ_of (ty_of var) in
+        let val T = typ_of (safe_ty_of var) in
           Abs (one_letter_of (base_of_typ T), T, term_of (var :: bounds) body)
         end
-      | term_of bounds (tm as NMatch _) = Var (("case", 0), typ_of (ty_of tm)) (* TODO *)
+      | term_of bounds (tm as NMatch _) = Var (("case", 0), typ_of (safe_ty_of tm)) (* TODO *)
       | term_of bounds (NApp (func, arg)) = term_of bounds func $ term_of bounds arg
       | term_of bounds (NVar _) = raise Fail "unexpected var";
   in
