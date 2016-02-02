@@ -2,7 +2,7 @@
     Author:     Jasmin Blanchette, Inria Nancy, LORIA, MPII
     Copyright   2015, 2016
 
-Model reconstruction for Nunchaku.
+Abstract syntax tree for Nunchaku models.
 *)
 
 signature NUNCHAKU_MODEL =
@@ -83,7 +83,7 @@ datatype token =
   Fun
 | Type
 | Val
-| Ident of string
+| Ident of ident
 | Colon
 | Assign
 | Unknown
@@ -101,7 +101,7 @@ fun maybe_ident s =
   if s = "fun" then Fun
   else if s = "type" then Type
   else if s = "val" then Val
-  else Ident s;
+  else Ident (ident_of_str s);
 
 fun is_ident_char s =
   Char.isAlphaNum s orelse s = #"_" orelse s = #"/";
@@ -173,7 +173,7 @@ val parse_entry =
   --| parse_tok Period;
 
 val parse_model =
-  parse_tok (Ident "SAT") |-- parse_tok Colon |-- parse_tok Left_Brace |--
+  parse_ident (* "SAT" *) |-- parse_tok Colon |-- parse_tok Left_Brace |--
   Scan.repeat parse_entry --| parse_tok Right_Brace;
 
 fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =

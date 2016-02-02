@@ -2,7 +2,7 @@
     Author:     Jasmin Blanchette, Inria Nancy, LORIA, MPII
     Copyright   2015, 2016
 
-Translation from Isabelle/HOL to Nunchaku problems.
+Translation of Isabelle/HOL problems to Nunchaku.
 *)
 
 signature NUNCHAKU_TRANSLATE =
@@ -47,29 +47,22 @@ fun ty_of_isa (Type (s, Ts)) =
       | @{type_name fun} => NType (nun_fun, tys)
       | _ =>
         let
-          val id = nun_const_of_str s;
-          val args' = space_implode (ascii_of ",") (map str_of_ty tys);
-          val id' = ascii_of "(" ^ args' ^ ascii_of ")." ^ id;
+          val args = map str_of_ty tys;
+          val id = nun_const_of_str args s;
         in
-          NType (id', [])
+          NType (id, [])
         end)
     end
   | ty_of_isa (TFree (s, _)) = NType (nun_var_of_str (flip_quote s), [])
-  | ty_of_isa (TVar (x, _)) = raise Fail "unexpected TVar";
+  | ty_of_isa (TVar _) = raise Fail "unexpected TVar";
 
 fun tm_of_isa ctxt t =
   let
     val thy = Proof_Context.theory_of ctxt;
 
-    fun id'_of_const (x as (s, _)) =
-      let
-        val Ts = Sign.const_typargs thy x;
-
-        val id = nun_const_of_str s;
-        val tys = map ty_of_isa Ts;
-        val args' = space_implode (ascii_of ",") (map str_of_ty tys);
-      in
-        ascii_of "(" ^ args' ^ ascii_of ")." ^ id
+    fun id_of_const (x as (s, _)) =
+      let val args = map (str_of_ty o ty_of_isa) (Sign.const_typargs thy x) in
+        nun_const_of_str args s
       end;
 
     fun tm_of_branch ctr_id var_count f_arg_tm =
@@ -92,7 +85,7 @@ fun tm_of_isa ctxt t =
             val (_, (f_args, obj :: other_args)) = strip_nun_comb body ||> chop num_f_args;
             val f_args' = map2 eta_expandN_tm var_counts f_args;
 
-            val ctr_ids = map id'_of_const ctrs;
+            val ctr_ids = map id_of_const ctrs;
           in
             NMatch (obj, @{map 3} tm_of_branch ctr_ids var_counts f_args')
             |> rcomb_tms other_args
@@ -100,7 +93,7 @@ fun tm_of_isa ctxt t =
           end
         | NONE =>
           let
-            val id' =
+            val id =
               (case s of
                 @{const_name All} => nun_forall
               | @{const_name conj} => nun_conj
@@ -112,9 +105,9 @@ fun tm_of_isa ctxt t =
               | @{const_name implies} => nun_implies
               | @{const_name Not} => nun_not
               | @{const_name True} => nun_true
-              | _ => id'_of_const x);
+              | _ => id_of_const x);
           in
-            NConst (id', [], ty_of_isa T)
+            NConst (id, [], ty_of_isa T)
           end)
       | tm_of _ (Free (s, T)) = NConst (nun_var_of_str s, [], ty_of_isa T)
       | tm_of _ (Var ((s, _), T)) = NVar (nun_var_of_str s, ty_of_isa T)

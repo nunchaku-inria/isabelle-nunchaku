@@ -7,7 +7,7 @@ Abstract syntax tree for Nunchaku problems.
 
 signature NUNCHAKU_PROBLEM =
 sig
-  type ident
+  eqtype ident
 
   datatype ty =
     NType of ident * ty list
@@ -81,7 +81,9 @@ sig
   val nun_not: ident
   val nun_true: ident
 
-  val nun_const_of_str: string -> ident
+  val ident_of_str: string -> ident
+  val str_of_ident: ident -> string
+  val nun_const_of_str: string list -> string -> ident
   val nun_var_of_str: string -> ident
   val str_of_nun_const: ident -> string
   val str_of_nun_var: ident -> string
@@ -105,7 +107,6 @@ sig
   val eta_expandN_tm: int -> tm -> tm
   val eta_expand_builtin_tm: tm -> tm
 
-  val str_of_ident: ident -> string
   val str_of_ty: ty -> string
   val str_of_tm: tm -> string
   val str_of_tmty: tm -> string
@@ -114,7 +115,7 @@ sig
   val str_of_nun_problem: nun_problem -> string
 end;
 
-structure Nunchaku_Problem : NUNCHAKU_PROBLEM =
+structure Nunchaku_Problem :> (*###*) NUNCHAKU_PROBLEM =
 struct
 
 open Nunchaku_Util;
@@ -216,7 +217,14 @@ val nun_const_prefix = "c.";
 val nun_var_prefix = "V.";
 val nun_custom_id_suffix = "_";
 
-val nun_const_of_str = prefix nun_const_prefix o suffix nun_custom_id_suffix;
+val encode_args = enclose "(" ")" o commas;
+
+val ident_of_str = I : string -> ident;
+val str_of_ident = I : ident -> string;
+
+fun nun_const_of_str args =
+  prefix (encode_args args) o prefix nun_const_prefix o suffix nun_custom_id_suffix;
+
 val nun_var_of_str = prefix nun_var_prefix o suffix nun_custom_id_suffix;
 val str_of_nun_const = unsuffix nun_custom_id_suffix o unprefix nun_const_prefix;
 val str_of_nun_var = unsuffix nun_custom_id_suffix o unprefix nun_var_prefix;
@@ -444,8 +452,6 @@ val eta_expand_builtin_tm =
   in
     expand []
   end;
-
-fun str_of_ident id = id;
 
 val str_of_ty =
   let

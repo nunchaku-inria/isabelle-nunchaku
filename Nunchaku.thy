@@ -21,7 +21,11 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) rmember
 
-lemma "aaa = bbb \<or> aaa = ccc \<or> bbb = ccc"
+typedecl xxx
+
+consts bbb :: xxx
+
+lemma "aaa = bbb"
 nunchaku[overlord, debug]
 oops
 
