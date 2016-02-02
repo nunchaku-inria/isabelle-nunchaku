@@ -149,9 +149,9 @@ fun parse_tm toks =
    || parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else
        -- parse_tm
      >> (fn ((cond, th), el) => napps (NConst (nun_if, [], safe_ty_of th), [cond, th, el]))
-   || parse_comb -- Scan.option (parse_sym nun_equals |-- parse_comb)
+   || parse_comb -- Scan.option (parse_sym nun_equals -- parse_comb)
      >> (fn (tm, NONE) => tm
-       | (lhs, SOME rhs) => napps (NConst (nun_equals, [], nun_dummy_ty), [lhs, rhs]))) toks
+       | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
 and parse_comb toks =
   (parse_arg -- Scan.repeat (Scan.unless parse_confusing_id parse_arg) >> napps) toks
 and parse_arg toks =
