@@ -103,7 +103,7 @@ fun ident_or_atom s =
 
 fun is_alnum_etc_char c = Char.isAlphaNum c orelse c = #"_" orelse c = #"/";
 
-val multi_ids = [nun_assign, nun_conj, nun_disj, nun_unknown];
+val multi_ids = [nun_assign, nun_conj, nun_disj, nun_implies, nun_unknown];
 
 fun next_token [] = (End_of_Stream, [])
   | next_token (c :: cs) =
@@ -164,7 +164,11 @@ fun parse_tm toks =
    || parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else
        -- parse_tm
      >> (fn ((cond, th), el) => napps (NConst (nun_if, [], safe_ty_of th), [cond, th, el]))
-   || parse_disj) toks
+   || parse_implies) toks
+and parse_implies toks =
+  (parse_disj -- Scan.option (parse_sym nun_implies -- parse_implies)
+   >> (fn (tm, NONE) => tm
+     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
 and parse_disj toks =
   (parse_conj -- Scan.option (parse_sym nun_disj -- parse_disj)
    >> (fn (tm, NONE) => tm

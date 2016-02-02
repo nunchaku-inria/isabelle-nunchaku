@@ -114,6 +114,8 @@ fun term_of_nun ctxt atomss =
           @{const False}
         else if id = nun_if then
           Const (@{const_name If}, typ_of ty)
+        else if id = nun_implies then
+          @{term implies}
         else if id = nun_true then
           @{const True}
         else if id = nun_unknown then
