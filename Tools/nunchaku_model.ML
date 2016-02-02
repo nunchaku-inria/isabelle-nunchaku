@@ -40,6 +40,8 @@ type nun_model =
    const_model: tm_entry list,
    skolem_model: tm_entry list};
 
+val nun_SAT = str_of_ident "SAT";
+
 fun str_of_ty_entry (ty, tms) =
   "type " ^ str_of_ty ty ^ " := {" ^ commas (map str_of_tm tms) ^ "}.";
 
@@ -81,11 +83,8 @@ fun ugly_nun_model pool model =
   fst (fold_map_nun_model_idents ugly_ident model pool);
 
 datatype token =
-  Fun
-| Type
-| Val
+  Ident of ident
 | Atom of ident * int
-| Ident of ident
 | Colon
 | Assign
 | Unknown
@@ -100,25 +99,17 @@ datatype token =
 | Error;
 
 fun maybe_ident s =
-  if s = "fun" then
-    Fun
-  else if s = "type" then
-    Type
-  else if s = "val" then
-    Val
-  else
-    (case first_field "__" s of
-      SOME (pre, suf) =>
-      if pre <> "" then
-        (case Int.fromString suf of
-          SOME j => Atom (ident_of_str (pre ^ "_"), j)
-        | _ => Ident (ident_of_str s))
-      else
-        Ident (ident_of_str s)
-    | NONE => Ident (ident_of_str s));
+  (case first_field "__" s of
+    SOME (pre, suf) =>
+    if pre <> "" then
+      (case Int.fromString suf of
+        SOME j => Atom (ident_of_str (pre ^ "_"), j)
+      | _ => Ident (ident_of_str s))
+    else
+      Ident (ident_of_str s)
+  | NONE => Ident (ident_of_str s));
 
-fun is_ident_char s =
-  Char.isAlphaNum s orelse s = #"_" orelse s = #"/";
+fun is_ident_char s = Char.isAlphaNum s orelse s = #"_" orelse s = #"/";
 
 fun next_token [] = (End_of_Stream, [])
   | next_token (c :: cs) =
@@ -165,8 +156,10 @@ fun parse_tok tok = Scan.one (curry (op =) tok);
 
 fun parse_enum sep scan = scan ::: Scan.repeat (sep |-- scan);
 
-val parse_atom = Scan.some (try (fn Atom id_j => id_j));
 val parse_ident = Scan.some (try (fn Ident id => id));
+val parse_atom = Scan.some (try (fn Atom id_j => id_j));
+
+val parse_keyword = parse_tok o Ident;
 
 fun parse_ty tok =
   (parse_ident >> (rpair [] #> NType)) tok;
@@ -174,9 +167,9 @@ fun parse_ty tok =
 fun parse_tm tok =
   (parse_unapp_tm -- Scan.repeat parse_tm >> Library.foldl NApp) tok
 and parse_unapp_tm tok =
-  (parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))
-   || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
-   || parse_tok Fun |-- parse_tm --| parse_tok Period -- parse_tm >> NAbs
+  (parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
+   || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))
+   || parse_keyword nun_fun |-- parse_tm --| parse_tok Period -- parse_tm >> NAbs
    || parse_tok Left_Paren |-- parse_tm --| parse_tok Right_Paren) tok;
 
 datatype entry =
@@ -185,14 +178,14 @@ datatype entry =
 | Const_Entry of tm_entry;
 
 val parse_entry =
-  (parse_tok Type |-- parse_ty --| parse_tok Assign --| parse_tok Left_Brace --
+  (parse_keyword nun_type |-- parse_ty --| parse_tok Assign --| parse_tok Left_Brace --
        parse_enum (parse_tok Comma) parse_tm --| parse_tok Right_Brace
      >> Type_Entry
-   || parse_tok Val |-- parse_tm --| parse_tok Assign -- parse_tm >> Const_Entry)
+   || parse_keyword nun_val |-- parse_tm --| parse_tok Assign -- parse_tm >> Const_Entry)
   --| parse_tok Period;
 
 val parse_model =
-  parse_ident (* "SAT" *) |-- parse_tok Colon |-- parse_tok Left_Brace |--
+  parse_keyword nun_SAT |-- parse_tok Colon |-- parse_tok Left_Brace |--
   Scan.repeat parse_entry --| parse_tok Right_Brace;
 
 fun add_entry entry ({type_model, const_model, skolem_model} : nun_model) =

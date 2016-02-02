@@ -65,10 +65,22 @@ sig
      ugly_of_nice: string Symtab.table}
 
   val nun_dummy: ident
-
+  val nun_axiom: ident
+  val nun_codata: ident
+  val nun_copred: ident
+  val nun_copy: ident
+  val nun_data: ident
+  val nun_eval: ident
+  val nun_goal: ident
+  val nun_pred: ident
+  val nun_quotient: ident
+  val nun_rec: ident
+  val nun_spec: ident
+  val nun_type: ident
+  val nun_val: ident
+  val nun_wf: ident
   val nun_fun: ident
   val nun_prop: ident
-
   val nun_conj: ident
   val nun_disj: ident
   val nun_equals: ident
@@ -181,7 +193,20 @@ type name_pool =
 
 val nun_dummy = "_";
 
+val nun_axiom = "axiom";
+val nun_codata = "codata";
+val nun_copred = "copred";
+val nun_copy = "copy";
+val nun_data = "data";
+val nun_eval = "eval";
+val nun_goal = "goal";
+val nun_pred = "pred";
+val nun_quotient = "quotient";
+val nun_rec = "rec";
+val nun_spec = "spec";
 val nun_type = "type";
+val nun_val = "val";
+val nun_wf = "wf";
 
 val nun_fun = "->";
 val nun_prop = "prop";
@@ -628,20 +653,24 @@ fun str_of_nun_consts_spec {consts, props} =
   space_implode " and\n     " (map str_of_tmty consts) ^ " :=\n  " ^
   space_implode ";\n  " (map str_of_tm props);
 
-fun str_of_nun_command (NTVal ty) = "val " ^ str_of_tval ty
-  | str_of_nun_command (NCopy spec) = "copy " ^ str_of_nun_type_spec spec
-  | str_of_nun_command (NQuotient spec) = "quotient " ^ str_of_nun_type_spec spec
-  | str_of_nun_command (NData specs) = "data " ^ str_of_and_list str_of_nun_co_data_spec specs
-  | str_of_nun_command (NCodata specs) = "codata " ^ str_of_and_list str_of_nun_co_data_spec specs
-  | str_of_nun_command (NVal (tm, ty)) = "val " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
+fun str_of_nun_command (NTVal ty) = nun_val ^ " " ^ str_of_tval ty
+  | str_of_nun_command (NCopy spec) = nun_copy ^ " " ^ str_of_nun_type_spec spec
+  | str_of_nun_command (NQuotient spec) = nun_quotient ^ " " ^ str_of_nun_type_spec spec
+  | str_of_nun_command (NData specs) =
+    nun_data ^ " " ^ str_of_and_list str_of_nun_co_data_spec specs
+  | str_of_nun_command (NCodata specs) =
+    nun_codata ^ " " ^ str_of_and_list str_of_nun_co_data_spec specs
+  | str_of_nun_command (NVal (tm, ty)) = nun_val ^ " " ^ str_of_tm tm ^ " : " ^ str_of_ty ty
   | str_of_nun_command (NPred (wf, specs)) =
-    "pred " ^ (if wf then "[wf] " else "") ^ str_of_and_list str_of_nun_const_spec specs
-  | str_of_nun_command (NCopred specs) = "copred " ^ str_of_and_list str_of_nun_const_spec specs
-  | str_of_nun_command (NRec specs) = "rec " ^ str_of_and_list str_of_nun_const_spec specs
-  | str_of_nun_command (NSpec spec) = "spec " ^ str_of_nun_consts_spec spec
-  | str_of_nun_command (NAxiom tm) = "axiom " ^ str_of_tm tm
-  | str_of_nun_command (NGoal tm) = "goal " ^ str_of_tm tm
-  | str_of_nun_command (NEval tm) = "eval " ^ str_of_tm tm;
+    nun_pred ^ " " ^ (if wf then "[" ^ nun_wf ^ "] " else "") ^
+    str_of_and_list str_of_nun_const_spec specs
+  | str_of_nun_command (NCopred specs) =
+    nun_copred ^ " " ^ str_of_and_list str_of_nun_const_spec specs
+  | str_of_nun_command (NRec specs) = nun_rec ^ " " ^ str_of_and_list str_of_nun_const_spec specs
+  | str_of_nun_command (NSpec spec) = nun_spec ^ " " ^ str_of_nun_consts_spec spec
+  | str_of_nun_command (NAxiom tm) = nun_axiom ^ " " ^ str_of_tm tm
+  | str_of_nun_command (NGoal tm) = nun_goal ^ " " ^ str_of_tm tm
+  | str_of_nun_command (NEval tm) = nun_eval ^ " " ^ str_of_tm tm;
 
 val str_of_nun_problem =
   map (cat_lines o map (suffix "." o str_of_nun_command))
