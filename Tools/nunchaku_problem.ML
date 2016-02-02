@@ -121,10 +121,14 @@ sig
   val ident_of_str: string -> ident
   val str_of_ident: ident -> string
   val nun_const_of_str: string list -> string -> ident
+  val nun_tconst_of_str: string list -> string -> ident
   val nun_free_of_str: string -> ident
+  val nun_tfree_of_str: string -> ident
   val nun_var_of_str: string -> ident
   val str_of_nun_const: ident -> string list * string
+  val str_of_nun_tconst: ident -> string list * string
   val str_of_nun_free: ident -> string
+  val str_of_nun_tfree: ident -> string
   val str_of_nun_var: ident -> string
 
   val nun_dummy_ty: ty
@@ -302,6 +306,8 @@ val arity_of_nun_builtin = AList.lookup (op =) nun_builtin_arity #> the_default 
 val nun_const_prefix = "c.";
 val nun_free_prefix = "f.";
 val nun_var_prefix = "v.";
+val nun_tconst_prefix = "C.";
+val nun_tfree_prefix = "F.";
 val nun_custom_id_suffix = "_";
 
 val ident_of_str = I : string -> ident;
@@ -328,11 +334,16 @@ fun decode_args s =
 
 fun nun_const_of_str args =
   suffix nun_custom_id_suffix #> prefix nun_const_prefix #> prefix (encode_args args);
+fun nun_tconst_of_str args =
+  suffix nun_custom_id_suffix #> prefix nun_tconst_prefix #> prefix (encode_args args);
 
 val nun_free_of_str = suffix nun_custom_id_suffix #> prefix nun_free_prefix;
+val nun_tfree_of_str = suffix nun_custom_id_suffix #> prefix nun_tfree_prefix;
 val nun_var_of_str = suffix nun_custom_id_suffix #> prefix nun_var_prefix;
 val str_of_nun_const = decode_args ##> unprefix nun_const_prefix ##> unsuffix nun_custom_id_suffix;
+val str_of_nun_tconst = decode_args ##> unprefix nun_tconst_prefix ##> unsuffix nun_custom_id_suffix;
 val str_of_nun_free = unprefix nun_free_prefix #> unsuffix nun_custom_id_suffix;
+val str_of_nun_tfree = unprefix nun_tfree_prefix #> unsuffix nun_custom_id_suffix;
 val str_of_nun_var = unprefix nun_var_prefix #> unsuffix nun_custom_id_suffix;
 
 fun index_name s 0 = s

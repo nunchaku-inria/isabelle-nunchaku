@@ -66,14 +66,14 @@ fun typ_of_nun ctxt =
         else if id = nun_fun then
           Type (@{type_name fun}, Ts)
         else
-          (case try str_of_nun_const id of
+          (case try str_of_nun_tconst id of
             SOME (args, s) =>
             (* TODO: more precise type *)
             let val tys = map (K nun_dummy_ty) args in
               Type (s, map typ_of tys)
             end
           | NONE =>
-            (case try str_of_nun_free id of
+            (case try str_of_nun_tfree id of
               SOME s => TFree (Proof_Context.check_tfree ctxt (flip_quote s, dummyS))
             | NONE => raise Fail ("unknown type constructor: " ^ quote (str_of_ident id))))
       end;
