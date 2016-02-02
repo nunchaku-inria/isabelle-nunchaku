@@ -73,7 +73,7 @@ fun typ_of_nun ctxt =
               Type (s, map typ_of tys)
             end
           | NONE =>
-            (case try str_of_nun_var id of
+            (case try str_of_nun_free id of
               SOME s => TFree (Proof_Context.check_tfree ctxt (flip_quote s, dummyS))
             | NONE => raise Fail ("unknown type constructor: " ^ quote (str_of_ident id))))
       end;
@@ -102,7 +102,8 @@ fun term_of_nun ctxt atomss =
         else one_letter_of (base_of_typ T) ^ nat_subscript (j + 1)
       end;
 
-    fun term_of bounds (NAtom (j, ty)) = let val T = typ_of ty in Var ((nth_atom T j, 0), T) end
+    fun term_of bounds (NAtom (j, ty)) =
+        let val T = typ_of ty in Var ((nth_atom T j, 0), T) end
       | term_of bounds (NConst (id, tys0, ty)) =
         if id = nun_conj then
           HOLogic.conj
@@ -129,19 +130,21 @@ fun term_of_nun ctxt atomss =
               Sign.mk_const thy (s, map typ_of (tys @ tys0))
             end
           | NONE =>
-            (case try str_of_nun_var id of
+            (case try str_of_nun_free id of
               SOME s => Free (s, typ_of ty)
             | NONE =>
-              (case find_index (fn bound => id_of_const bound = id) bounds of
-                ~1 => raise Fail ("unknown constant: " ^ quote (str_of_ident id))
-              | j => Bound j)))
+              (case try str_of_nun_var id of
+                SOME s => Var ((s, 0), typ_of ty)
+              | NONE =>
+                (case find_index (fn bound => id_of_const bound = id) bounds of
+                  ~1 => raise Fail ("unknown constant: " ^ quote (str_of_ident id))
+                | j => Bound j))))
       | term_of bounds (NAbs (var, body)) =
         let val T = typ_of (safe_ty_of var) in
           Abs (one_letter_of (base_of_typ T), T, term_of (var :: bounds) body)
         end
-      | term_of bounds (tm as NMatch _) = Var (("case", 0), typ_of (safe_ty_of tm)) (* TODO *)
       | term_of bounds (NApp (func, arg)) = term_of bounds func $ term_of bounds arg
-      | term_of bounds (NVar _) = raise Fail "unexpected var";
+      | term_of bounds (NMatch _) = raise Fail "unexpected match";
   in
     term_of []
   end;

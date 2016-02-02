@@ -15,7 +15,6 @@ sig
   datatype tm =
     NAtom of int * ty
   | NConst of ident * ty list * ty
-  | NVar of ident * ty
   | NAbs of tm * tm
   | NMatch of tm * (ident * tm list * tm) list
   | NApp of tm * tm
@@ -122,8 +121,10 @@ sig
   val ident_of_str: string -> ident
   val str_of_ident: ident -> string
   val nun_const_of_str: string list -> string -> ident
+  val nun_free_of_str: string -> ident
   val nun_var_of_str: string -> ident
   val str_of_nun_const: ident -> string list * string
+  val str_of_nun_free: ident -> string
   val str_of_nun_var: ident -> string
 
   val nun_dummy_ty: ty
@@ -168,7 +169,6 @@ datatype ty =
 datatype tm =
   NAtom of int * ty
 | NConst of ident * ty list * ty
-| NVar of ident * ty
 | NAbs of tm * tm
 | NMatch of tm * (ident * tm list * tm) list
 | NApp of tm * tm;
@@ -300,7 +300,8 @@ val nun_builtin_arity =
 val arity_of_nun_builtin = AList.lookup (op =) nun_builtin_arity #> the_default 0;
 
 val nun_const_prefix = "c.";
-val nun_var_prefix = "V.";
+val nun_free_prefix = "f.";
+val nun_var_prefix = "v.";
 val nun_custom_id_suffix = "_";
 
 val ident_of_str = I : string -> ident;
@@ -328,8 +329,10 @@ fun decode_args s =
 fun nun_const_of_str args =
   suffix nun_custom_id_suffix #> prefix nun_const_prefix #> prefix (encode_args args);
 
+val nun_free_of_str = suffix nun_custom_id_suffix #> prefix nun_free_prefix;
 val nun_var_of_str = suffix nun_custom_id_suffix #> prefix nun_var_prefix;
 val str_of_nun_const = decode_args ##> unprefix nun_const_prefix ##> unsuffix nun_custom_id_suffix;
+val str_of_nun_free = unprefix nun_free_prefix #> unsuffix nun_custom_id_suffix;
 val str_of_nun_var = unprefix nun_var_prefix #> unsuffix nun_custom_id_suffix;
 
 fun index_name s 0 = s
@@ -355,7 +358,6 @@ fun domain_tys 0 _ = []
 
 fun ty_of (NAtom (_, ty)) = ty
   | ty_of (NConst (_, _, ty)) = ty
-  | ty_of (NVar (_, ty)) = ty
   | ty_of (NAbs (var, body)) = NType (nun_arrow, [ty_of var, ty_of body])
   | ty_of (NMatch (obj, (_, _, body1) :: _)) = ty_of body1
   | ty_of (NApp (const, _)) = range_ty (ty_of const);
@@ -388,10 +390,6 @@ and fold_map_tm_idents f (NAtom (j, ty)) =
     ##>> fold_map (fold_map_ty_idents f) tys
     ##>> fold_map_ty_idents f ty
     #>> (Scan.triple1 #> NConst)
-  | fold_map_tm_idents f (NVar (id, ty)) =
-    f id
-    ##>> fold_map_ty_idents f ty
-    #>> NVar
   | fold_map_tm_idents f (NAbs (var, body)) =
     fold_map_tm_idents f var
     ##>> fold_map_tm_idents f body
@@ -504,8 +502,8 @@ fun fresh_var_names_wrt_tm n tm =
   let
     fun max_var_br (_, vars, body) = fold max_var (body :: vars)
     and max_var (NAtom _) = I
-      | max_var (NConst _) = I
-      | max_var (NVar (id, _)) = (fn max => if size id > size max then id else max)
+      | max_var (NConst (id, _, _)) =
+        (fn max => if String.isPrefix nun_var_prefix id andalso size id > size max then id else max)
       | max_var (NApp (func, arg)) = fold max_var [func, arg]
       | max_var (NAbs (var, body)) = fold max_var [var, body]
       | max_var (NMatch (obj, branches)) = max_var obj #> fold max_var_br branches;
@@ -533,7 +531,7 @@ fun eta_expandN_tm 0 tm = tm
     let
       val var_names = fresh_var_names_wrt_tm n tm;
       val arg_tys = domain_tys n (ty_of tm);
-      val vars = map2 (curry NVar) var_names arg_tys;
+      val vars = map2 (fn id => fn ty => NConst (id, [], ty)) var_names arg_tys;
     in
       abs_tms vars (rcomb_tms vars tm)
     end;
@@ -555,7 +553,6 @@ val eta_expand_builtin_tm =
           |> is_nun_const_quantifier id ? expand_quant_arg
         end
       | expand args (func as NAtom _) = rcomb_tms args func
-      | expand args (func as NVar _) = rcomb_tms args func
       | expand args (NAbs (var, body)) = rcomb_tms args (NAbs (var, expand [] body))
       | expand args (NMatch (obj, branches)) =
         rcomb_tms args (NMatch (obj, map (@{apply 3(3)} (expand [])) branches));
@@ -579,7 +576,6 @@ val (str_of_tmty, str_of_tm) =
   let
     fun is_triv_head (NConst (id, _, ty)) = (arity_of_nun_builtin id = 0)
       | is_triv_head (NAtom _) = true
-      | is_triv_head (NVar _) = true
       | is_triv_head (NApp (const, _)) = is_triv_head const
       | is_triv_head (NAbs _) = false
       | is_triv_head (NMatch _) = false;
@@ -608,7 +604,6 @@ val (str_of_tmty, str_of_tm) =
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
         if ty = ty0 then str_of_ident id else str_of_at_const id tys
       | str_of _ (NConst (id, tys, _)) = str_of_at_const id tys
-      | str_of _ (NVar (id, _)) = str_of_ident id
       | str_of ty_opt (NAbs (var, body)) =
         nun_fun ^ " " ^
         (case ty_opt of

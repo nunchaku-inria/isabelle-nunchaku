@@ -21,14 +21,11 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) rmember
 
-lemma "\<And>xs ys. rev xs = ys"
-nunchaku[overlord, debug]
-
-oops
+lemma "xs = (ys :: 'a list)"
+nunchaku
 
 (*
 TODO:
-  * Cleaner handling of "_" suffix (in problem/model, not translate/reconstruct)
   * "eval" (and auto eval of equalities)
 *)
 
