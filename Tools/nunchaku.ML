@@ -142,7 +142,7 @@ val timeout_slack = seconds 1.0;
 fun run_chaku_on_prop state
     ({mode_of_operation_params = {falsify, assms, spy, overlord, expect},
       scope_of_search_params = {wfs, ...},
-      output_format_params = {verbose, debug, show_consts, evals, ...},
+      output_format_params = {verbose, debug, show_consts, evals, atomss, ...},
       timeout_params = {timeout, wf_timeout}, ...})
     mode i all_assms subgoal =
   let
@@ -191,7 +191,7 @@ fun run_chaku_on_prop state
                 val _ = print_d (fn () => "*** Nunchaku model ***\n" ^
                   str_of_nun_model nice_nun_model);
                 val ugly_nun_model = ugly_nun_model pool nice_nun_model;
-                val isa_model = isa_model_of_nun ctxt ugly_nun_model;
+                val isa_model = isa_model_of_nun ctxt atomss ugly_nun_model;
                 val _ = print_d (fn () => "*** Isabelle model ***\n" ^
                   str_of_isa_model ctxt isa_model);
                 val model_str = pretty_of_isa_model ctxt show_consts isa_model |> Pretty.string_of;

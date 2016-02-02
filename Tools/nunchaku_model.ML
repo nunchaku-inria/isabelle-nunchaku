@@ -30,7 +30,6 @@ end;
 structure Nunchaku_Model : NUNCHAKU_MODEL =
 struct
 
-open Nunchaku_Util;
 open Nunchaku_Problem;
 
 type ty_entry = ty * tm list;
@@ -73,24 +72,9 @@ fun swap_name_pool ({nice_of_ugly, ugly_of_nice} : name_pool) =
 fun allocate_ugly pool (nice, ugly_sugg) =
   allocate_nice (swap_name_pool pool) (nice, ugly_sugg) ||> swap_name_pool;
 
-(* "Uglifying" effectively means "prettifying" here, because the Nunchaku-generated atom names are
-   not as nice as the ones presented to Isabelle users. *)
-fun uglify_atom_name name =
-  (case first_field "__" name of
-    SOME (pre, suf) =>
-    if pre <> "" then
-      let val c = String.sub (pre, 0) in
-        (case Int.fromString suf of
-          SOME j => String.str (if Char.isAlpha c then c else #"x") ^ nat_subscript j
-        | _ => name)
-      end
-    else
-      name
-  | NONE => name);
-
 fun ugly_ident nice (pool as {ugly_of_nice, ...}) =
   (case Symtab.lookup ugly_of_nice nice of
-    NONE => allocate_ugly pool (nice, uglify_atom_name nice)
+    NONE => allocate_ugly pool (nice, nice)
   | SOME ugly => (ugly, pool));
 
 fun ugly_nun_model pool model =
@@ -100,6 +84,7 @@ datatype token =
   Fun
 | Type
 | Val
+| Atom of ident * int
 | Ident of ident
 | Colon
 | Assign
@@ -115,10 +100,22 @@ datatype token =
 | Error;
 
 fun maybe_ident s =
-  if s = "fun" then Fun
-  else if s = "type" then Type
-  else if s = "val" then Val
-  else Ident (ident_of_str s);
+  if s = "fun" then
+    Fun
+  else if s = "type" then
+    Type
+  else if s = "val" then
+    Val
+  else
+    (case first_field "__" s of
+      SOME (pre, suf) =>
+      if pre <> "" then
+        (case Int.fromString suf of
+          SOME j => Atom (ident_of_str (pre ^ "_"), j)
+        | _ => Ident (ident_of_str s))
+      else
+        Ident (ident_of_str s)
+    | NONE => Ident (ident_of_str s));
 
 fun is_ident_char s =
   Char.isAlphaNum s orelse s = #"_" orelse s = #"/";
@@ -168,13 +165,15 @@ fun parse_tok tok = Scan.one (curry (op =) tok);
 
 fun parse_enum sep scan = scan ::: Scan.repeat (sep |-- scan);
 
+val parse_atom = Scan.some (try (fn Atom id_j => id_j));
 val parse_ident = Scan.some (try (fn Ident id => id));
 
 fun parse_ty tok =
   (parse_ident >> (rpair [] #> NType)) tok;
 
 fun parse_tm tok =
-  (parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
+  (parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))
+   || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
    || parse_tok Fun |-- parse_tm --| parse_tok Period -- parse_tm >> NAbs) tok;
 
 datatype entry =

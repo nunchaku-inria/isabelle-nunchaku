@@ -25,16 +25,14 @@ typedecl xxx
 
 consts bbb :: xxx
 
+declare [[ML_exception_trace]]
+
 lemma "aaa = bbb"
-nunchaku[overlord, debug, atoms xxx = a b c]
+nunchaku[overlord, debug]
 oops
 
 lemma "1 + 1 = 3"
 xnunchaku
 oops
-
-(*
-honor "atoms" option
-*)
 
 end
