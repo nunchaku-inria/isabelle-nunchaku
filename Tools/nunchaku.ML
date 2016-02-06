@@ -228,11 +228,11 @@ fun run_chaku_on_prop state
               Unsat =>
               (print_n ("No " ^ das_wort_model ^ " exists" ^
                  (if falsify then " (the goal is a theorem)" else "")); (noneN, NONE))
-            | Maybe_Unsat =>
+            | Sat (output, _) => sat_or_maybe_sat true output
+            | Unknown NONE =>
               (print_n ("No " ^ das_wort_model ^ " can be found (but one might still exist)");
                (unknownN, NONE))
-            | Sat (output, _) => sat_or_maybe_sat true output
-            | Maybe_Sat (output, _) => sat_or_maybe_sat false output
+            | Unknown (SOME (output, _)) => sat_or_maybe_sat false output
             | Timeout => (print_n "Time out"; (unknownN, NONE))
             | Nunchaku_Var_Not_Set =>
               (print_n ("Variable $" ^ nunchaku_env_var ^ " not set"); (unknownN, NONE))

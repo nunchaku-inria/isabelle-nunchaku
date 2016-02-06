@@ -22,9 +22,8 @@ sig
 
   datatype nun_outcome =
     Unsat
-  | Maybe_Unsat
   | Sat of string * nun_solution
-  | Maybe_Sat of string * nun_solution
+  | Unknown of (string * nun_solution) option
   | Timeout
   | Nunchaku_Var_Not_Set
   | Nunchaku_Cannot_Execute
@@ -55,9 +54,8 @@ type nun_solution =
 
 datatype nun_outcome =
   Unsat
-| Maybe_Unsat
 | Sat of string * nun_solution
-| Maybe_Sat of string * nun_solution
+| Unknown of (string * nun_solution) option
 | Timeout
 | Nunchaku_Var_Not_Set
 | Nunchaku_Cannot_Execute
@@ -96,9 +94,11 @@ fun uncached_solve_nun_problem ({overlord, timeout, ...} : tool_params)
         val ((output, error), code) = bash_output_error bash_cmd;
       in
         if String.isPrefix "SAT" output then
-          (if sound then Sat else Maybe_Sat) (output, {tys = [], tms = []})
+          (if sound then Sat else Unknown o SOME) (output, {tys = [], tms = []})
         else if String.isPrefix "UNSAT" output then
-          if complete then Unsat else Maybe_Unsat
+          if complete then Unsat else Unknown NONE
+        else if String.isPrefix "UNKNOWN" output then
+          Unknown NONE
         else if String.isPrefix "TIMEOUT" output then
           Timeout
         else if code = 126 then
@@ -123,9 +123,8 @@ fun solve_nun_problem (params as {overlord, debug, ...}) problem =
     in
       (case outcome of
         Unsat => update_cache ()
-      | Maybe_Unsat => update_cache ()
       | Sat _ => update_cache ()
-      | Maybe_Sat _ => update_cache ()
+      | Unknown _ => update_cache ()
       | _ => ());
       outcome
     end);

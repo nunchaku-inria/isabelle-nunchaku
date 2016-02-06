@@ -21,6 +21,8 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) rmember
 
-codatatype tree = Node nat "tree list"
+lemma "(\<exists>x :: 'a \<times> 'a. \<forall>y. P y x)"
+nunchaku [overlord]
+oops
 
 end
