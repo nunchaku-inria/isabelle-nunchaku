@@ -550,14 +550,17 @@ fun props_of_rec_or_spec (IRec specs) = maps #props specs
 
 fun merge_two_rec_or_spec cmd cmd' =
   ISpec {consts = consts_of_rec_or_spec cmd @ consts_of_rec_or_spec cmd',
-        props = props_of_rec_or_spec cmd @ props_of_rec_or_spec cmd'};
+    props = props_of_rec_or_spec cmd @ props_of_rec_or_spec cmd'};
 
-fun merge_two (ICoData (fp, specs)) (ICoData (fp', specs')) =
-    ICoData (BNF_Util.case_fp fp fp fp', specs @ specs')
-  | merge_two (IRec specs) (IRec specs') = IRec (specs @ specs')
-  | merge_two (cmd as IRec _) (cmd' as ISpec _) = merge_two_rec_or_spec cmd cmd'
-  | merge_two (cmd as ISpec _) (cmd' as IRec _) = merge_two_rec_or_spec cmd cmd'
-  | merge_two (cmd as ISpec _) (cmd' as ISpec _) = merge_two_rec_or_spec cmd cmd'
+fun merge_two (ICoData (fp, specs)) (ICoData (fp', specs'), complete) =
+    (ICoData (BNF_Util.case_fp fp fp fp', specs @ specs'), complete andalso fp = fp')
+  | merge_two (IRec specs) (IRec specs', complete) = (IRec (specs @ specs'), complete)
+  | merge_two (cmd as IRec _) (cmd' as ISpec _, complete) =
+    (merge_two_rec_or_spec cmd cmd', complete)
+  | merge_two (cmd as ISpec _) (cmd' as IRec _, complete) =
+    (merge_two_rec_or_spec cmd cmd', complete)
+  | merge_two (cmd as ISpec _) (cmd' as ISpec _, complete) =
+    (merge_two_rec_or_spec cmd cmd', complete)
   | merge_two _ _ = raise CYCLIC_DEPS ();
 
 fun sort_isa_commands_topologically ctxt cmds =
@@ -568,9 +571,9 @@ fun sort_isa_commands_topologically ctxt cmds =
     fun add_node [] _ = I
       | add_node (normal :: _) cmd = Graph.new_node (normal, cmd);
 
-    fun merge_scc (cmd :: cmds) = fold merge_two cmds cmd;
+    fun merge_scc (cmd :: cmds) complete = fold merge_two cmds (cmd, complete);
 
-    fun sort_problem cmds =
+    fun sort_problem (cmds, complete) =
       let
         val keyss = map (keys_of ctxt) cmds;
         val normal_keys = Symtab.make (maps normal_pairs keyss);
@@ -595,20 +598,22 @@ fun sort_isa_commands_topologically ctxt cmds =
         val cmd_sccs = rev (Graph.strong_conn G)
           |> map (map cmd_of_key);
       in
-        if exists (can (fn _ :: _ :: _ => ())) cmd_sccs then sort_problem (map merge_scc cmd_sccs)
-        else Graph.schedule (K snd) G
+        if exists (can (fn _ :: _ :: _ => ())) cmd_sccs then
+          sort_problem (fold_map merge_scc cmd_sccs complete)
+        else
+          (Graph.schedule (K snd) G, complete)
       end;
 
     val typedecls = filter (can (fn ITVal _ => ())) cmds;
-    val mixed =
-      filter (can (fn ICopy _ => () | IQuotient _ => () | ICoData _ => () | IVal _ => ()
-        | ICoPred _ => () | IRec _ => () | ISpec _ => ())) cmds
+    val (mixed, complete) =
+      (filter (can (fn ICopy _ => () | IQuotient _ => () | ICoData _ => () | IVal _ => ()
+         | ICoPred _ => () | IRec _ => () | ISpec _ => ())) cmds, true)
       |> sort_problem;
     val axioms = filter (can (fn IAxiom _ => ())) cmds;
     val goals = filter (can (fn IGoal _ => ())) cmds;
     val evals = filter (can (fn IEval _ => ())) cmds;
   in
-    typedecls @ mixed @ axioms @ goals @ evals
+    (typedecls @ mixed @ axioms @ goals @ evals, complete)
   end;
 
 fun group_of (ITVal _) = 1
@@ -923,16 +928,16 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
     val evals = map (preprocess_closed_term ctxt) evals0;
     val seens = ([], [], []);
 
-    val commandss =
+    val (commandss, complete) =
       (seens,
        map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal] @ map IEval (implicit_evals @ evals))
       |> fold (consider_term 0) (subgoal :: evals @ mono_axioms_and_some_assms)
       |> snd
       |> rev (* prettier *)
       |> sort_isa_commands_topologically ctxt
-      |> group_isa_commands;
+      |>> group_isa_commands;
   in
-    (poly_axioms, {commandss = commandss, sound = true, complete = true (* FIXME *)})
+    (poly_axioms, {commandss = commandss, sound = true, complete = complete})
   end;
 
 fun str_of_isa_term_with_type ctxt t =

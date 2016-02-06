@@ -22,7 +22,9 @@ sig
 
   datatype nun_outcome =
     Unsat
+  | Maybe_Unsat
   | Sat of string * nun_solution
+  | Maybe_Sat of string * nun_solution
   | Timeout
   | Nunchaku_Var_Not_Set
   | Nunchaku_Cannot_Execute
@@ -53,7 +55,9 @@ type nun_solution =
 
 datatype nun_outcome =
   Unsat
+| Maybe_Unsat
 | Sat of string * nun_solution
+| Maybe_Sat of string * nun_solution
 | Timeout
 | Nunchaku_Var_Not_Set
 | Nunchaku_Cannot_Execute
@@ -72,7 +76,8 @@ val nunchaku_env_var = "NUNCHAKU";
 val cached_outcome =
   Synchronized.var "Nunchaku_Tool.cached_outcome" (NONE : (nun_problem * nun_outcome) option);
 
-fun uncached_solve_nun_problem ({overlord, timeout, ...} : tool_params) problem =
+fun uncached_solve_nun_problem ({overlord, timeout, ...} : tool_params)
+    (problem as {sound, complete, ...}) =
   with_tmp_or_overlord_file overlord "nunchaku" "nun" (fn prob_path =>
     if getenv nunchaku_env_var = "" then
       Nunchaku_Var_Not_Set
@@ -91,9 +96,9 @@ fun uncached_solve_nun_problem ({overlord, timeout, ...} : tool_params) problem 
         val ((output, error), code) = bash_output_error bash_cmd;
       in
         if String.isPrefix "SAT" output then
-          Sat (output, {tys = [], tms = []})
+          (if sound then Sat else Maybe_Sat) (output, {tys = [], tms = []})
         else if String.isPrefix "UNSAT" output then
-          Unsat
+          if complete then Unsat else Maybe_Unsat
         else if String.isPrefix "TIMEOUT" output then
           Timeout
         else if code = 126 then
@@ -118,7 +123,9 @@ fun solve_nun_problem (params as {overlord, debug, ...}) problem =
     in
       (case outcome of
         Unsat => update_cache ()
+      | Maybe_Unsat => update_cache ()
       | Sat _ => update_cache ()
+      | Maybe_Sat _ => update_cache ()
       | _ => ());
       outcome
     end);

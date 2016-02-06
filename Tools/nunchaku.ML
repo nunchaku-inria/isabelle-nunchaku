@@ -181,52 +181,58 @@ fun run_chaku_on_prop state
                 print "Hint: Maybe you forgot a type constraint?"
               else
                 ();
+
+            fun get_isa_model_opt output =
+              let
+                val nice_nun_model = nun_model_of_str output;
+                val _ = print_d (fn () => "*** Nunchaku model ***\n" ^
+                  str_of_nun_model nice_nun_model);
+                val ugly_nun_model = ugly_nun_model pool nice_nun_model;
+                val isa_model = isa_model_of_nun ctxt atomss ugly_nun_model;
+                val _ = print_d (fn () => "*** Isabelle model ***\n" ^
+                  str_of_isa_model ctxt isa_model);
+              in
+                isa_model
+              end;
+
+            fun isa_model_opt output =
+              if debug then SOME (get_isa_model_opt output) else try get_isa_model_opt output;
+
+            val model_str = isa_model_opt
+              #> pretty_of_isa_model_opt ctxt show_consts #> Pretty.string_of;
+
+            fun sat_or_maybe_sat sound output =
+              (case (null poly_axioms, none_true wfs) of
+                (true, true) =>
+                (print ((if sound then das_wort_Model else "Potential " ^ das_wort_model) ^ ":\n" ^
+                   model_str output); print_any_hints ();
+                 (genuineN, isa_model_opt output))
+              | (no_poly, no_wf) =>
+                let
+                  val ignorings = []
+                    |> not no_poly ? cons "polymorphic axioms"
+                    |> not no_wf ? cons "unchecked well-foundedness";
+                in
+                  (print ((if sound then das_wort_Model else "Potential " ^ das_wort_model) ^
+                     " (ignoring " ^ space_implode " and " ignorings ^ "):\n" ^ model_str output ^
+                     (if no_poly then
+                        ""
+                      else
+                        "\nIgnored axioms:\n" ^
+                        cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
+                   print_any_hints ();
+                   (quasi_genuineN, isa_model_opt output))
+                end);
           in
             (case solve_nun_problem tool_params nice_nun_problem of
               Unsat =>
-              (print_n ("No " ^ das_wort_model ^ " exists (the goal is a theorem)"); (noneN, NONE))
-            | Sat (output, _) =>
-              let
-                fun get_isa_model_opt () =
-                  let
-                    val nice_nun_model = nun_model_of_str output;
-                    val _ = print_d (fn () => "*** Nunchaku model ***\n" ^
-                      str_of_nun_model nice_nun_model);
-                    val ugly_nun_model = ugly_nun_model pool nice_nun_model;
-                    val isa_model = isa_model_of_nun ctxt atomss ugly_nun_model;
-                    val _ = print_d (fn () => "*** Isabelle model ***\n" ^
-                      str_of_isa_model ctxt isa_model);
-                  in
-                    isa_model
-                  end;
-
-                val isa_model_opt =
-                  if debug then SOME (get_isa_model_opt ()) else try get_isa_model_opt ();
-
-                val model_str = pretty_of_isa_model_opt ctxt show_consts isa_model_opt
-                  |> Pretty.string_of;
-              in
-                (case (null poly_axioms, none_true wfs) of
-                  (true, true) =>
-                  (print (das_wort_Model ^ ":\n" ^ model_str); print_any_hints ();
-                   (genuineN, isa_model_opt))
-                | (no_poly, no_wf) =>
-                  let
-                    val ignorings = []
-                      |> not no_poly ? cons "polymorphic axioms"
-                      |> not no_wf ? cons "unchecked well-foundedness";
-                  in
-                    (print (das_wort_Model ^ " (ignoring " ^ space_implode " and " ignorings ^
-                       "):\n" ^ model_str ^
-                       (if no_poly then
-                          ""
-                        else
-                          "\nIgnored axioms:\n" ^
-                          cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
-                     print_any_hints ();
-                     (quasi_genuineN, isa_model_opt))
-                  end)
-              end
+              (print_n ("No " ^ das_wort_model ^ " exists" ^
+                 (if falsify then " (the goal is a theorem)" else "")); (noneN, NONE))
+            | Maybe_Unsat =>
+              (print_n ("No " ^ das_wort_model ^ " can be found (but one might still exist)");
+               (unknownN, NONE))
+            | Sat (output, _) => sat_or_maybe_sat true output
+            | Maybe_Sat (output, _) => sat_or_maybe_sat false output
             | Timeout => (print_n "Time out"; (unknownN, NONE))
             | Nunchaku_Var_Not_Set =>
               (print_n ("Variable $" ^ nunchaku_env_var ^ " not set"); (unknownN, NONE))
