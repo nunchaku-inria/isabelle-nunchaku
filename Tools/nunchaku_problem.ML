@@ -57,7 +57,10 @@ sig
   | NGoal of tm
   | NEval of tm
 
-  type nun_problem = nun_command list list
+  type nun_problem =
+    {commandss: nun_command list list,
+     sound: bool,
+     complete: bool}
 
   type name_pool =
     {nice_of_ugly: string Symtab.table,
@@ -215,7 +218,10 @@ datatype nun_command =
 | NGoal of tm
 | NEval of tm;
 
-type nun_problem = nun_command list list;
+type nun_problem =
+  {commandss: nun_command list list,
+   sound: bool,
+   complete: bool};
 
 type name_pool =
   {nice_of_ugly: string Symtab.table,
@@ -484,8 +490,9 @@ fun fold_map_nun_command_idents f (NTVal ty) =
     fold_map_tm_idents f tm
     #>> NEval;
 
-fun fold_map_nun_problem_idents f =
-  fold_map (fold_map (fold_map_nun_command_idents f));
+fun fold_map_nun_problem_idents f ({commandss, sound, complete} : nun_problem) =
+  fold_map (fold_map (fold_map_nun_command_idents f)) commandss
+  #>> (fn commandss' => {commandss = commandss', sound = sound, complete = complete});
 
 fun dest_rassoc_args oper arg0 rest =
   (case rest of
@@ -524,8 +531,6 @@ fun fresh_var_names_wrt_tm n tm =
   in
     map (index_name max_name) (1 upto n)
   end;
-
-val fresh_var_name_wrt_tm = the_single o fresh_var_names_wrt_tm 1;
 
 fun beta_reduce_tm (NApp (NAbs (var, body), arg)) = beta_reduce_tm (replace_tm var arg body)
   | beta_reduce_tm (NApp (const, arg)) =
@@ -585,7 +590,7 @@ val str_of_ty =
 
 val (str_of_tmty, str_of_tm) =
   let
-    fun is_triv_head (NConst (id, _, ty)) = (arity_of_nun_builtin id = 0)
+    fun is_triv_head (NConst (id, _, _)) = (arity_of_nun_builtin id = 0)
       | is_triv_head (NAtom _) = true
       | is_triv_head (NApp (const, _)) = is_triv_head const
       | is_triv_head (NAbs _) = false
@@ -631,16 +636,13 @@ val (str_of_tmty, str_of_tm) =
             (str_of NONE arg1 |> not (is_triv_head arg1) ? nun_parens) ^ " " ^ id ^ " " ^
             (str_of (try ty_of arg2) arg2 |> not (is_triv_head arg2) ? nun_parens)
           else if is_nun_const_connective id then
-            let
-              val ty_opt' = SOME nun_prop_ty;
-              val args = dest_rassoc_args oper arg1 arg2;
-            in
+            let val args = dest_rassoc_args oper arg1 arg2 in
               space_implode (" " ^ id ^ " ")
                 (map (fn arg => str_of NONE arg |> not (is_triv_head arg) ? nun_parens) args)
             end
           else
             str_of_app ty_opt func argN
-        | (NApp (NApp (oper as NConst (id, _, _), arg1), arg2), arg3) =>
+        | (NApp (NApp (NConst (id, _, _), arg1), arg2), arg3) =>
           if id = nun_if then
             nun_if ^ " " ^ str_of NONE arg1 ^ " " ^ nun_then ^ " " ^ str_of NONE arg2 ^ " " ^
             nun_else ^ " " ^ str_of NONE arg3
@@ -742,8 +744,10 @@ fun str_of_nun_command (NTVal ty) = nun_val ^ " " ^ str_of_tval ty
   | str_of_nun_command (NGoal tm) = nun_goal ^ " " ^ str_of_tm tm
   | str_of_nun_command (NEval tm) = "# " ^ nun_eval ^ " " ^ str_of_tm tm;
 
-val str_of_nun_problem =
-  map (cat_lines o map (suffix nun_dot o str_of_nun_command))
-  #> space_implode "\n\n" #> suffix "\n";
+fun str_of_nun_problem {commandss, sound, complete} =
+  map (cat_lines o map (suffix nun_dot o str_of_nun_command)) commandss
+  |> space_implode "\n\n" |> suffix "\n"
+  |> prefix ("# " ^ (if sound then "sound" else "unsound") ^ "\n")
+  |> prefix ("# " ^ (if complete then "complete" else "incomplete") ^ "\n");
 
 end;

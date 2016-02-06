@@ -21,4 +21,10 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) rmember
 
+codatatype tree = Node nat "tree list"
+
+lemma "t \<noteq> Node k [t]"
+nunchaku
+
+
 end

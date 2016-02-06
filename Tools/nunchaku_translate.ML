@@ -143,7 +143,7 @@ fun nun_const_spec_of_isa ctxt {const, props} =
 fun nun_consts_spec_of_isa ctxt {consts, props} =
   {consts = map (tm_of_isa ctxt) consts, props = map (tm_of_isa ctxt) props};
 
-fun nun_problem_of_isa ctxt =
+fun nun_problem_of_isa ctxt {commandss, sound, complete} =
   let
     fun cmd_of cmd =
       (case cmd of
@@ -163,7 +163,7 @@ fun nun_problem_of_isa ctxt =
       | IGoal prop => NGoal (tm_of_isa ctxt prop)
       | IEval t => NEval (tm_of_isa ctxt t));
   in
-    map (map cmd_of)
+    {commandss = map (map cmd_of) commandss, sound = sound, complete = complete}
   end;
 
 end;

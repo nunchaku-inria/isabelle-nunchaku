@@ -41,7 +41,10 @@ sig
   | IGoal of term
   | IEval of term
 
-  type isa_problem = isa_command list list
+  type isa_problem =
+    {commandss: isa_command list list,
+     sound: bool,
+     complete: bool}
 
   exception CYCLIC_DEPS of unit
   exception TOO_DEEP_DEPS of unit
@@ -92,7 +95,10 @@ datatype isa_command =
 | IGoal of term
 | IEval of term;
 
-type isa_problem = isa_command list list;
+type isa_problem =
+  {commandss: isa_command list list,
+   sound: bool,
+   complete: bool};
 
 exception CYCLIC_DEPS of unit;
 exception TOO_DEEP_DEPS of unit;
@@ -142,9 +148,8 @@ fun close_form except t =
 
 (* "imp_conjL[symmetric]" is important for inductive predicates with multiple assumptions. *)
 val basic_defs =
-  @{thms Ex1_def Let_def case_bool_if} @
-  map (fn th => th RS @{thm eq_reflection})
-    @{thms Ball_def Bex_def rmember_def[symmetric] imp_conjL[symmetric]};
+  @{thms Ball_def[abs_def] Bex_def[abs_def] case_bool_if Ex1_def[abs_def]
+    imp_conjL[symmetric, abs_def] Let_def[abs_def] rmember_def[symmetric, abs_def]};
 
 fun unfold_basic_def ctxt =
   let val thy = Proof_Context.theory_of ctxt in
@@ -555,7 +560,7 @@ fun merge_two (ICoData (fp, specs)) (ICoData (fp', specs')) =
   | merge_two (cmd as ISpec _) (cmd' as ISpec _) = merge_two_rec_or_spec cmd cmd'
   | merge_two _ _ = raise CYCLIC_DEPS ();
 
-fun sort_isa_problem_topologically ctxt cmds =
+fun sort_isa_commands_topologically ctxt cmds =
   let
     fun normal_pairs [] = []
       | normal_pairs (all as normal :: _) = map (rpair normal) all;
@@ -917,15 +922,17 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
     val implicit_evals = implicit_evals_of true subgoal;
     val evals = map (preprocess_closed_term ctxt) evals0;
     val seens = ([], [], []);
+
+    val commandss =
+      (seens,
+       map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal] @ map IEval (implicit_evals @ evals))
+      |> fold (consider_term 0) (subgoal :: evals @ mono_axioms_and_some_assms)
+      |> snd
+      |> rev (* prettier *)
+      |> sort_isa_commands_topologically ctxt
+      |> group_isa_commands;
   in
-    (poly_axioms,
-     (seens,
-      map IAxiom mono_axioms_and_some_assms @ [IGoal subgoal] @ map IEval (implicit_evals @ evals))
-     |> fold (consider_term 0) (subgoal :: evals @ mono_axioms_and_some_assms)
-     |> snd
-     |> rev (* prettier *)
-     |> sort_isa_problem_topologically ctxt
-     |> group_isa_commands)
+    (poly_axioms, {commandss = commandss, sound = true, complete = true (* FIXME *)})
   end;
 
 fun str_of_isa_term_with_type ctxt t =
@@ -969,9 +976,10 @@ fun str_of_isa_command ctxt (ITVal T) = "type " ^ Syntax.string_of_typ ctxt T
   | str_of_isa_command ctxt (IGoal prop) = "goal " ^ Syntax.string_of_term ctxt prop
   | str_of_isa_command ctxt (IEval t) = "eval " ^ Syntax.string_of_term ctxt t;
 
-fun str_of_isa_problem ctxt =
-  map (cat_lines o map (suffix "." o str_of_isa_command ctxt))
-  #> space_implode "\n\n"
-  #> suffix "\n";
+fun str_of_isa_problem ctxt {commandss, sound, complete} =
+  map (cat_lines o map (suffix "." o str_of_isa_command ctxt)) commandss
+  |> space_implode "\n\n" |> suffix "\n"
+  |> prefix ("# " ^ (if sound then "sound" else "unsound") ^ "\n")
+  |> prefix ("# " ^ (if complete then "complete" else "incomplete") ^ "\n");
 
 end;
