@@ -37,7 +37,7 @@ fun pretty_of_isa_model_opt _ _ NONE =
   | pretty_of_isa_model_opt ctxt0 show_consts
       (SOME {type_model, free_model, const_model, skolem_model}) =
     let
-      val ctxt = ctxt0 (* TODO: keep or remove: |> Config.put show_question_marks false *);
+      val ctxt = ctxt0 |> Config.put show_question_marks false;
 
       fun pretty_of_typ_entry (T, atoms) =
         Pretty.block (Pretty.breaks [Syntax.pretty_typ ctxt T, Pretty.str "=",
