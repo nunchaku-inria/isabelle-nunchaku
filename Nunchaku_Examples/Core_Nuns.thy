@@ -425,7 +425,7 @@ lemma "a \<and> b \<Longrightarrow> a" "a \<and> b \<Longrightarrow> b"
 nunchaku [expect = none]
 by auto
 
-lemma "(op \<longrightarrow>) = (\<lambda>x. op\<longrightarrow> x)" "(op\<longrightarrow> ) = (\<lambda>x y. x \<longrightarrow> y)"
+lemma "(op \<longrightarrow>) = (\<lambda>x. op \<longrightarrow> x)" "(op \<longrightarrow> ) = (\<lambda>x y. x \<longrightarrow> y)"
 nunchaku [expect = none]
 by auto
 
@@ -858,6 +858,6 @@ by auto
 
 lemma "x = (case (x, y) of (x', y') \<Rightarrow> x')"
 nunchaku [expect = none]
-sorry
+by auto
 
 end

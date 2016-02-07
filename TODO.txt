@@ -4,6 +4,12 @@ Isabelle frontend:
   * keep track of "unsat" vs. "unknown" in translation (e.g. for codatatypes represented as
     datatypes, use of unchecked "wf") in frontend's translator
 
+  * cardinality specs
+
+  * use [code] equations as a fallback rather than real def
+
+  * skeleton print mode
+
   * numeric types
     * do something about big 'nat's? cf. 'binary_ints'
     * avoid numerals if possible
