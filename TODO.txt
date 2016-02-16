@@ -1,6 +1,6 @@
 Isabelle frontend:
 
-  * parse models
+  * parse types in models
   * keep track of "unsat" vs. "unknown" in translation (e.g. for codatatypes represented as
     datatypes, use of unchecked "wf") in frontend's translator
 
