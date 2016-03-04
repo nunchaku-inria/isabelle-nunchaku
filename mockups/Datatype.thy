@@ -1,4 +1,4 @@
-theory Datatypes
+theory Datatype
 imports Main
 begin
 
@@ -16,6 +16,9 @@ This will be called @{text "iota!"} in Nunchaku:
 definition The_bang :: "('a \<Rightarrow> bool) \<Rightarrow> 'a" where
   "The_bang P = (if \<exists>x. P x then The P else Nitpick.unknown)"
 
+definition pred_of_fun :: "('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> 'a \<Rightarrow> 'b \<Rightarrow> bool" where
+  "pred_of_fun p f x y \<longleftrightarrow> p x \<and> f x = y"
+
 typedecl elem
 typedecl list
 
@@ -23,7 +26,7 @@ nitpick_params [user_axioms, dont_box, show_all, atoms elem = a b c d e f g h i 
   atoms list = as bs cs ds es fs gs hs "is" js ks ls]
 
 
-subsection {* Selectors *}
+subsection {* Destructors *}
 
 axiomatization
   null :: "list \<Rightarrow> bool" and
@@ -32,7 +35,7 @@ axiomatization
 where
   unique_nil: "\<And>xs ys. null xs \<Longrightarrow> null ys \<Longrightarrow> xs = ys" and
   unique_cons: "\<And>xs ys. \<not> null xs \<Longrightarrow> \<not> null ys \<Longrightarrow> hd xs = hd ys \<Longrightarrow> tl xs = tl ys \<Longrightarrow> xs = ys" and
-  acyclic: "\<And>xs. \<not> tranclp (\<lambda>ys zs. \<not> null ys \<and> tl ys = zs) xs xs"
+  acyclic: "\<And>xs. \<not> tranclp (pred_of_fun (Not \<circ> null) tl) xs xs"
 
 nitpick_params [card = 1-8]
 

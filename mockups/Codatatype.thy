@@ -1,4 +1,4 @@
-theory Codatatypes
+theory Codatatype
 imports Main
 begin
 
@@ -23,7 +23,7 @@ nitpick_params [user_axioms, dont_box, show_all, atoms elem = a b c d e f g h i 
   atoms list = as bs cs ds es fs gs hs "is" js ks ls]
 
 
-subsection {* Selectors *}
+subsection {* Destructors *}
 
 axiomatization
   null :: "list \<Rightarrow> bool" and
@@ -31,15 +31,13 @@ axiomatization
   tl :: "list \<Rightarrow> list"
 
 coinductive bisim :: "list \<Rightarrow> list \<Rightarrow> bool" where
-  "null xs \<Longrightarrow> bisim xs xs"
+  "null xs \<Longrightarrow> null ys \<Longrightarrow> bisim xs ys"
 | "\<not> null xs \<Longrightarrow> \<not> null ys \<Longrightarrow> hd xs = hd ys \<Longrightarrow> bisim (tl xs) (tl ys) \<Longrightarrow> bisim xs ys"
 
 axiomatization where
-  unique_nil: "\<And>xs ys. null xs \<Longrightarrow> null ys \<Longrightarrow> xs = ys" and
-  unique_cons: "\<And>xs ys. \<not> null xs \<Longrightarrow> \<not> null ys \<Longrightarrow> hd xs = hd ys \<Longrightarrow> tl xs = tl ys \<Longrightarrow> xs = ys" and
   unique: "\<And>xs ys. bisim xs ys \<Longrightarrow> xs = ys"
 
-nitpick_params [card elem = 3, card list = 1-5]
+nitpick_params [card elem = 3, card list = 1-5, iter = 1-5]
 
 
 subsection {* Constructors *}
