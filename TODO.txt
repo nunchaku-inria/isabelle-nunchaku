@@ -22,6 +22,10 @@ Isabelle frontend:
 
   * nunchaku for proving, with induction and without rec encoding
 
+  * maybe:
+    * regression testing of entire counterexamples (not just status?)
+    * generation of Isabelle theory encoding the counterexample
+
 Middleware:
 
   * better cvc4 kill (find out what's wrong in cvc4, also for Sledgehammer)
