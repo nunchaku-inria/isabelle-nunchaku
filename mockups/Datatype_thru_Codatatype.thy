@@ -46,8 +46,8 @@ coinductive bisim :: "forest \<Rightarrow> forest \<Rightarrow> bool" where
 | "\<not> null xs \<Longrightarrow> \<not> null ys \<Longrightarrow> hd xs = hd ys \<Longrightarrow> bisim (tl xs) (tl ys) \<Longrightarrow> bisim xs ys"
 
 text \<open>
-@{prop "hd xs = hd ys"} appears to be appropriate, as opposed to lifting
-@{const bisim} with the tree relator. But I am not sure.
+@{prop "hd xs = hd ys"} is appropriate, as opposed to lifting @{const bisim}
+with the tree relator.
 \<close>
 
 axiomatization where
@@ -114,6 +114,10 @@ lemma "xs = Cons x ys \<Longrightarrow> ys = Cons x xs \<Longrightarrow> xs = ys
   nitpick [satisfy, expect = genuine]
   sorry
 
+lemma "xs \<noteq> Nil \<Longrightarrow> xs \<noteq> sub (hd xs)"
+  nitpick [expect = none]
+  sorry
+
 
 subsection {* Datatype Constructors *}
 
@@ -137,6 +141,10 @@ lemma "xx = yy \<longleftrightarrow> lab xx = lab yy \<and> sub xx = sub yy"
 
 lemma "sub xx \<noteq> Nil \<Longrightarrow> tl (sub xx) \<noteq> sub xx"
   nitpick [expect = genuine]
+  oops
+
+lemma "xs = Cons (Node x xs) Nil"
+  nitpick [satisfy, expect = none]
   oops
 
 end

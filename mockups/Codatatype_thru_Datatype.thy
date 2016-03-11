@@ -46,8 +46,7 @@ axiomatization where
   acyclic: "\<And>xs. \<not> tranclp (pred_of_fun (Not \<circ> null) tl) xs xs"
 
 text \<open>
-It appears to be appropriate to ignore the lists hiding under the trees for
-acyclicity. But I am not sure.
+It is important to ignore the lists hiding under the trees for acyclicity.
 \<close>
 
 inductive
@@ -109,6 +108,10 @@ lemma "xs \<noteq> Cons x (Cons y xs)"
 lemma "xs = ys \<longleftrightarrow> (null xs \<and> null ys) \<or> (\<not> null xs \<and> \<not> null ys \<and> hd xs = hd ys \<and> tl xs = tl ys)"
   nitpick [expect = none]
   sorry
+
+lemma "xs \<noteq> Nil \<Longrightarrow> xs \<noteq> sub (hd xs)"
+  nitpick [expect = genuine]
+  oops
 
 
 subsection {* Codatatype Constructors *}

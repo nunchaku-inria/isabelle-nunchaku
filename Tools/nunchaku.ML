@@ -273,8 +273,8 @@ fun run_chaku_on_prop state
     val _ = spying spy (fn () => (state, i, "starting " ^ str_of_mode mode ^ " mode"));
 
     val outcome as (outcome_code, _) =
-      TimeLimit.timeLimit (Time.+ (timeout, timeout_slack)) run ()
-      handle TimeLimit.TimeOut => (print_n "Time out"; (unknownN, NONE));
+      Timeout.apply (Time.+ (timeout, timeout_slack)) run ()
+      handle Timeout.TIMEOUT _ => (print_n "Time out"; (unknownN, NONE));
 
     val _ = print_v (fn () => "Total time: " ^ string_of_time (Timer.checkRealTimer timer));
 

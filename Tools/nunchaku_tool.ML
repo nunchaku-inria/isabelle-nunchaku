@@ -83,7 +83,7 @@ fun uncached_solve_nun_problem ({overlord, timeout, ...} : tool_params)
       let
         val bash_cmd =
           "\"$" ^ nunchaku_env_var ^ "\" --timeout " ^ string_of_int (Time.toSeconds timeout) ^
-          " " ^ File.shell_path prob_path;
+          " " ^ File.bash_path prob_path;
 (* FIXME: remove
         val bash_cmd = "cp " ^ File.shell_path prob_path ^ " /tmp/nunchaku/";
 *)
