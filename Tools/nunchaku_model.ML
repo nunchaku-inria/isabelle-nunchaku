@@ -190,9 +190,12 @@ and parse_arg toks =
      --| parse_sym nun_rparen
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks;
 
+val parse_witness_name =
+  parse_ident >> (fn id => NConst (hd (space_explode "/" id), [], nun_dummy_ty));
+
 val parse_witness =
   parse_id nun__witness_of |-- parse_sym nun_lparen |-- (parse_id nun_forall || parse_id nun_exists)
-  |-- parse_arg --| Scan.repeat (Scan.one (curry (op <>) (Symbol nun_assign)));
+  |-- parse_witness_name --| Scan.repeat (Scan.one (curry (op <>) (Symbol nun_assign)));
 
 datatype entry =
   Type_Entry of ty_entry

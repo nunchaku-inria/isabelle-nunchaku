@@ -170,8 +170,10 @@ fun run_chaku_on_prop state
             val _ = print_d (fn () => "*** Isabelle problem ***\n" ^
               str_of_isa_problem ctxt isa_problem);
             val ugly_nun_problem = nun_problem_of_isa ctxt isa_problem;
+            val _ = print_d (fn () => "*** Ugly Nunchaku problem ***\n" ^
+              str_of_nun_problem ugly_nun_problem);
             val (nice_nun_problem, pool) = nice_nun_problem ugly_nun_problem;
-            val _ = print_d (fn () => "*** Nunchaku problem ***\n" ^
+            val _ = print_d (fn () => "*** Nice Nunchaku problem ***\n" ^
               str_of_nun_problem nice_nun_problem);
 
             fun print_any_hints () =
@@ -185,9 +187,11 @@ fun run_chaku_on_prop state
             fun get_isa_model_opt output =
               let
                 val nice_nun_model = nun_model_of_str output;
-                val _ = print_d (fn () => "*** Nunchaku model ***\n" ^
+                val _ = print_d (fn () => "*** Nice Nunchaku model ***\n" ^
                   str_of_nun_model nice_nun_model);
                 val ugly_nun_model = ugly_nun_model pool nice_nun_model;
+                val _ = print_d (fn () => "*** Ugly Nunchaku model ***\n" ^
+                  str_of_nun_model ugly_nun_model);
                 val isa_model = isa_model_of_nun ctxt atomss ugly_nun_model;
                 val _ = print_d (fn () => "*** Isabelle model ***\n" ^
                   str_of_isa_model ctxt isa_model);

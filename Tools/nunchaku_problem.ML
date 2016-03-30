@@ -66,7 +66,7 @@ sig
     {nice_of_ugly: string Symtab.table,
      ugly_of_nice: string Symtab.table}
 
-  val nun_abs: string
+  val nun_abstract: string
   val nun_and: string
   val nun_arrow: string
   val nun_assign: string
@@ -77,6 +77,7 @@ sig
   val nun_codata: string
   val nun_colon: string
   val nun_comma: string
+  val nun_concretize: string
   val nun_conj: string
   val nun_copred: string
   val nun_copy: string
@@ -93,6 +94,7 @@ sig
   val nun_forall: string
   val nun_fun: string
   val nun_goal: string
+  val nun_hash: string
   val nun_if: string
   val nun_implies: string
   val nun_lbrace: string
@@ -107,7 +109,6 @@ sig
   val nun_rbrace: string
   val nun_rbracket: string
   val nun_rec: string
-  val nun_rep: string
   val nun_rparen: string
   val nun_semicolon: string
   val nun_spec: string
@@ -227,7 +228,7 @@ type name_pool =
   {nice_of_ugly: string Symtab.table,
    ugly_of_nice: string Symtab.table};
 
-val nun_abs = "abs";
+val nun_abstract = "abstract";
 val nun_and = "and";
 val nun_arrow = "->";
 val nun_assign = ":=";
@@ -238,6 +239,7 @@ val nun_bar = "|";
 val nun_codata = "codata";
 val nun_colon = ":";
 val nun_comma = ",";
+val nun_concretize = "concretize";
 val nun_conj = "&&";
 val nun_copred = "copred";
 val nun_copy = "copy";
@@ -254,6 +256,7 @@ val nun_false = "false";
 val nun_forall = "forall";
 val nun_fun = "fun";
 val nun_goal = "goal";
+val nun_hash = "#";
 val nun_if = "if";
 val nun_implies = "=>";
 val nun_lbrace = "{";
@@ -268,7 +271,6 @@ val nun_quotient = "quotient";
 val nun_rbrace = "}";
 val nun_rbracket = "]";
 val nun_rec = "rec";
-val nun_rep = "rep";
 val nun_rparen = ")";
 val nun_semicolon = ";";
 val nun_spec = "spec";
@@ -706,7 +708,7 @@ fun is_triv_wrt (NAbs (_, body)) = is_triv_wrt body
 fun str_of_nun_type_spec {abs_ty, rep_ty, wrt, abs, rep} =
   str_of_ty abs_ty ^ " " ^ nun_assign ^ " " ^ str_of_ty rep_ty ^
   (if is_triv_wrt wrt then "" else "\n  " ^ nun_wrt ^ " " ^ str_of_tm wrt) ^
-  "\n  " ^ nun_abs ^ " " ^ str_of_tm abs ^ "\n  " ^ nun_rep ^ " " ^ str_of_tm rep;
+  "\n  " ^ nun_abstract ^ " " ^ str_of_tm abs ^ "\n  " ^ nun_concretize ^ " " ^ str_of_tm rep;
 
 fun str_of_nun_ctr_spec {ctr, arg_tys} =
   str_of_tm ctr ^ str_of_nun_arg_list str_of_ty arg_tys;
@@ -742,12 +744,12 @@ fun str_of_nun_command (NTVal ty) = nun_val ^ " " ^ str_of_tval ty
   | str_of_nun_command (NSpec spec) = nun_spec ^ " " ^ str_of_nun_consts_spec spec
   | str_of_nun_command (NAxiom tm) = nun_axiom ^ " " ^ str_of_tm tm
   | str_of_nun_command (NGoal tm) = nun_goal ^ " " ^ str_of_tm tm
-  | str_of_nun_command (NEval tm) = "# " ^ nun_eval ^ " " ^ str_of_tm tm;
+  | str_of_nun_command (NEval tm) = nun_hash ^ " " ^ nun_eval ^ " " ^ str_of_tm tm;
 
 fun str_of_nun_problem {commandss, sound, complete} =
   map (cat_lines o map (suffix nun_dot o str_of_nun_command)) commandss
   |> space_implode "\n\n" |> suffix "\n"
-  |> prefix ("# " ^ (if sound then "sound" else "unsound") ^ "\n")
-  |> prefix ("# " ^ (if complete then "complete" else "incomplete") ^ "\n");
+  |> prefix (nun_hash ^ " " ^ (if sound then "sound" else "unsound") ^ "\n")
+  |> prefix (nun_hash ^ " " ^ (if complete then "complete" else "incomplete") ^ "\n");
 
 end;
