@@ -103,7 +103,7 @@ fun ident_or_atom s =
 
 fun is_alnum_etc_char c = Char.isAlphaNum c orelse c = #"_" orelse c = #"/";
 
-val multi_ids = [nun_assign, nun_conj, nun_disj, nun_implies, nun_unknown];
+val multi_ids = [nun_arrow, nun_assign, nun_conj, nun_disj, nun_implies, nun_unknown];
 
 fun next_token [] = (End_of_Stream, [])
   | next_token (c :: cs) =
@@ -121,7 +121,7 @@ fun next_token [] = (End_of_Stream, [])
             val n = String.size s - 1;
           in
             if c = String.sub (s, 0) andalso
-                is_prefix (op =) (String.explode (String.substring (s, 1, n))) cs then
+               is_prefix (op =) (String.explode (String.substring (s, 1, n))) cs then
               SOME (Symbol id, drop n cs)
             else
               NONE
@@ -156,10 +156,15 @@ val confusing_ids = [nun_else, nun_then, nun_with];
 val parse_confusing_id = Scan.one (fn Ident id => member (op =) confusing_ids id | _ => false);
 
 fun parse_ty toks =
-  (parse_ident >> (rpair [] #> NType)) toks;
+  (parse_ty_arg -- Scan.option (parse_sym nun_arrow -- parse_ty)
+   >> (fn (ty, NONE) => ty
+     | (lhs, SOME (Symbol id, rhs)) => NType (id, [lhs, rhs]))) toks
+and parse_ty_arg toks =
+  (parse_ident >> (rpair [] #> NType)
+   || parse_sym nun_lparen |-- parse_ty --| parse_sym nun_rparen) toks;
 
 fun parse_tm toks =
-  (parse_id nun_fun |-- Scan.repeat parse_arg --| parse_sym nun_dot -- parse_tm
+  (parse_id nun_lambda |-- Scan.repeat parse_arg --| parse_sym nun_dot -- parse_tm
      >> Library.foldr NAbs
    || parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else
        -- parse_tm

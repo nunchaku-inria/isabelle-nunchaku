@@ -92,11 +92,11 @@ sig
   val nun_exists: string
   val nun_false: string
   val nun_forall: string
-  val nun_fun: string
   val nun_goal: string
   val nun_hash: string
   val nun_if: string
   val nun_implies: string
+  val nun_lambda: string
   val nun_lbrace: string
   val nun_lbracket: string
   val nun_lparen: string
@@ -254,11 +254,11 @@ val nun_eval = "eval";
 val nun_exists = "exists";
 val nun_false = "false";
 val nun_forall = "forall";
-val nun_fun = "fun";
 val nun_goal = "goal";
 val nun_hash = "#";
 val nun_if = "if";
 val nun_implies = "=>";
+val nun_lambda = "fun";
 val nun_lbrace = "{";
 val nun_lbracket = "[";
 val nun_lparen = "(";
@@ -623,7 +623,7 @@ val (str_of_tmty, str_of_tm) =
         if ty = ty0 then str_of_ident id else str_of_at_const id tys
       | str_of _ (NConst (id, tys, _)) = str_of_at_const id tys
       | str_of ty_opt (NAbs (var, body)) =
-        nun_fun ^ " " ^
+        nun_lambda ^ " " ^
         (case ty_opt of
           SOME ty => str_of (SOME (domain_ty ty))
         | NONE => nun_parens o str_of_tmty) var ^

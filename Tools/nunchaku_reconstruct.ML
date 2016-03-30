@@ -63,7 +63,7 @@ fun typ_of_nun ctxt =
           dummyT
         else if id = nun_prop then
           @{typ bool}
-        else if id = nun_fun then
+        else if id = nun_lambda then
           Type (@{type_name fun}, Ts)
         else
           (case try str_of_nun_tconst id of
