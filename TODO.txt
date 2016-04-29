@@ -1,8 +1,11 @@
 Isabelle frontend:
 
+  * add syntax for specifying axioms (e.g. for Chris B. and Bruno P. W.)
+
   * parse types in models
   * keep track of "unsat" vs. "unknown" in translation (e.g. for codatatypes represented as
     datatypes, use of unchecked "wf") in frontend's translator
+  * clarify that "unsat" doesn't really mean unsat for "prop" (intuitionistic)
 
   * cardinality specs
 
