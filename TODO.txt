@@ -32,6 +32,12 @@ Isabelle frontend:
   * for paper: mention that these are standard (and hence also Henkin) models
 
 
+Somewhere:
+
+  * encoding of inductive predicates that gives a proof of why something is
+    derivable? or just in the printing?
+
+
 Middleware:
 
   * better cvc4 kill (find out what's wrong in cvc4, also for Sledgehammer)
