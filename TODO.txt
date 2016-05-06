@@ -37,6 +37,9 @@ Somewhere:
   * encoding of inductive predicates that gives a proof of why something is
     derivable? or just in the printing?
 
+  * a definitional mechanism for nonproductive, non-wellfounded functions
+    (for those points where they do terminate) -- encoding using fuel?
+
 
 Middleware:
 
