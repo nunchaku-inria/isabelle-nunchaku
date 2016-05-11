@@ -39,6 +39,7 @@ Somewhere:
 
   * a definitional mechanism for nonproductive, non-wellfounded functions
     (for those points where they do terminate) -- encoding using fuel?
+    (cf. "while")
 
 
 Middleware:
