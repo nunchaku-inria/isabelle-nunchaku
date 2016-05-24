@@ -1,5 +1,7 @@
 Isabelle frontend:
 
+  * parse "bugs/prop_parse.nun"
+
   * add syntax for specifying axioms (e.g. for Chris B. and Bruno P. W.)
 
   * parse types in models

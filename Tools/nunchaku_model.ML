@@ -90,16 +90,20 @@ datatype token =
 | Atom of ident * int
 | End_of_Stream;
 
-fun ident_or_atom s =
-  (case first_field "__" s of
-    SOME (pre, suf) =>
-    if pre <> "" then
+val rev_str = String.implode o rev o String.explode;
+
+fun atom s =
+  (case first_field "_" (rev_str s) of
+    SOME (rev_suf, rev_pre) =>
+    let
+      val pre = rev_str rev_pre;
+      val suf = rev_str rev_suf;
+    in
       (case Int.fromString suf of
-        SOME j => Atom (ident_of_str (pre ^ "_"), j)
-      | _ => Ident (ident_of_str s))
-    else
-      Ident (ident_of_str s)
-  | NONE => Ident (ident_of_str s));
+        SOME j => Atom (ident_of_str pre, j)
+      | NONE => raise Fail "ill-formed atom")
+    end
+  | NONE => raise Fail "ill-formed atom");
 
 fun is_alnum_etc_char c = Char.isAlphaNum c orelse c = #"_" orelse c = #"/";
 
@@ -109,9 +113,14 @@ fun next_token [] = (End_of_Stream, [])
   | next_token (c :: cs) =
     if Char.isSpace c then
       next_token cs
+    else if c = #"$" then
+      let val n = find_index (not o is_alnum_etc_char) cs in
+        (if n = ~1 then (cs, []) else chop n cs) |>> (String.implode #> atom)
+      end
     else if is_alnum_etc_char c then
       let val n = find_index (not o is_alnum_etc_char) cs in
-        (if n = ~1 then (cs, []) else chop n cs) |>> (cons c #> String.implode #> ident_or_atom)
+        (if n = ~1 then (cs, []) else chop n cs)
+        |>> (cons c #> String.implode #> ident_of_str #> Ident)
       end
     else
       let
