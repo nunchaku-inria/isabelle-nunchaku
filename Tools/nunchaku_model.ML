@@ -92,7 +92,7 @@ datatype token =
 
 val rev_str = String.implode o rev o String.explode;
 
-fun atom s =
+fun atom_of_str s =
   (case first_field "_" (rev_str s) of
     SOME (rev_suf, rev_pre) =>
     let
@@ -115,7 +115,7 @@ fun next_token [] = (End_of_Stream, [])
       next_token cs
     else if c = #"$" then
       let val n = find_index (not o is_alnum_etc_char) cs in
-        (if n = ~1 then (cs, []) else chop n cs) |>> (String.implode #> atom)
+        (if n = ~1 then (cs, []) else chop n cs) |>> (String.implode #> atom_of_str)
       end
     else if is_alnum_etc_char c then
       let val n = find_index (not o is_alnum_etc_char) cs in
