@@ -107,7 +107,8 @@ fun atom_of_str s =
 
 fun is_alnum_etc_char c = Char.isAlphaNum c orelse c = #"_" orelse c = #"/";
 
-val multi_ids = [nun_arrow, nun_assign, nun_conj, nun_disj, nun_implies, nun_unknown];
+val multi_ids =
+  [nun_arrow, nun_assign, nun_conj, nun_disj, nun_implies, nun_unparsable, nun_irrelevant];
 
 fun next_token [] = (End_of_Stream, [])
   | next_token (c :: cs) =
@@ -199,7 +200,8 @@ and parse_comb toks =
   (parse_arg -- Scan.repeat (Scan.unless parse_confusing_id parse_arg) >> napps) toks
 and parse_arg toks =
   (parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
-   || parse_sym nun_unknown >> (fn _ => NConst (nun_unknown, [], nun_dummy_ty))
+   || parse_sym nun_irrelevant |-- parse_tm (* FIXME *) >> (fn _ => NConst (nun_irrelevant, [], nun_dummy_ty))
+   || parse_sym nun_unparsable |-- parse_ty >> (fn ty => NConst (nun_unparsable, [], ty))
    || parse_sym nun_lparen |-- parse_tm --| Scan.option (parse_sym nun_colon |-- parse_ty)
      --| parse_sym nun_rparen
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks;

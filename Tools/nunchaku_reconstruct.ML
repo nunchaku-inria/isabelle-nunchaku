@@ -119,9 +119,11 @@ fun term_of_nun ctxt atomss =
           @{term implies}
         else if id = nun_true then
           @{const True}
-        else if id = nun_unknown then
-          list_comb (Var (("unknown", 0), map (typ_of o safe_ty_of) bounds ---> typ_of ty),
+        else if id = nun_irrelevant then
+          list_comb (Var (("irrelevant", 0), map (typ_of o safe_ty_of) bounds ---> typ_of ty),
             map Bound (length bounds - 1 downto 0))
+        else if id = nun_unparsable then
+          list_comb (Var (("unparsable", 0), typ_of ty), map Bound (length bounds - 1 downto 0))
         else
           (case try str_of_nun_const id of
             SOME (args, s) =>

@@ -96,6 +96,7 @@ sig
   val nun_hash: string
   val nun_if: string
   val nun_implies: string
+  val nun_irrelevant: string
   val nun_lambda: string
   val nun_lbrace: string
   val nun_lbracket: string
@@ -115,7 +116,7 @@ sig
   val nun_then: string
   val nun_true: string
   val nun_type: string
-  val nun_unknown: string
+  val nun_unparsable: string
   val nun_val: string
   val nun_wf: string
   val nun_with: string
@@ -258,6 +259,7 @@ val nun_goal = "goal";
 val nun_hash = "#";
 val nun_if = "if";
 val nun_implies = "=>";
+val nun_irrelevant = "?__";
 val nun_lambda = "fun";
 val nun_lbrace = "{";
 val nun_lbracket = "[";
@@ -277,7 +279,7 @@ val nun_spec = "spec";
 val nun_then = "then";
 val nun_true = "true";
 val nun_type = "type";
-val nun_unknown = "?__";
+val nun_unparsable = "?__unparsable";
 val nun_val = "val";
 val nun_wf = "wf";
 val nun_with = "with";
