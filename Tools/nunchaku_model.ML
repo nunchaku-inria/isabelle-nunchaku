@@ -200,7 +200,9 @@ and parse_comb toks =
   (parse_arg -- Scan.repeat (Scan.unless parse_confusing_id parse_arg) >> napps) toks
 and parse_arg toks =
   (parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
-   || parse_sym nun_irrelevant |-- parse_tm (* FIXME *) >> (fn _ => NConst (nun_irrelevant, [], nun_dummy_ty))
+   || parse_sym nun_irrelevant |--
+        Scan.option (parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen) (* FIXME *)
+     >> (fn _ => NConst (nun_irrelevant, [], nun_dummy_ty))
    || parse_sym nun_unparsable |-- parse_ty >> (fn ty => NConst (nun_unparsable, [], ty))
    || parse_sym nun_lparen |-- parse_tm --| Scan.option (parse_sym nun_colon |-- parse_ty)
      --| parse_sym nun_rparen

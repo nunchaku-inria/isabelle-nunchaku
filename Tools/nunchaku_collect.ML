@@ -951,7 +951,7 @@ fun str_of_isa_type_spec ctxt {abs_typ, rep_typ, wrt, abs, rep} =
   Syntax.string_of_typ ctxt abs_typ ^ " := " ^ Syntax.string_of_typ ctxt rep_typ ^
   (if is_triv_wrt wrt then "" else "\n  wrt " ^ Syntax.string_of_term ctxt wrt) ^
   "\n  abstract " ^ Syntax.string_of_term ctxt abs ^
-  "\n  concretize " ^ Syntax.string_of_term ctxt rep;
+  "\n  concrete " ^ Syntax.string_of_term ctxt rep;
 
 fun str_of_isa_co_data_spec ctxt {typ, ctrs} =
   Syntax.string_of_typ ctxt typ ^ " :=\n  " ^

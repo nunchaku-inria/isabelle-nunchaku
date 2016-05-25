@@ -77,7 +77,7 @@ sig
   val nun_codata: string
   val nun_colon: string
   val nun_comma: string
-  val nun_concretize: string
+  val nun_concrete: string
   val nun_conj: string
   val nun_copred: string
   val nun_copy: string
@@ -240,7 +240,7 @@ val nun_bar = "|";
 val nun_codata = "codata";
 val nun_colon = ":";
 val nun_comma = ",";
-val nun_concretize = "concretize";
+val nun_concrete = "concrete";
 val nun_conj = "&&";
 val nun_copred = "copred";
 val nun_copy = "copy";
@@ -710,7 +710,7 @@ fun is_triv_wrt (NAbs (_, body)) = is_triv_wrt body
 fun str_of_nun_type_spec {abs_ty, rep_ty, wrt, abs, rep} =
   str_of_ty abs_ty ^ " " ^ nun_assign ^ " " ^ str_of_ty rep_ty ^
   (if is_triv_wrt wrt then "" else "\n  " ^ nun_wrt ^ " " ^ str_of_tm wrt) ^
-  "\n  " ^ nun_abstract ^ " " ^ str_of_tm abs ^ "\n  " ^ nun_concretize ^ " " ^ str_of_tm rep;
+  "\n  " ^ nun_abstract ^ " " ^ str_of_tm abs ^ "\n  " ^ nun_concrete ^ " " ^ str_of_tm rep;
 
 fun str_of_nun_ctr_spec {ctr, arg_tys} =
   str_of_tm ctr ^ str_of_nun_arg_list str_of_ty arg_tys;
