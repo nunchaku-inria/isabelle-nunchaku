@@ -32,6 +32,7 @@ Isabelle frontend:
     * generation of Isabelle theory encoding the counterexample
 
   * for paper: mention that these are standard (and hence also Henkin) models
+  * for paper: mention examples where we get "unsat" instead of unknown, e.g. set theory and "a \in b", "b \in a"
 
 
 Somewhere:
