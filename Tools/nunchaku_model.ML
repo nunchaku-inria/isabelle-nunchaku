@@ -213,7 +213,8 @@ val parse_witness_name =
 
 val parse_witness =
   parse_id nun__witness_of |-- parse_sym nun_lparen |-- (parse_id nun_forall || parse_id nun_exists)
-  |-- parse_witness_name --| Scan.repeat (Scan.one (curry (op <>) (Symbol nun_assign)));
+  |-- Scan.option (parse_sym nun_lparen) |-- parse_witness_name
+  --| Scan.repeat (Scan.one (curry (op <>) (Symbol nun_assign)));
 
 datatype entry =
   Type_Entry of ty_entry
