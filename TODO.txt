@@ -1,6 +1,7 @@
 Isabelle frontend:
 
   * handle "choice", "unique" (also parse model)
+  * parse anonymous functions
 
   * parse "bugs/prop_parse.nun"
 
