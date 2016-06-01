@@ -166,7 +166,7 @@ fun run_chaku_on_prop state
       let
         val outcome as (outcome_code, _) =
           let
-            val (poly_axioms, isa_problem) =
+            val (poly_axioms, isa_problem as {sound, complete, ...}) =
               isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals
                 (if assms then all_assms else []) subgoal;
             val _ = print_d (fn () => "*** Isabelle problem ***\n" ^
@@ -207,37 +207,47 @@ fun run_chaku_on_prop state
             val model_str = isa_model_opt
               #> pretty_of_isa_model_opt ctxt show_consts #> Pretty.string_of;
 
+            fun unknown () =
+              (print_n ("No " ^ das_wort_model ^ " can be found \<midarrow> the problem lies \
+                 \outside Nunchaku's fragment");
+               (unknownN, NONE));
+
+            fun unsat_or_unknown complete =
+              if complete then
+                (print_n ("No " ^ das_wort_model ^ " exists" ^
+                   (if falsify then " (the goal is a theorem)" else "")); (noneN, NONE))
+              else
+                unknown ();
+
             fun sat_or_maybe_sat sound output =
-              (case (null poly_axioms, none_true wfs) of
-                (true, true) =>
-                (print ((if sound then das_wort_Model else "Potential " ^ das_wort_model) ^ ":\n" ^
-                   model_str output); print_any_hints ();
-                 (genuineN, isa_model_opt output))
-              | (no_poly, no_wf) =>
-                let
-                  val ignorings = []
-                    |> not no_poly ? cons "polymorphic axioms"
-                    |> not no_wf ? cons "unchecked well-foundedness";
-                in
-                  (print ((if sound then das_wort_Model else "Potential " ^ das_wort_model) ^
-                     " (ignoring " ^ space_implode " and " ignorings ^ "):\n" ^ model_str output ^
-                     (if no_poly then
-                        ""
-                      else
-                        "\nIgnored axioms:\n" ^
-                        cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
-                   print_any_hints ();
-                   (quasi_genuineN, isa_model_opt output))
-                end);
+              let val header = if sound then das_wort_Model else "Potential " ^ das_wort_model in
+                (case (null poly_axioms, none_true wfs) of
+                  (true, true) =>
+                  (print (header ^ ":\n" ^
+                     model_str output); print_any_hints ();
+                   (genuineN, isa_model_opt output))
+                | (no_poly, no_wf) =>
+                  let
+                    val ignorings = []
+                      |> not no_poly ? cons "polymorphic axioms"
+                      |> not no_wf ? cons "unchecked well-foundedness";
+                  in
+                    (print (header ^ " (ignoring " ^ space_implode " and " ignorings ^ "):\n" ^
+                       model_str output ^
+                       (if no_poly then
+                          ""
+                        else
+                          "\nIgnored axioms:\n" ^
+                          cat_lines (map (prefix "  " o Syntax.string_of_term ctxt) poly_axioms)));
+                     print_any_hints ();
+                     (quasi_genuineN, isa_model_opt output))
+                  end)
+              end;
           in
             (case solve_nun_problem tool_params nice_nun_problem of
-              Unsat =>
-              (print_n ("No " ^ das_wort_model ^ " exists" ^
-                 (if falsify then " (the goal is a theorem)" else "")); (noneN, NONE))
-            | Sat (output, _) => sat_or_maybe_sat true output
-            | Unknown NONE =>
-              (print_n ("No " ^ das_wort_model ^ " can be found (but one might exist)");
-               (unknownN, NONE))
+              Unsat => unsat_or_unknown complete
+            | Sat (output, _) => sat_or_maybe_sat sound output
+            | Unknown NONE => unknown ()
             | Unknown (SOME (output, _)) => sat_or_maybe_sat false output
             | Timeout => (print_n "Time out"; (unknownN, NONE))
             | Nunchaku_Var_Not_Set =>
