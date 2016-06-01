@@ -26,6 +26,7 @@ sig
   val attach_typeS: term -> term
   val specialize_type: theory -> string * typ -> term -> term
   val typ_match: theory -> typ * typ -> bool
+  val term_match: theory -> term * term -> bool
   val const_match: theory -> (string * typ) * (string * typ) -> bool
   val DETERM_TIMEOUT: Time.time -> tactic -> tactic
   val spying: bool -> (unit -> Proof.state * int * string) -> unit
@@ -67,7 +68,8 @@ val attach_typeS =
 val specialize_type = ATP_Util.specialize_type;
 
 fun typ_match thy TU = can (Sign.typ_match thy TU) Vartab.empty;
-fun const_match thy xy = can (Pattern.match thy (apply2 Const xy)) (Vartab.empty, Vartab.empty);
+fun term_match thy tu = can (Pattern.match thy tu) (Vartab.empty, Vartab.empty);
+fun const_match thy = term_match thy o apply2 Const;
 
 val DETERM_TIMEOUT = Nitpick_Util.DETERM_TIMEOUT;
 

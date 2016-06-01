@@ -20,7 +20,7 @@ sig
 
   type scope_of_search_params =
     {wfs: ((string * typ) option * bool option) list,
-     whacks: ((string * typ) option * bool) list,
+     whacks: (term option * bool) list,
      cards: (typ option * (int option * int option)) list,
      monos: (typ option * bool option) list}
 
@@ -83,7 +83,7 @@ type mode_of_operation_params =
 
 type scope_of_search_params =
   {wfs: ((string * typ) option * bool option) list,
-   whacks: ((string * typ) option * bool) list,
+   whacks: (term option * bool) list,
    cards: (typ option * (int option * int option)) list,
    monos: (typ option * bool option) list};
 
@@ -165,7 +165,7 @@ fun run_chaku_on_prop state
         val outcome as (outcome_code, _) =
           let
             val (poly_axioms, isa_problem as {sound, complete, ...}) =
-              isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals
+              isa_problem_of_subgoal ctxt falsify wfs whacks cards debug wf_timeout evals
                 (if assms then all_assms else []) subgoal;
             val _ = print_d (fn () => "*** Isabelle problem ***\n" ^
               str_of_isa_problem ctxt isa_problem);

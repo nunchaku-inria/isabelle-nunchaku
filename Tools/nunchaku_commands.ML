@@ -158,10 +158,14 @@ fun extract_params ctxt mode default_params override_params =
       Syntax.read_term ctxt #> singleton (Variable.polymorphic ctxt);
     val lookup_term_list_option_polymorphic =
       AList.lookup (op =) raw_params #> Option.map (map read_term_polymorphic);
-    val read_const_polymorphic = read_term_polymorphic #> dest_Const;
+
+    fun read_const_polymorphic s =
+      (case read_term_polymorphic s of
+        Const x => x
+      | t => error ("Not a constant: " ^ Syntax.string_of_term ctxt t));
 
     val wfs = lookup_bool_option_assigns read_const_polymorphic "wf";
-    val whacks = lookup_bool_assigns read_const_polymorphic "whack";
+    val whacks = lookup_bool_assigns read_term_polymorphic "whack";
     val cards = lookup_int_range_assigns read_type_polymorphic "card";
     val monos = lookup_bool_option_assigns read_type_polymorphic "mono";
     val falsify = lookup_bool "falsify";

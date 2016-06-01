@@ -8,6 +8,9 @@ begin
 definition The_unsafe :: "('a \<Rightarrow> bool) \<Rightarrow> 'a" where
   "The_unsafe = The"
 
+definition unreachable :: 'a where
+  "unreachable = The_unsafe (\<lambda>_. False)"
+
 definition rmember :: "'a set \<Rightarrow> 'a \<Rightarrow> bool" where
   "rmember A x \<longleftrightarrow> x \<in> A"
 
@@ -22,6 +25,6 @@ ML_file "Tools/nunchaku_tool.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
-hide_const (open) The_unsafe rmember
+hide_const (open) The_unsafe unreachable rmember
 
 end

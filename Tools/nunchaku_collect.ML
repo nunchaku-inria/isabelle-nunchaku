@@ -54,8 +54,8 @@ sig
   exception UNSUPPORTED_FUNC of term
 
   val isa_problem_of_subgoal: Proof.context -> bool -> ((string * typ) option * bool option) list ->
-    (typ option * (int option * int option)) list -> bool -> Time.time -> term list -> term list ->
-    term -> term list * isa_problem
+    (term option * bool) list -> (typ option * (int option * int option)) list -> bool ->
+    Time.time -> term list -> term list -> term -> term list * isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -159,21 +159,38 @@ fun unfold_basic_def ctxt =
 
 val has_polymorphism = exists_type (exists_subtype is_TVar);
 
-fun preprocess_term_basic falsify ctxt t =
-  if has_polymorphism t then
-    raise UNEXPECTED_POLYMORPHISM t
-  else
-    t
-    |> attach_typeS
-    |> Object_Logic.atomize_term ctxt
-    |> tap (fn t' => fastype_of t' <> @{typ prop} orelse raise TOO_META t)
-    |> falsify ? HOLogic.mk_not
-    |> unfold_basic_def ctxt;
+fun whack_term thy whacks =
+  let
+    fun whk t =
+      if triple_lookup (term_match thy o swap) whacks t = SOME true then
+        Const (@{const_name unreachable}, fastype_of t)
+      else
+        (case t of
+          u $ v => whk u $ whk v
+        | Abs (s, T, u) => Abs (s, T, whk u)
+        | _ => t);
+  in
+    whk
+  end;
+
+fun preprocess_term_basic falsify ctxt whacks t =
+  let val thy = Proof_Context.theory_of ctxt in
+    if has_polymorphism t then
+      raise UNEXPECTED_POLYMORPHISM t
+    else
+      t
+      |> attach_typeS
+      |> whack_term thy whacks
+      |> Object_Logic.atomize_term ctxt
+      |> tap (fn t' => fastype_of t' <> @{typ prop} orelse raise TOO_META t)
+      |> falsify ? HOLogic.mk_not
+      |> unfold_basic_def ctxt
+  end;
 
 val check_closed = tap (fn t => null (Term.add_vars t []) orelse raise UNEXPECTED_VAR t);
 
-val preprocess_prop = close_form [] ooo preprocess_term_basic;
-val preprocess_closed_term = check_closed oo preprocess_term_basic false;
+val preprocess_prop = close_form [] oooo preprocess_term_basic;
+val preprocess_closed_term = check_closed ooo preprocess_term_basic false;
 
 val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 
@@ -751,12 +768,13 @@ fun is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout const intros =
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
 val axioms_max_depth = 255
 
-fun isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals0 some_assms0 subgoal0 =
+fun isa_problem_of_subgoal ctxt falsify wfs whacks cards debug wf_timeout evals0 some_assms0
+    subgoal0 =
   let
     val thy = Proof_Context.theory_of ctxt;
 
     fun card_of T =
-      (case triple_lookup (fn TU => can (Sign.typ_match thy (swap TU)) Vartab.empty) cards T of
+      (case triple_lookup (typ_match thy o swap) cards T of
         NONE => (NONE, NONE)
       | SOME (c1, c2) => (if c1 = SOME 1 then NONE else c1, c2));
 
@@ -781,7 +799,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals0 some_a
 
           val supers = Sign.complete_sort thy S;
           val axioms0 = maps (map Thm.prop_of o axioms_of_class) supers;
-          val axioms = map (preprocess_prop false ctxt o monomorphize_class_axiom T) axioms0;
+          val axioms = map (preprocess_prop false ctxt whacks o monomorphize_class_axiom T) axioms0;
         in
           (seens, map IAxiom axioms @ problem)
           |> fold (consider_term (depth + 1)) axioms
@@ -869,12 +887,12 @@ fun isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals0 some_a
                    (case spec_rules_of ctxt x of
                      SOME (classif, consts, props0, poly_props) =>
                      let
-                       val props = map (preprocess_prop false ctxt) props0;
+                       val props = map (preprocess_prop false ctxt whacks) props0;
 
                        fun def_or_spec () =
                          (case definition_of thy x of
                            SOME eq0 =>
-                           let val eq = preprocess_prop false ctxt eq0 in
+                           let val eq = preprocess_prop false ctxt whacks eq0 in
                              ([eq], [IRec [{const = t, props = [eq]}]])
                            end
                          | NONE => (props, [ISpec {consts = consts, props = props}]));
@@ -914,7 +932,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals0 some_a
                    | NONE =>
                      (case definition_of thy x of
                        SOME eq0 =>
-                       let val eq = preprocess_prop false ctxt eq0 in
+                       let val eq = preprocess_prop false ctxt whacks eq0 in
                          (seens, IRec [{const = t, props = [eq]}] :: problem)
                          |> consider_term (depth + 1) eq
                        end
@@ -942,10 +960,11 @@ fun isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals0 some_a
       | implicit_evals_of true (Const (@{const_name HOL.eq}, _) $ t $ _) = [t]
       | implicit_evals_of _ _ = [];
 
-    val mono_axioms_and_some_assms = map (preprocess_prop false ctxt) (mono_axioms0 @ some_assms0);
-    val subgoal = preprocess_prop falsify ctxt subgoal0;
+    val mono_axioms_and_some_assms =
+      map (preprocess_prop false ctxt whacks) (mono_axioms0 @ some_assms0);
+    val subgoal = preprocess_prop falsify ctxt whacks subgoal0;
     val implicit_evals = implicit_evals_of true subgoal;
-    val evals = map (preprocess_closed_term ctxt) evals0;
+    val evals = map (preprocess_closed_term ctxt whacks) evals0;
     val seens = ([], [], []);
 
     val (commandss, complete) =
