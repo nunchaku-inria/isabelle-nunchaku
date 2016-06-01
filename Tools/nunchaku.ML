@@ -30,8 +30,7 @@ sig
      max_potential: int,
      max_genuine: int,
      evals: term list,
-     atomss: (typ option * string list) list,
-     formats: (term option * int list) list}
+     atomss: (typ option * string list) list}
 
   type optimization_params =
     {specialize: bool,
@@ -94,8 +93,7 @@ type output_format_params =
    max_potential: int,
    max_genuine: int,
    evals: term list,
-   atomss: (typ option * string list) list,
-   formats: (term option * int list) list};
+   atomss: (typ option * string list) list};
 
 type optimization_params =
   {specialize: bool,

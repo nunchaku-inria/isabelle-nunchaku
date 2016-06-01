@@ -388,7 +388,7 @@ fun domain_tys 0 _ = []
 fun ty_of (NAtom (_, ty)) = ty
   | ty_of (NConst (_, _, ty)) = ty
   | ty_of (NAbs (var, body)) = NType (nun_arrow, [ty_of var, ty_of body])
-  | ty_of (NMatch (obj, (_, _, body1) :: _)) = ty_of body1
+  | ty_of (NMatch (_, (_, _, body1) :: _)) = ty_of body1
   | ty_of (NApp (const, _)) = range_ty (ty_of const);
 
 val safe_ty_of = try ty_of #> the_default nun_dummy_ty;
@@ -707,9 +707,8 @@ fun nice_nun_problem problem =
   fold_map_nun_problem_idents nice_ident problem empty_name_pool;
 
 fun str_of_tval (NType (id, tys)) =
-    str_of_ident id ^ " " ^ nun_colon ^ " " ^
-    fold (K (prefix (nun_type ^ " " ^ nun_arrow ^ " "))) tys nun_type
-  | str_of_tval _ = raise Fail "non-NType";
+  str_of_ident id ^ " " ^ nun_colon ^ " " ^
+  fold (K (prefix (nun_type ^ " " ^ nun_arrow ^ " "))) tys nun_type;
 
 fun is_triv_wrt (NAbs (_, body)) = is_triv_wrt body
   | is_triv_wrt (NConst (id, _, _)) = (id = nun_true)
@@ -734,9 +733,6 @@ fun str_of_nun_const_spec {const, props} =
 fun str_of_nun_consts_spec {consts, props} =
   space_implode (" " ^ nun_and ^ "\n     ") (map str_of_tmty consts) ^ " " ^ nun_assign ^ "\n  " ^
   space_implode (nun_semicolon ^ "\n  ") (map str_of_tm props);
-
-fun str_of_nun_card NONE = ""
-  | str_of_nun_card (SOME k) = signed_string_of_int k;
 
 fun str_of_nun_cards_suffix (NONE, NONE) = ""
   | str_of_nun_cards_suffix (c1, c2) =

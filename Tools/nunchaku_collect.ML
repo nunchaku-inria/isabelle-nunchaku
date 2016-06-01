@@ -939,7 +939,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals0 some_a
         union (op aconv) (implicit_evals_of pol t) (implicit_evals_of pol u)
       | implicit_evals_of false (Const (@{const_name HOL.eq}, _) $ t $ u) =
         distinct (op aconv) [t, u]
-      | implicit_evals_of true (Const (@{const_name HOL.eq}, _) $ t $ u) = [t]
+      | implicit_evals_of true (Const (@{const_name HOL.eq}, _) $ t $ _) = [t]
       | implicit_evals_of _ _ = [];
 
     val mono_axioms_and_some_assms = map (preprocess_prop false ctxt) (mono_axioms0 @ some_assms0);

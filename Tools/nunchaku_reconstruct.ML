@@ -106,7 +106,7 @@ fun term_of_nun ctxt atomss =
         else one_letter_of (base_of_typ T) ^ nat_subscript (j + 1)
       end;
 
-    fun term_of bounds (NAtom (j, ty)) =
+    fun term_of _ (NAtom (j, ty)) =
         let val T = typ_of ty in Var ((nth_atom T j, 0), T) end
       | term_of bounds (NConst (id, tys0, ty)) =
         if id = nun_conj then
@@ -162,7 +162,7 @@ fun term_of_nun ctxt atomss =
           Abs (one_letter_of (base_of_typ T), T, term_of (var :: bounds) body)
         end
       | term_of bounds (NApp (func, arg)) = term_of bounds func $ term_of bounds arg
-      | term_of bounds (NMatch _) = raise Fail "unexpected match";
+      | term_of _ (NMatch _) = raise Fail "unexpected match";
   in
     term_of []
   end;

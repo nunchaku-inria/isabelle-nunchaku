@@ -24,7 +24,6 @@ val default_default_params =
   [("assms", "true"),
    ("debug", "false"),
    ("falsify", "true"),
-   ("format", "1"),
    ("max_genuine", "1"),
    ("max_potential", "1"),
    ("mono", "smart"),
@@ -54,7 +53,7 @@ fun is_known_raw_param s =
   AList.defined (op =) negated_params s orelse
   member (op =) ["atoms", "card", "eval", "expect"] s orelse
   exists (fn p => String.isPrefix (p ^ " ") s)
-    ["atoms", "card", "format", "mono", "non_mono", "non_wf", "wf", "whack"];
+    ["atoms", "card", "mono", "non_mono", "non_wf", "wf", "whack"];
 
 fun check_raw_param (s, _) =
   if is_known_raw_param s then () else error ("Unknown parameter: " ^ quote s);
@@ -121,10 +120,6 @@ fun extract_params ctxt mode default_params override_params =
         | NONE => error ("Parameter " ^ quote name ^ " must be assigned an integer value"))
       | NONE => 0);
 
-    fun ints_from_string name s =
-      space_explode "," s
-      |> map_filter Int.fromString;
-
     fun int_range_from_string name s =
       (case space_explode "-" s of
          [s] => (s, s)
@@ -139,9 +134,6 @@ fun extract_params ctxt mode default_params override_params =
       map (fn (name, value) => (SOME (read (String.extract (name, size pre + 1, NONE))),
           of_str (stringify_raw_param_value value)))
         (filter (String.isPrefix (pre ^ " ") o fst) raw_params);
-
-    fun lookup_ints_assigns read pre =
-      lookup_assigns read pre (ints_from_string pre);
 
     fun lookup_int_range_assigns read pre =
       lookup_assigns read pre (int_range_from_string pre);
@@ -182,7 +174,6 @@ fun extract_params ctxt mode default_params override_params =
     val multithread = mode = Normal andalso lookup_bool "multithread";
     val show_consts = if debug then SOME true else lookup_bool_option "show_consts";
     val evals = these (lookup_term_list_option_polymorphic "eval");
-    val formats = lookup_ints_assigns read_term_polymorphic "format";
     val atomss = lookup_strings_assigns read_type_polymorphic "atoms";
     val max_potential = if mode = Normal then Int.max (0, lookup_int "max_potential") else 0;
     val max_genuine = Int.max (0, lookup_int "max_genuine");
@@ -197,7 +188,7 @@ fun extract_params ctxt mode default_params override_params =
 
     val output_format_params =
       {verbose = verbose, debug = debug, show_consts = show_consts, max_potential = max_potential,
-       max_genuine = max_genuine, evals = evals, atomss = atomss, formats = formats};
+       max_genuine = max_genuine, evals = evals, atomss = atomss};
 
     val optimization_params =
       {specialize = specialize, whacks = whacks, multithread = multithread};
