@@ -234,7 +234,7 @@ fun run_chaku_on_prop state
                  (if falsify then " (the goal is a theorem)" else "")); (noneN, NONE))
             | Sat (output, _) => sat_or_maybe_sat true output
             | Unknown NONE =>
-              (print_n ("No " ^ das_wort_model ^ " can be found (but one might still exist)");
+              (print_n ("No " ^ das_wort_model ^ " can be found (but one might exist)");
                (unknownN, NONE))
             | Unknown (SOME (output, _)) => sat_or_maybe_sat false output
             | Timeout => (print_n "Time out"; (unknownN, NONE))

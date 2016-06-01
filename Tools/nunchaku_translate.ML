@@ -99,11 +99,14 @@ fun tm_of_isa ctxt t =
               | @{const_name conj} => nun_conj
               | @{const_name disj} => nun_disj
               | @{const_name HOL.eq} => nun_equals
+              | @{const_name Eps} => nun_choice
               | @{const_name Ex} => nun_exists
               | @{const_name False} => nun_false
               | @{const_name If} => nun_if
               | @{const_name implies} => nun_implies
               | @{const_name Not} => nun_not
+              | @{const_name The} => nun_unique
+              | @{const_name The_unsafe} => nun_unique_unsafe
               | @{const_name True} => nun_true
               | _ => id_of_const x);
           in

@@ -177,9 +177,10 @@ val preprocess_closed_term = check_closed oo preprocess_term_basic false;
 val is_type_builtin = member (op =) [@{type_name bool}, @{type_name fun}];
 
 val is_const_builtin =
-  member (op =) [@{const_name All}, @{const_name conj}, @{const_name disj}, @{const_name HOL.eq},
-    @{const_name Ex}, @{const_name False}, @{const_name If}, @{const_name implies},
-    @{const_name Not}, @{const_name True}];
+  member (op =) [@{const_name All}, @{const_name conj}, @{const_name disj}, @{const_name Eps},
+    @{const_name HOL.eq}, @{const_name Ex}, @{const_name False}, @{const_name If},
+    @{const_name implies}, @{const_name Not}, @{const_name The}, @{const_name The_unsafe},
+    @{const_name True}];
 
 datatype type_classification = Builtin | TVal | Copy | Quotient | Co_Datatype;
 

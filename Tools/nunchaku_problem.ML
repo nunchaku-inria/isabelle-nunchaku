@@ -75,6 +75,7 @@ sig
   val nun_atom: string
   val nun_axiom: string
   val nun_bar: string
+  val nun_choice: string
   val nun_codata: string
   val nun_colon: string
   val nun_comma: string
@@ -118,6 +119,8 @@ sig
   val nun_true: string
   val nun_type: string
   val nun_unparsable: string
+  val nun_unique: string
+  val nun_unique_unsafe: string
   val nun_val: string
   val nun_wf: string
   val nun_with: string
@@ -239,6 +242,7 @@ val nun_at = "@";
 val nun_atom = "$";
 val nun_axiom = "axiom";
 val nun_bar = "|";
+val nun_choice = "choice";
 val nun_codata = "codata";
 val nun_colon = ":";
 val nun_comma = ",";
@@ -281,6 +285,8 @@ val nun_spec = "spec";
 val nun_then = "then";
 val nun_true = "true";
 val nun_type = "type";
+val nun_unique = "unique";
+val nun_unique_unsafe = "unique_unsafe";
 val nun_unparsable = "?__unparsable";
 val nun_val = "val";
 val nun_wf = "wf";
