@@ -26,18 +26,17 @@ val default_default_params =
    ("falsify", "true"),
    ("max_genuine", "1"),
    ("max_potential", "1"),
-   ("mono", "smart"),
    ("overlord", "false"),
    ("show_consts", "smart"),
    ("specialize", "true"),
    ("spy", "false"),
    ("timeout", "30"),
    ("verbose", "false"),
-   ("wf", "smart"),
    ("wf_timeout", "0.5")];
 
 val negated_params =
-  [("dont_specialize", "specialize"),
+  [("dont_whack", "whack"),
+   ("dont_specialize", "specialize"),
    ("dont_spy", "spy"),
    ("hide_consts", "show_consts"),
    ("no_assms", "assms"),
@@ -53,7 +52,7 @@ fun is_known_raw_param s =
   AList.defined (op =) negated_params s orelse
   member (op =) ["atoms", "card", "eval", "expect"] s orelse
   exists (fn p => String.isPrefix (p ^ " ") s)
-    ["atoms", "card", "mono", "non_mono", "non_wf", "wf", "whack"];
+    ["atoms", "card", "dont_whack", "mono", "non_mono", "non_wf", "wf", "whack"];
 
 fun check_raw_param (s, _) =
   if is_known_raw_param s then () else error ("Unknown parameter: " ^ quote s);
@@ -138,6 +137,9 @@ fun extract_params ctxt mode default_params override_params =
     fun lookup_int_range_assigns read pre =
       lookup_assigns read pre (int_range_from_string pre);
 
+    fun lookup_bool_assigns read pre =
+      lookup_assigns read pre (the o parse_bool_option false pre);
+
     fun lookup_bool_option_assigns read pre =
       lookup_assigns read pre (parse_bool_option true pre);
 
@@ -158,16 +160,16 @@ fun extract_params ctxt mode default_params override_params =
       AList.lookup (op =) raw_params #> Option.map (map read_term_polymorphic);
     val read_const_polymorphic = read_term_polymorphic #> dest_Const;
 
+    val wfs = lookup_bool_option_assigns read_const_polymorphic "wf";
+    val whacks = lookup_bool_assigns read_const_polymorphic "whack";
     val cards = lookup_int_range_assigns read_type_polymorphic "card";
     val monos = lookup_bool_option_assigns read_type_polymorphic "mono";
-    val wfs = lookup_bool_option_assigns read_const_polymorphic "wf";
     val falsify = lookup_bool "falsify";
     val debug = (mode <> Auto_Try andalso lookup_bool "debug");
     val verbose = debug orelse (mode <> Auto_Try andalso lookup_bool "verbose");
     val overlord = lookup_bool "overlord";
     val spy = getenv "NUNCHAKU_SPY" = "yes" orelse lookup_bool "spy";
     val assms = lookup_bool "assms";
-    val whacks = lookup_term_list_option_polymorphic "whack" |> these;
     val specialize = lookup_bool "specialize";
     val timeout = lookup_time "timeout";
     val wf_timeout = lookup_time "wf_timeout";
@@ -184,14 +186,14 @@ fun extract_params ctxt mode default_params override_params =
        expect = expect};
 
     val scope_of_search_params =
-      {wfs = wfs, cards = cards, monos = monos};
+      {wfs = wfs, whacks = whacks, cards = cards, monos = monos};
 
     val output_format_params =
       {verbose = verbose, debug = debug, show_consts = show_consts, max_potential = max_potential,
        max_genuine = max_genuine, evals = evals, atomss = atomss};
 
     val optimization_params =
-      {specialize = specialize, whacks = whacks, multithread = multithread};
+      {specialize = specialize, multithread = multithread};
 
     val timeout_params =
       {timeout = timeout, wf_timeout = wf_timeout};

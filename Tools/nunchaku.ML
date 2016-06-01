@@ -20,6 +20,7 @@ sig
 
   type scope_of_search_params =
     {wfs: ((string * typ) option * bool option) list,
+     whacks: ((string * typ) option * bool) list,
      cards: (typ option * (int option * int option)) list,
      monos: (typ option * bool option) list}
 
@@ -34,7 +35,6 @@ sig
 
   type optimization_params =
     {specialize: bool,
-     whacks: term list,
      multithread: bool}
 
   type timeout_params =
@@ -83,6 +83,7 @@ type mode_of_operation_params =
 
 type scope_of_search_params =
   {wfs: ((string * typ) option * bool option) list,
+   whacks: ((string * typ) option * bool) list,
    cards: (typ option * (int option * int option)) list,
    monos: (typ option * bool option) list};
 
@@ -97,7 +98,6 @@ type output_format_params =
 
 type optimization_params =
   {specialize: bool,
-   whacks: term list,
    multithread: bool};
 
 type timeout_params =
@@ -141,7 +141,7 @@ val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state
     ({mode_of_operation_params = {falsify, assms, spy, overlord, expect},
-      scope_of_search_params = {wfs, cards, ...},
+      scope_of_search_params = {wfs, whacks, cards, monos},
       output_format_params = {verbose, debug, show_consts, evals, atomss, ...},
       timeout_params = {timeout, wf_timeout}, ...})
     mode i all_assms subgoal =
@@ -205,6 +205,9 @@ fun run_chaku_on_prop state
             val model_str = isa_model_opt
               #> pretty_of_isa_model_opt ctxt show_consts #> Pretty.string_of;
 
+            fun unsat_means_theorem () =
+              null whacks andalso null cards andalso null monos;
+
             fun unknown () =
               (print_n ("No " ^ das_wort_model ^ " can be found \<midarrow> the problem lies \
                  \outside Nunchaku's fragment");
@@ -213,8 +216,10 @@ fun run_chaku_on_prop state
             fun unsat_or_unknown complete =
               if complete then
                 (print_n ("No " ^ das_wort_model ^ " exists" ^
-                   (if falsify andalso null cards then " \<midarrow> the goal is a theorem"
-                    else ""));
+                   (if falsify andalso unsat_means_theorem () then
+                      " \<midarrow> the goal is a theorem"
+                    else
+                      ""));
                  (noneN, NONE))
               else
                 unknown ();
