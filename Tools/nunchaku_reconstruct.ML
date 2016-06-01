@@ -67,7 +67,7 @@ fun typ_of_nun ctxt =
           dummyT
         else if id = nun_prop then
           @{typ bool}
-        else if id = nun_lambda then
+        else if id = nun_arrow then
           Type (@{type_name fun}, Ts)
         else
           (case try str_of_nun_tconst id of
@@ -113,6 +113,8 @@ fun term_of_nun ctxt atomss =
           HOLogic.conj
         else if id = nun_disj then
           HOLogic.disj
+        else if id = nun_choice then
+          Const (@{const_name Eps}, typ_of ty)
         else if id = nun_equals then
           Const (@{const_name HOL.eq}, typ_of ty)
         else if id = nun_false then
@@ -121,6 +123,10 @@ fun term_of_nun ctxt atomss =
           Const (@{const_name If}, typ_of ty)
         else if id = nun_implies then
           @{term implies}
+        else if id = nun_unique then
+          Const (@{const_name The}, typ_of ty)
+        else if id = nun_unique_unsafe then
+          Const (@{const_name The_unsafe}, typ_of ty)
         else if id = nun_true then
           @{const True}
         else if String.isPrefix nun_anon_fun_prefix id then
