@@ -68,6 +68,7 @@ sig
 
   val nun_abstract: string
   val nun_and: string
+  val nun_anon_fun_prefix: string
   val nun_arrow: string
   val nun_assign: string
   val nun_at: string
@@ -231,6 +232,7 @@ type name_pool =
 
 val nun_abstract = "abstract";
 val nun_and = "and";
+val nun_anon_fun_prefix = "anon_fun_";
 val nun_arrow = "->";
 val nun_assign = ":=";
 val nun_at = "@";
@@ -336,7 +338,7 @@ fun decode_args s =
       | dec 0 (#"(" :: cs) [] = dec 1 cs [[]]
       | dec 0 _ _ = raise Fail ("ill-formed arguments in " ^ quote s)
       | dec 1 (#")" :: cs) args = (rev (map (String.implode o rev) args), String.implode cs)
-      | dec n (#"," :: cs) args = dec n cs ([] :: args)
+      | dec 1 (#"," :: cs) args = dec 1 cs ([] :: args)
       | dec n (c :: cs) (arg :: args) = dec (n + delta c) cs ((c :: arg) :: args);
   in
     dec 0 (String.explode s) []

@@ -40,6 +40,10 @@ type isa_model =
    const_model: term_entry list,
    skolem_model: term_entry list};
 
+val anonymousN = "anonymous";
+val irrelevantN = "irrelevant";
+val unparsableN = "unparsable";
+
 fun id_of_const (NConst (id, _, _)) = id
   | id_of_const _ = nun_dummy;
 
@@ -119,11 +123,17 @@ fun term_of_nun ctxt atomss =
           @{term implies}
         else if id = nun_true then
           @{const True}
+        else if String.isPrefix nun_anon_fun_prefix id then
+          let val j = Int.fromString (unprefix nun_anon_fun_prefix id) |> the_default ~1 in
+            Var ((anonymousN ^ nat_subscript (j + 1), 0), typ_of ty)
+          end
         else if id = nun_irrelevant then
-          list_comb (Var (("irrelevant", 0), map (typ_of o safe_ty_of) bounds ---> typ_of ty),
+          (* FIXME: get bounds from Nunchaku *)
+          list_comb (Var ((irrelevantN, 0), map (typ_of o safe_ty_of) bounds ---> typ_of ty),
             map Bound (length bounds - 1 downto 0))
         else if id = nun_unparsable then
-          list_comb (Var (("unparsable", 0), typ_of ty), map Bound (length bounds - 1 downto 0))
+          (* FIXME: get bounds from Nunchaku *)
+          list_comb (Var ((unparsableN, 0), typ_of ty), map Bound (length bounds - 1 downto 0))
         else
           (case try str_of_nun_const id of
             SOME (args, s) =>
