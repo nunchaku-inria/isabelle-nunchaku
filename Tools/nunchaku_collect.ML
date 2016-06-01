@@ -756,12 +756,9 @@ fun isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals0 some_a
     val thy = Proof_Context.theory_of ctxt;
 
     fun card_of T =
-      let
-        val SOME (c1, c2) =
-          triple_lookup (fn TU => can (Sign.typ_match thy (swap TU)) Vartab.empty) cards T;
-      in
-        (if c1 = SOME 1 then NONE else c1, c2)
-      end;
+      (case triple_lookup (fn TU => can (Sign.typ_match thy (swap TU)) Vartab.empty) cards T of
+        NONE => (NONE, NONE)
+      | SOME (c1, c2) => (if c1 = SOME 1 then NONE else c1, c2));
 
     fun axioms_of_class class =
       #axioms (Axclass.get_info thy class)

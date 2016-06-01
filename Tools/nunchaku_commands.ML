@@ -22,7 +22,6 @@ type raw_param = string * string list;
 
 val default_default_params =
   [("assms", "true"),
-   ("card", "1-"),
    ("debug", "false"),
    ("falsify", "true"),
    ("format", "1"),
@@ -53,9 +52,9 @@ val negated_params =
 fun is_known_raw_param s =
   AList.defined (op =) default_default_params s orelse
   AList.defined (op =) negated_params s orelse
-  member (op =) ["whack", "eval", "need", "atoms", "expect"] s orelse
+  member (op =) ["atoms", "card", "eval", "expect"] s orelse
   exists (fn p => String.isPrefix (p ^ " ") s)
-    ["card", "mono", "non_mono", "wf", "non_wf", "format", "atoms"];
+    ["atoms", "card", "format", "mono", "non_mono", "non_wf", "wf", "whack"];
 
 fun check_raw_param (s, _) =
   if is_known_raw_param s then () else error ("Unknown parameter: " ^ quote s);

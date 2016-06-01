@@ -215,7 +215,9 @@ fun run_chaku_on_prop state
             fun unsat_or_unknown complete =
               if complete then
                 (print_n ("No " ^ das_wort_model ^ " exists" ^
-                   (if falsify then " (the goal is a theorem)" else "")); (noneN, NONE))
+                   (if falsify andalso null cards then " \<midarrow> the goal is a theorem"
+                    else ""));
+                 (noneN, NONE))
               else
                 unknown ();
 
