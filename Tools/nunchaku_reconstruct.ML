@@ -44,8 +44,8 @@ val anonymousN = "anonymous";
 val irrelevantN = "irrelevant";
 val unparsableN = "unparsable";
 
-fun id_of_const (NConst (id, _, _)) = id
-  | id_of_const _ = nun_dummy;
+fun ident_of_const (NConst (id, _, _)) = id
+  | ident_of_const _ = nun_dummy;
 
 fun str_of_typ_entry ctxt (T, ts) =
   "type " ^ Syntax.string_of_typ ctxt T  ^
@@ -154,8 +154,8 @@ fun term_of_nun ctxt atomss =
               (case try str_of_nun_var id of
                 SOME s => Var ((s, 0), typ_of ty)
               | NONE =>
-                (case find_index (fn bound => id_of_const bound = id) bounds of
-                  ~1 => raise Fail ("unknown constant: " ^ quote (str_of_ident id))
+                (case find_index (fn bound => ident_of_const bound = id) bounds of
+                  ~1 => Var ((str_of_ident id, 0), typ_of ty) (* shouldn't happen? *)
                 | j => Bound j))))
       | term_of bounds (NAbs (var, body)) =
         let val T = typ_of (safe_ty_of var) in
