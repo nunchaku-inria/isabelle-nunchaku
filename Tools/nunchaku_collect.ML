@@ -653,6 +653,14 @@ fun partition_props [_] props = SOME [props]
       else NONE
     end;
 
+fun strip_imp_concl (Const (@{const_name HOL.implies}, _) $ _ $ t) = strip_imp_concl t
+  | strip_imp_concl t = t;
+
+fun is_inductive_set_intro t =
+  (case strip_imp_concl t of
+    Const (@{const_name rmember}, _) $ _ $ _ => true
+  | _ => false);
+
 exception NO_TRIPLE of unit;
 
 fun triple_for_intro_rule ctxt x rule =
@@ -874,17 +882,20 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
                            | NONE => def_or_spec ())
                          else if member (op =) [Spec_Rules.Inductive, Spec_Rules.Co_Inductive]
                              classif then
-                           (case partition_props consts props of
-                             SOME propss =>
-                             (props,
-                              [ICoPred (if classif = Spec_Rules.Inductive then BNF_Util.Least_FP
-                                 else BNF_Util.Greatest_FP,
-                               length consts = 1 andalso
-                               is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout
-                                 (the_single consts) poly_props,
-                               map2 (fn const => fn props => {const = const, props = props})
-                                 consts propss)])
-                           | NONE => def_or_spec ())
+                           if is_inductive_set_intro (hd props) then
+                             def_or_spec ()
+                           else
+                             (case partition_props consts props of
+                               SOME propss =>
+                               (props,
+                                [ICoPred (if classif = Spec_Rules.Inductive then BNF_Util.Least_FP
+                                   else BNF_Util.Greatest_FP,
+                                 length consts = 1 andalso
+                                 is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout
+                                   (the_single consts) poly_props,
+                                 map2 (fn const => fn props => {const = const, props = props})
+                                   consts propss)])
+                             | NONE => def_or_spec ())
                          else
                            def_or_spec ();
                      in
