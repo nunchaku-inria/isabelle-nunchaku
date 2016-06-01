@@ -150,7 +150,7 @@ fun nun_problem_of_isa ctxt {commandss, sound, complete} =
   let
     fun cmd_of cmd =
       (case cmd of
-        ITVal T => NTVal (ty_of_isa T)
+        ITVal (T, cards) => NTVal (ty_of_isa T, cards)
       | ICopy spec => NCopy (nun_type_spec_of_isa ctxt spec)
       | IQuotient spec => NQuotient (nun_type_spec_of_isa ctxt spec)
       | ICoData (fp, specs) =>

@@ -43,7 +43,7 @@ sig
      props: tm list}
 
   datatype nun_command =
-    NTVal of ty
+    NTVal of ty * (int option * int option)
   | NCopy of nun_type_spec
   | NQuotient of nun_type_spec
   | NData of nun_co_data_spec list
@@ -210,7 +210,7 @@ type nun_consts_spec =
    props: tm list};
 
 datatype nun_command =
-  NTVal of ty
+  NTVal of ty * (int option * int option)
 | NCopy of nun_type_spec
 | NQuotient of nun_type_spec
 | NData of nun_co_data_spec list
@@ -461,9 +461,9 @@ fun fold_map_nun_consts_spec_idents f {consts, props} =
   ##>> fold_map (fold_map_tm_idents f) props
   #>> (fn (consts, props) => {consts = consts, props = props});
 
-fun fold_map_nun_command_idents f (NTVal ty) =
+fun fold_map_nun_command_idents f (NTVal (ty, cards)) =
     fold_map_ty_idents f ty
-    #>> NTVal
+    #>> (rpair cards #> NTVal)
   | fold_map_nun_command_idents f (NCopy spec) =
     fold_map_nun_type_spec_idents f spec
     #>> NCopy
@@ -735,7 +735,20 @@ fun str_of_nun_consts_spec {consts, props} =
   space_implode (" " ^ nun_and ^ "\n     ") (map str_of_tmty consts) ^ " " ^ nun_assign ^ "\n  " ^
   space_implode (nun_semicolon ^ "\n  ") (map str_of_tm props);
 
-fun str_of_nun_command (NTVal ty) = nun_val ^ " " ^ str_of_tval ty
+fun str_of_nun_card NONE = ""
+  | str_of_nun_card (SOME k) = signed_string_of_int k;
+
+fun str_of_nun_cards_suffix (NONE, NONE) = ""
+  | str_of_nun_cards_suffix (c1, c2) =
+    let
+      val s1 = Option.map (prefix "min_card " o signed_string_of_int) c1;
+      val s2 = Option.map (prefix "max_card " o signed_string_of_int) c2;
+    in
+      enclose " [" "]" (space_implode ", " (map_filter I [s1, s2]))
+    end;
+
+fun str_of_nun_command (NTVal (ty, cards)) =
+    nun_val ^ " " ^ str_of_tval ty ^ str_of_nun_cards_suffix cards
   | str_of_nun_command (NCopy spec) = nun_copy ^ " " ^ str_of_nun_type_spec spec
   | str_of_nun_command (NQuotient spec) = nun_quotient ^ " " ^ str_of_nun_type_spec spec
   | str_of_nun_command (NData specs) =

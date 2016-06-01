@@ -29,7 +29,7 @@ sig
      props: term list}
 
   datatype isa_command =
-    ITVal of typ
+    ITVal of typ * (int option * int option)
   | ICopy of isa_type_spec
   | IQuotient of isa_type_spec
   | ICoData of BNF_Util.fp_kind * isa_co_data_spec list
@@ -54,7 +54,8 @@ sig
   exception UNSUPPORTED_FUNC of term
 
   val isa_problem_of_subgoal: Proof.context -> bool -> ((string * typ) option * bool option) list ->
-    bool -> Time.time -> term list -> term list -> term -> term list * isa_problem
+    (typ option * (int option * int option)) list -> bool -> Time.time -> term list -> term list ->
+    term -> term list * isa_problem
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -83,7 +84,7 @@ type isa_consts_spec =
    props: term list};
 
 datatype isa_command =
-  ITVal of typ
+  ITVal of typ * (int option * int option)
 | ICopy of isa_type_spec
 | IQuotient of isa_type_spec
 | ICoData of BNF_Util.fp_kind * isa_co_data_spec list
@@ -511,7 +512,7 @@ val orphan_axioms_of =
   #> filter_out (is_builtin_theory o Thm.theory_id_of_thm)
   #> map Thm.prop_of;
 
-fun keys_of _ (ITVal T) = [key_of_typ T]
+fun keys_of _ (ITVal (T, _)) = [key_of_typ T]
   | keys_of _ (ICopy {abs_typ, ...}) = [key_of_typ abs_typ]
   | keys_of _ (IQuotient {abs_typ, ...}) = [key_of_typ abs_typ]
   | keys_of _ (ICoData (_, specs)) = map (key_of_typ o #typ) specs
@@ -750,9 +751,17 @@ fun is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout const intros =
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
 val axioms_max_depth = 255
 
-fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 subgoal0 =
+fun isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals0 some_assms0 subgoal0 =
   let
     val thy = Proof_Context.theory_of ctxt;
+
+    fun card_of T =
+      let
+        val SOME (c1, c2) =
+          triple_lookup (fn TU => can (Sign.typ_match thy (swap TU)) Vartab.empty) cards T;
+      in
+        (if c1 = SOME 1 then NONE else c1, c2)
+      end;
 
     fun axioms_of_class class =
       #axioms (Axclass.get_info thy class)
@@ -813,7 +822,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
           (seens, problem)
           |> (case T of
                TFree (_, S) =>
-               apsnd (cons (ITVal T))
+               apsnd (cons (ITVal (T, card_of T)))
                #> consider_sort depth T S
              | TVar (_, S) => consider_sort depth T S
              | Type (s, Ts) =>
@@ -830,7 +839,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals0 some_assms0 
                     end
                   | Quotient => consider_quotient_or_copy quotient_of s
                   | Copy => consider_quotient_or_copy copy_of s
-                  | TVal => apsnd (cons (ITVal T))))
+                  | TVal => apsnd (cons (ITVal (T, card_of T)))))
         end
     and consider_term depth t =
       (case t of
@@ -979,7 +988,14 @@ fun str_of_isa_consts_spec ctxt {consts, props} =
   space_implode " and\n     " (map (str_of_isa_term_with_type ctxt) consts) ^ " :=\n  " ^
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
-fun str_of_isa_command ctxt (ITVal T) = "type " ^ Syntax.string_of_typ ctxt T
+fun str_of_isa_card NONE = ""
+  | str_of_isa_card (SOME k) = signed_string_of_int k;
+
+fun str_of_isa_cards_suffix (NONE, NONE) = ""
+  | str_of_isa_cards_suffix (c1, c2) = " " ^ str_of_isa_card c1 ^ "-" ^ str_of_isa_card c2;
+
+fun str_of_isa_command ctxt (ITVal (T, cards)) =
+    "type " ^ Syntax.string_of_typ ctxt T ^ str_of_isa_cards_suffix cards
   | str_of_isa_command ctxt (ICopy spec) = "copy " ^ str_of_isa_type_spec ctxt spec
   | str_of_isa_command ctxt (IQuotient spec) = "quotient " ^ str_of_isa_type_spec ctxt spec
   | str_of_isa_command ctxt (ICoData (fp, specs)) =

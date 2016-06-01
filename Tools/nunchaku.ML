@@ -143,7 +143,7 @@ val timeout_slack = seconds 1.0;
 
 fun run_chaku_on_prop state
     ({mode_of_operation_params = {falsify, assms, spy, overlord, expect},
-      scope_of_search_params = {wfs, ...},
+      scope_of_search_params = {wfs, cards, ...},
       output_format_params = {verbose, debug, show_consts, evals, atomss, ...},
       timeout_params = {timeout, wf_timeout}, ...})
     mode i all_assms subgoal =
@@ -167,7 +167,7 @@ fun run_chaku_on_prop state
         val outcome as (outcome_code, _) =
           let
             val (poly_axioms, isa_problem) =
-              isa_problem_of_subgoal ctxt falsify wfs debug wf_timeout evals
+              isa_problem_of_subgoal ctxt falsify wfs cards debug wf_timeout evals
                 (if assms then all_assms else []) subgoal;
             val _ = print_d (fn () => "*** Isabelle problem ***\n" ^
               str_of_isa_problem ctxt isa_problem);
