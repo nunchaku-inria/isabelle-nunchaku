@@ -1,22 +1,12 @@
 Isabelle frontend:
 
-  * handle "choice", "unique" (also parse model)
-  * parse anonymous functions
-
-  * parse "bugs/prop_parse.nun"
+  * parse anonymous functions (once they are prefixed with $ or something)
 
   * add syntax for specifying axioms (e.g. for Chris B. and Bruno P. W.)
 
   * parse types in models
-  * keep track of "unsat" vs. "unknown" in translation (e.g. for codatatypes represented as
-    datatypes, use of unchecked "wf") in frontend's translator
-  * clarify that "unsat" doesn't really mean unsat for "prop" (intuitionistic)
-
-  * cardinality specs
 
   * use [code] equations as a fallback rather than real def
-
-  * skeleton print mode
 
   * numeric types
     * do something about big 'nat's? cf. 'binary_ints'
@@ -32,7 +22,7 @@ Isabelle frontend:
 
   * maybe:
     * regression testing of entire counterexamples (not just status?)
-    * generation of Isabelle theory encoding the counterexample
+    * skeleton print mode (i.e. print something that can be inserted in theory)
 
   * for paper: mention that these are standard (and hence also Henkin) models
   * for paper: mention examples where we get "unsat" instead of unknown, e.g. set theory and "a \in b", "b \in a"

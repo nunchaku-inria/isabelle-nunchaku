@@ -93,7 +93,6 @@ nunchaku [expect = none]
 by auto
 
 lemma "g = Let (A \<or> B)"
-nunchaku [expect = none]
 nunchaku [expect = genuine]
 oops
 
@@ -265,7 +264,7 @@ nunchaku [expect = none]
 by auto
 
 schematic_goal "\<exists>x :: 'a \<Rightarrow> 'b. x = ?x"
-nunchaku [expect = none]
+nunchaku [expect = unknown]
 by auto
 
 schematic_goal "\<forall>x. ?x = ?y"
@@ -522,7 +521,7 @@ nunchaku [expect = genuine]
 oops
 
 lemma "{a, b, c} = {c, b, a}"
-nunchaku [expect = none]
+nunchaku [expect = unknown]
 by auto
 
 lemma "UNIV = {x. True}"
