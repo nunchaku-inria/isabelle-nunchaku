@@ -653,12 +653,14 @@ fun partition_props [_] props = SOME [props]
       else NONE
     end;
 
-fun strip_imp_concl (Const (@{const_name HOL.implies}, _) $ _ $ t) = strip_imp_concl t
-  | strip_imp_concl t = t;
+fun hol_concl_head (Const (@{const_name All}, _) $ Abs (_, _, t)) = hol_concl_head t
+  | hol_concl_head (Const (@{const_name implies}, _) $ _ $ t) = hol_concl_head t
+  | hol_concl_head (t $ _) = hol_concl_head t
+  | hol_concl_head t = t;
 
 fun is_inductive_set_intro t =
-  (case strip_imp_concl t of
-    Const (@{const_name rmember}, _) $ _ $ _ => true
+  (case hol_concl_head t of
+    Const (@{const_name rmember}, _) => true
   | _ => false);
 
 exception NO_TRIPLE of unit;
