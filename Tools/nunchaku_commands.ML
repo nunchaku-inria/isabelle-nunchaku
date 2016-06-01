@@ -22,6 +22,7 @@ type raw_param = string * string list;
 
 val default_default_params =
   [("assms", "true"),
+   ("card", "1-"),
    ("debug", "false"),
    ("falsify", "true"),
    ("format", "1"),
@@ -54,7 +55,7 @@ fun is_known_raw_param s =
   AList.defined (op =) negated_params s orelse
   member (op =) ["whack", "eval", "need", "atoms", "expect"] s orelse
   exists (fn p => String.isPrefix (p ^ " ") s)
-    ["mono", "non_mono", "wf", "non_wf", "format", "atoms"];
+    ["card", "mono", "non_mono", "wf", "non_wf", "format", "atoms"];
 
 fun check_raw_param (s, _) =
   if is_known_raw_param s then () else error ("Unknown parameter: " ^ quote s);
@@ -97,8 +98,6 @@ fun stringify_raw_param_value [] = ""
     s1 ^ (if is_punctuation s1 orelse is_punctuation s2 then "" else " ") ^
     stringify_raw_param_value (s2 :: ss);
 
-fun maxed_int_from_string min_int s = Int.max (min_int, the (Int.fromString s));
-
 fun extract_params ctxt mode default_params override_params =
   let
     val override_params = maps normalize_raw_param override_params;
@@ -115,49 +114,44 @@ fun extract_params ctxt mode default_params override_params =
     val lookup_bool = the o general_lookup_bool false (SOME false);
     val lookup_bool_option = general_lookup_bool true NONE;
 
-    fun do_int name value =
-      (case value of
+    fun lookup_int name =
+      (case lookup name of
         SOME s =>
         (case Int.fromString s of
           SOME i => i
         | NONE => error ("Parameter " ^ quote name ^ " must be assigned an integer value"))
       | NONE => 0);
 
-    fun lookup_int name = do_int name (lookup name);
+    fun ints_from_string name s =
+      space_explode "," s
+      |> map_filter Int.fromString;
 
-    fun int_range_from_string name min_int s =
-      let
-        val (k1, k2) =
-          (case space_explode "-" s of
-             [s] => (s, s)
-           | ["", s2] => ("-" ^ s2, "-" ^ s2)
-           | [s1, s2] => (s1, s2)
-           | _ => raise Option.Option)
-          |> apply2 (maxed_int_from_string min_int);
-      in
-        if k1 <= k2 then k1 upto k2 else k1 downto k2
-      end
-      handle Option.Option =>
-        error ("Parameter " ^ quote name ^ " must be assigned a sequence of integers");
+    fun int_range_from_string name s =
+      (case space_explode "-" s of
+         [s] => (s, s)
+       | [s1, s2] => (s1, s2)
+       | _ => error ("Parameter " ^ quote name ^ " must be assigned a range of integers"))
+      |> apply2 Int.fromString;
 
-    fun int_seq_from_string name min_int s =
-      maps (int_range_from_string name min_int) (space_explode "," s);
+    fun lookup_assigns read pre of_str =
+      (case lookup pre of
+        SOME s => [(NONE, of_str s)]
+      | NONE => []) @
+      map (fn (name, value) => (SOME (read (String.extract (name, size pre + 1, NONE))),
+          of_str (stringify_raw_param_value value)))
+        (filter (String.isPrefix (pre ^ " ") o fst) raw_params);
 
-    fun lookup_assigns read prefix default convert =
-      (NONE, convert (the_default default (lookup prefix))) ::
-      map (fn (name, value) => (SOME (read (String.extract (name, size prefix + 1, NONE))),
-          convert (stringify_raw_param_value value)))
-        (filter (String.isPrefix (prefix ^ " ") o fst) raw_params);
+    fun lookup_ints_assigns read pre =
+      lookup_assigns read pre (ints_from_string pre);
 
-    fun lookup_ints_assigns read prefix min_int =
-      lookup_assigns read prefix (signed_string_of_int min_int)
-        (int_seq_from_string prefix min_int);
+    fun lookup_int_range_assigns read pre =
+      lookup_assigns read pre (int_range_from_string pre);
 
-    fun lookup_bool_option_assigns read prefix =
-      lookup_assigns read prefix "" (parse_bool_option true prefix);
+    fun lookup_bool_option_assigns read pre =
+      lookup_assigns read pre (parse_bool_option true pre);
 
-    fun lookup_strings_assigns read prefix =
-      lookup_assigns read prefix "" (space_explode " ");
+    fun lookup_strings_assigns read pre =
+      lookup_assigns read pre (space_explode " ");
 
     fun lookup_time name =
       (case lookup name of
@@ -173,9 +167,8 @@ fun extract_params ctxt mode default_params override_params =
       AList.lookup (op =) raw_params #> Option.map (map read_term_polymorphic);
     val read_const_polymorphic = read_term_polymorphic #> dest_Const;
 
-    val monos =
-      if mode = Auto_Try then [(NONE, SOME true)]
-      else lookup_bool_option_assigns read_type_polymorphic "mono";
+    val cards = lookup_int_range_assigns read_type_polymorphic "card";
+    val monos = lookup_bool_option_assigns read_type_polymorphic "mono";
     val wfs = lookup_bool_option_assigns read_const_polymorphic "wf";
     val falsify = lookup_bool "falsify";
     val debug = (mode <> Auto_Try andalso lookup_bool "debug");
@@ -190,7 +183,7 @@ fun extract_params ctxt mode default_params override_params =
     val multithread = mode = Normal andalso lookup_bool "multithread";
     val show_consts = if debug then SOME true else lookup_bool_option "show_consts";
     val evals = these (lookup_term_list_option_polymorphic "eval");
-    val formats = lookup_ints_assigns read_term_polymorphic "format" 0;
+    val formats = lookup_ints_assigns read_term_polymorphic "format";
     val atomss = lookup_strings_assigns read_type_polymorphic "atoms";
     val max_potential = if mode = Normal then Int.max (0, lookup_int "max_potential") else 0;
     val max_genuine = Int.max (0, lookup_int "max_genuine");
@@ -201,7 +194,7 @@ fun extract_params ctxt mode default_params override_params =
        expect = expect};
 
     val scope_of_search_params =
-      {wfs = wfs, monos = monos};
+      {wfs = wfs, cards = cards, monos = monos};
 
     val output_format_params =
       {verbose = verbose, debug = debug, show_consts = show_consts, max_potential = max_potential,
