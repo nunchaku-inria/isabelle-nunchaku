@@ -27,9 +27,16 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) The_unsafe unreachable rmember
 
-(* FIXME
+declare [[ML_exception_trace]]
+
+lemma "(undefined :: ('a \<Rightarrow> 'a list) \<Rightarrow> bool) x"
+using [[show_types]]
+nunchaku[overlord]
+
+
+(*
 lemma "x + y = y + x \<and> rev xs = xs"
-nunchaku
+nunchaku[overlord]
 *)
 
 end

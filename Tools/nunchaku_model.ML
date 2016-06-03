@@ -231,8 +231,10 @@ and parse_arg toks =
       |-- Scan.option (parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen) (* FIXME *)
      >> (fn _ => NConst (nun_irrelevant, [], nun_dummy_ty))
    || parse_sym nun_unparsable |-- parse_ty >> (fn ty => NConst (nun_unparsable, [], ty))
-   || parse_sym nun_lparen |-- parse_tm --| Scan.option (parse_sym nun_colon |-- parse_ty)
+   || parse_sym nun_lparen |-- parse_tm -- Scan.option (parse_sym nun_colon |-- parse_ty)
       --| parse_sym nun_rparen
+     >> (fn (NConst (id, [], _), SOME ty) => NConst (id, [], ty)
+       | (tm, _) => tm)
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks;
 
 val parse_witness_name =
