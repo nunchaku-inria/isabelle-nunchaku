@@ -498,7 +498,7 @@ fun spec_rules_of ctxt (x as (s, T)) =
         [(Spec_Rules.Unknown, ([Logic.varify_global @{term The}], [@{thm theI_unique}]))]
       else if s = @{const_name finite} then
         let val card = card_of_type ctxt T in
-          if card = Inf then
+          if card = Inf orelse card = Fin_or_Inf then
             spec_rules ()
           else
             [(Spec_Rules.Equational, ([Logic.varify_global @{term finite}],
