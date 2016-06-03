@@ -129,6 +129,7 @@ sig
 
   val ident_of_str: string -> ident
   val str_of_ident: ident -> string
+  val encode_args: string list -> string
   val nun_const_of_str: string list -> string -> ident
   val nun_tconst_of_str: string list -> string -> ident
   val nun_free_of_str: string -> ident

@@ -8,9 +8,11 @@ Translation of Isabelle/HOL problems to Nunchaku.
 signature NUNCHAKU_TRANSLATE =
 sig
   type isa_problem = Nunchaku_Collect.isa_problem
+  type ty = Nunchaku_Problem.ty
   type nun_problem = Nunchaku_Problem.nun_problem
 
   val flip_quote: string -> string
+  val lowlevel_str_of_ty: ty -> string
 
   val nun_problem_of_isa: Proof.context -> isa_problem -> nun_problem
 end;
@@ -26,6 +28,9 @@ fun flip_quote s =
   (case try (unprefix "'") s of
     SOME s' => s'
   | NONE => prefix "'" s);
+
+fun lowlevel_str_of_ty (NType (id, tys)) =
+  encode_args (map lowlevel_str_of_ty tys) ^ id;
 
 fun strip_nun_abs 0 tm = ([], tm)
   | strip_nun_abs n (NAbs (var, body)) =
@@ -47,7 +52,7 @@ fun ty_of_isa (Type (s, Ts)) =
       | @{type_name fun} => NType (nun_arrow, tys)
       | _ =>
         let
-          val args = map str_of_ty tys;
+          val args = map lowlevel_str_of_ty tys;
           val id = nun_tconst_of_str args s;
         in
           NType (id, [])
@@ -61,7 +66,7 @@ fun tm_of_isa ctxt t =
     val thy = Proof_Context.theory_of ctxt;
 
     fun id_of_const (x as (s, _)) =
-      let val args = map (str_of_ty o ty_of_isa) (Sign.const_typargs thy x) in
+      let val args = map (lowlevel_str_of_ty o ty_of_isa) (Sign.const_typargs thy x) in
         nun_const_of_str args s
       end;
 
