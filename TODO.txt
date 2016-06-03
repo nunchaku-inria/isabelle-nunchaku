@@ -1,13 +1,15 @@
 Isabelle frontend:
 
+  * parse types in models
+
+  * show all constants by default except those that are fully specified
+
   * find out why some "triple_lookup" have swap
     * and make "unreachable" a kind of built-in, so that "The_unsafe" doesn't appear in Isa problems
 
   * parse anonymous functions (once they are prefixed with $ or something)
 
   * add syntax for specifying axioms (e.g. for Chris B. and Bruno P. W.)
-
-  * parse types in models
 
   * use [code] equations as a fallback rather than real def
 

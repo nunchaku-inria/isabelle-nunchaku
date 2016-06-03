@@ -178,7 +178,13 @@ fun extract_params ctxt mode default_params override_params =
     val timeout = lookup_time "timeout";
     val wf_timeout = lookup_time "wf_timeout";
     val multithread = mode = Normal andalso lookup_bool "multithread";
-    val show_consts = if debug then SOME true else lookup_bool_option "show_consts";
+    val show_consts =
+      if debug then
+        SOME true
+      else
+        (case lookup_bool_option "show_consts" of
+          NONE => if Config.get ctxt show_consts then SOME true else NONE
+        | bo => bo);
     val evals = these (lookup_term_list_option_polymorphic "eval");
     val atomss = lookup_strings_assigns read_type_polymorphic "atoms";
     val max_potential = if mode = Normal then Int.max (0, lookup_int "max_potential") else 0;
