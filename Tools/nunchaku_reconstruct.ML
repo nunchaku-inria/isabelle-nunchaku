@@ -47,6 +47,43 @@ val anonymousN = "anonymous";
 val irrelevantN = "irrelevant";
 val unparsableN = "unparsable";
 
+val nun_arrow_exploded = String.explode nun_arrow;
+
+val is_ty_meta = member (op =) (String.explode "()->,");
+
+fun next_token_lowlevel [] = (End_of_Stream, [])
+  | next_token_lowlevel (c :: cs) =
+    if Char.isSpace c then
+      next_token_lowlevel cs
+    else if not (is_ty_meta c) then
+      let val n = find_index (Char.isSpace orf is_ty_meta) cs in
+        (if n = ~1 then (cs, []) else chop n cs)
+        |>> (cons c #> String.implode #> ident_of_str #> Ident)
+      end
+    else if is_prefix (op =) nun_arrow_exploded (c :: cs) then
+      (Ident nun_arrow, tl cs)
+    else
+      (Symbol (String.str c), cs);
+
+val tokenize_lowlevel =
+  let
+    fun toks cs =
+      (case next_token_lowlevel cs of
+        (End_of_Stream, []) => []
+      | (tok, cs') => tok :: toks cs');
+  in
+    toks o String.explode
+  end;
+
+fun parse_lowlevel_ty tok =
+  (Scan.optional
+     (parse_sym "(" |-- Scan.repeat (parse_lowlevel_ty --| Scan.option (parse_sym ",")) --|
+      parse_sym ")")
+     []
+   -- parse_ident >> (swap #> NType)) tok;
+
+val ty_of_lowlevel_str = fst o parse_lowlevel_ty o tokenize_lowlevel;
+
 fun ident_of_const (NConst (id, _, _)) = id
   | ident_of_const _ = nun_dummy;
 
@@ -79,9 +116,8 @@ fun typ_of_nun ctxt =
         else
           (case try str_of_nun_tconst id of
             SOME (args, s) =>
-            (* TODO: more precise type *)
-            let val tys = map (K nun_dummy_ty) args in
-              Type (s, map typ_of tys)
+            let val tys' = map ty_of_lowlevel_str args in
+              Type (s, map typ_of (tys' @ tys))
             end
           | NONE =>
             (case try str_of_nun_tfree id of
@@ -150,8 +186,7 @@ fun term_of_nun ctxt atomss =
         else
           (case try str_of_nun_const id of
             SOME (args, s) =>
-            (* TODO: more precise type *)
-            let val tys = map (K nun_dummy_ty) args in
+            let val tys = map ty_of_lowlevel_str args in
               Sign.mk_const thy (s, map typ_of (tys @ tys0))
             end
           | NONE =>

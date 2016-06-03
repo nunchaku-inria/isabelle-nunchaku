@@ -30,7 +30,7 @@ fun flip_quote s =
   | NONE => prefix "'" s);
 
 fun lowlevel_str_of_ty (NType (id, tys)) =
-  encode_args (map lowlevel_str_of_ty tys) ^ id;
+  (if null tys then "" else encode_args (map lowlevel_str_of_ty tys)) ^ id;
 
 fun strip_nun_abs 0 tm = ([], tm)
   | strip_nun_abs n (NAbs (var, body)) =

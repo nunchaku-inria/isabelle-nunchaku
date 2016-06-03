@@ -7,6 +7,7 @@ Abstract syntax tree for Nunchaku models.
 
 signature NUNCHAKU_MODEL =
 sig
+  type ident = Nunchaku_Problem.ident
   type ty = Nunchaku_Problem.ty
   type tm = Nunchaku_Problem.tm
   type name_pool = Nunchaku_Problem.name_pool
@@ -24,6 +25,18 @@ sig
   val allocate_ugly: name_pool -> string * string -> string * name_pool
 
   val ugly_nun_model: name_pool -> nun_model -> nun_model
+
+  datatype token =
+    Ident of ident
+  | Symbol of ident
+  | Atom of ident * int
+  | End_of_Stream
+
+  val parse_tok: ''a -> ''a list -> ''a * ''a list
+  val parse_ident: token list -> ident * token list
+  val parse_id: ident -> token list -> token * token list
+  val parse_sym: ident -> token list -> token * token list
+  val parse_atom: token list -> (ident * int) * token list
   val nun_model_of_str: string -> nun_model
 end;
 
