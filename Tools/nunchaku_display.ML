@@ -47,17 +47,17 @@ fun pretty_of_isa_model_opt _ NONE =
         let
           val no_types_ctxt = ctxt |> Config.put show_types false;
           val schematic_ctxt = ctxt |> Proof_Context.set_mode Proof_Context.mode_schematic;
+
+          val show_types = Config.get ctxt show_types;
           val value' = value |> perhaps (try (Syntax.check_term schematic_ctxt));
-          val t' =
-            if Config.get ctxt show_types then
-              let val T = fastype_of t in
-                Type.constraint (if T = dummyT then try fastype_of value' |> the_default T else T) t
-              end
-            else
-              t;
+          val T = fastype_of t;
+          val T' = if T = dummyT then try fastype_of value' |> the_default T else T;
+          val t' = t |> show_types ? Type.constraint T';
         in
-          Pretty.block (Pretty.breaks [Syntax.pretty_term ctxt t', Pretty.str "=",
-            Syntax.pretty_term no_types_ctxt value'])
+          Pretty.block (Pretty.breaks
+            [Syntax.pretty_term ctxt t'
+             |> (show_types andalso T' <> dummyT) ? (single #> Pretty.enclose "(" ")"),
+             Pretty.str "=", Syntax.pretty_term no_types_ctxt value'])
         end;
 
       fun chunks_of_entries sorting_str_of pretty_of title entries =
