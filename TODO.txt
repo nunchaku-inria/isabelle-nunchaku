@@ -1,7 +1,5 @@
 Isabelle frontend:
 
-  * parse types in models
-
   * show anonymous functions on a per-need basis
 
   * find out why some "triple_lookup" have swap
