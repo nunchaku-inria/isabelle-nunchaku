@@ -143,7 +143,8 @@ fun run_chaku_on_prop state
     ({mode_of_operation_params = {falsify, assms, spy, overlord, expect},
       scope_of_search_params = {wfs, whacks, cards, monos},
       output_format_params = {verbose, debug, show_consts, evals, atomss, ...},
-      timeout_params = {timeout, wf_timeout}, ...})
+      optimization_params = {specialize, ...},
+      timeout_params = {timeout, wf_timeout}})
     mode i all_assms subgoal =
   let
     val ctxt = Proof.context_of state;
@@ -158,7 +159,8 @@ fun run_chaku_on_prop state
     val das_wort_Model = if falsify then "Countermodel" else "Model";
     val das_wort_model = if falsify then "countermodel" else "model";
 
-    val tool_params = {overlord = overlord, debug = debug, timeout = timeout};
+    val tool_params = {overlord = overlord, debug = debug, specialize = specialize,
+      timeout = timeout};
 
     fun run () =
       let

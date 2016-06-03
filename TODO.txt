@@ -13,24 +13,30 @@ Isabelle frontend:
 
   * use [code] equations as a fallback rather than real def
 
+  * annotate monotone (stably infinite) uninterpreted types
+
   * numeric types
     * do something about big 'nat's? cf. 'binary_ints'
     * avoid numerals if possible
   * BNF-style nesting (through functions, mixed FPs, etc.)?
 
-  * annotate monotone (stably infinite) uninterpreted types
-
   * "finite": make it possible to find counterexamples for infinite sets!
     (e.g. mset_to_set)
 
   * nunchaku for proving, with induction and without rec encoding
+    * try SMT method automatically with right facts?
 
   * maybe:
     * regression testing of entire counterexamples (not just status?)
     * skeleton print mode (i.e. print something that can be inserted in theory)
 
-  * for paper: mention that these are standard (and hence also Henkin) models
-  * for paper: mention examples where we get "unsat" instead of unknown, e.g. set theory and "a \in b", "b \in a"
+
+For paper:
+
+  * mention that these are standard (and hence also Henkin) models
+
+  * mention examples where we now get "unsat" instead of unknown,
+    e.g. set theory and "a \in b", "b \in a"
 
 
 Somewhere:
