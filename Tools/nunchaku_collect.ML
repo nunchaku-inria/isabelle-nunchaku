@@ -420,15 +420,17 @@ fun instantiate_constant_types_in_term ctxt csts target =
     | NONE => raise Type.TYPE_MATCH)
   end;
 
-(* Similar to "ATP_Util.tiny_card_of_type". *)
-fun is_type_surely_finite ctxt T =
-  let
-    datatype card = One | Many | Inf
+datatype card = One | Fin | Fin_or_Inf | Inf
 
+(* Similar to "ATP_Util.tiny_card_of_type". *)
+fun card_of_type ctxt =
+  let
     fun max_card Inf _ = Inf
       | max_card _ Inf = Inf
-      | max_card Many _ = Many
-      | max_card _ Many = Many
+      | max_card Fin_or_Inf _ = Fin_or_Inf
+      | max_card _ Fin_or_Inf = Fin_or_Inf
+      | max_card Fin _ = Fin
+      | max_card _ Fin = Fin
       | max_card One One = One;
 
     fun card_of avoid T =
@@ -436,7 +438,7 @@ fun is_type_surely_finite ctxt T =
         Inf
       else
         (case T of
-          TFree _ => Many
+          TFree _ => Fin_or_Inf
         | TVar _ => Inf
         | Type (@{type_name fun}, [T1, T2]) =>
           (case (card_of avoid T1, card_of avoid T2) of
@@ -450,11 +452,11 @@ fun is_type_surely_finite ctxt T =
           (case try (mutual_co_datatypes_of ctxt) (T_name, Ts) of
             NONE => Inf
           | SOME (_, fpTs, ctrss) =>
-            (case ctrss of [[_]] => One | _ => Many)
+            (case ctrss of [[_]] => One | _ => Fin)
             |> fold (fold (fold (max_card o card_of (fpTs @ avoid)) o binder_types o fastype_of))
               ctrss));
   in
-    card_of [] T <> Inf
+    card_of []
   end;
 
 fun int_of_classif Spec_Rules.Equational = 1
@@ -487,15 +489,23 @@ fun spec_rules_of ctxt (x as (s, T)) =
         | NONE => NONE)
       | process_spec _ NONE = NONE;
 
+    fun spec_rules () =
+      Spec_Rules.retrieve ctxt (Const x)
+      |> sort (classif_ord o apply2 fst);
+
     val specs =
       if s = @{const_name The} then
         [(Spec_Rules.Unknown, ([Logic.varify_global @{term The}], [@{thm theI_unique}]))]
-      else if s = @{const_name finite} andalso is_type_surely_finite ctxt T then
-        [(Spec_Rules.Equational, ([Logic.varify_global @{term finite}],
-           [Skip_Proof.make_thm thy (Logic.varify_global @{prop "finite A = True"})]))]
+      else if s = @{const_name finite} then
+        let val card = card_of_type ctxt T in
+          if card = Inf then
+            spec_rules ()
+          else
+            [(Spec_Rules.Equational, ([Logic.varify_global @{term finite}],
+               [Skip_Proof.make_thm thy (Logic.varify_global @{prop "finite A = True"})]))]
+        end
       else
-        Spec_Rules.retrieve ctxt (Const x)
-        |> sort (classif_ord o apply2 fst);
+        spec_rules ();
   in
     fold process_spec specs NONE
   end;
