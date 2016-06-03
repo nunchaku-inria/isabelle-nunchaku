@@ -27,4 +27,9 @@ ML_file "Tools/nunchaku_commands.ML"
 
 hide_const (open) The_unsafe unreachable rmember
 
+(* FIXME
+lemma "x + y = y + x \<and> rev xs = xs"
+nunchaku
+*)
+
 end

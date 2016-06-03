@@ -9,7 +9,7 @@ signature NUNCHAKU_DISPLAY =
 sig
   type isa_model = Nunchaku_Reconstruct.isa_model
 
-  val pretty_of_isa_model_opt: Proof.context -> bool option -> isa_model option -> Pretty.T
+  val pretty_of_isa_model_opt: Proof.context -> isa_model option -> Pretty.T
 end;
 
 structure Nunchaku_Display : NUNCHAKU_DISPLAY =
@@ -32,10 +32,10 @@ fun sorting_str_of_term (Const (s, T)) = "b" ^ s ^ sorting_str_of_typ T
   | sorting_str_of_term (Abs (_, T, t)) = "c" ^ sorting_str_of_typ T ^ " " ^ sorting_str_of_term t
   | sorting_str_of_term _ = "X";
 
-fun pretty_of_isa_model_opt _ _ NONE =
+fun pretty_of_isa_model_opt _ NONE =
     pretty_indent (Pretty.str "Model unavailable (internal error)")
-  | pretty_of_isa_model_opt ctxt0 show_consts
-      (SOME {type_model, free_model, const_model, skolem_model}) =
+  | pretty_of_isa_model_opt ctxt0
+      (SOME {type_model, free_model, pat_complete_model, pat_incomplete_model, skolem_model}) =
     let
       val ctxt = ctxt0 |> Config.put show_question_marks false;
 
@@ -64,12 +64,12 @@ fun pretty_of_isa_model_opt _ _ NONE =
            [pretty_indent (Pretty.str "No free variables")]
          else
            chunks_of_entries sorting_str_of_term pretty_of_term_entry "" free_model) @
-        (if show_consts |> the_default true then
-           chunks_of_entries sorting_str_of_term pretty_of_term_entry "Skolem constant" skolem_model
-         else
-           []) @
-        (if show_consts |> the_default (null free_model) then
-           chunks_of_entries sorting_str_of_term pretty_of_term_entry "Constant" const_model
+        chunks_of_entries sorting_str_of_term pretty_of_term_entry "Skolem constant" skolem_model @
+        chunks_of_entries sorting_str_of_term pretty_of_term_entry "Underspecified constant"
+          pat_incomplete_model @
+        (if Config.get ctxt show_consts then
+           chunks_of_entries sorting_str_of_term pretty_of_term_entry "Fully specified constant"
+             pat_complete_model
          else
            []) @
         chunks_of_entries sorting_str_of_typ pretty_of_typ_entry "Type" type_model;

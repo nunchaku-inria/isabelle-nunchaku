@@ -15,12 +15,14 @@ sig
   type isa_model =
     {type_model: typ_entry list,
      free_model: term_entry list,
-     const_model: term_entry list,
+     pat_complete_model: term_entry list,
+     pat_incomplete_model: term_entry list,
      skolem_model: term_entry list}
 
   val str_of_isa_model: Proof.context -> isa_model -> string
 
-  val isa_model_of_nun: Proof.context -> (typ option * string list) list -> nun_model -> isa_model
+  val isa_model_of_nun: Proof.context -> term list -> (typ option * string list) list ->
+    nun_model -> isa_model
 end;
 
 structure Nunchaku_Reconstruct : NUNCHAKU_RECONSTRUCT =
@@ -37,7 +39,8 @@ type term_entry = term * term;
 type isa_model =
   {type_model: typ_entry list,
    free_model: term_entry list,
-   const_model: term_entry list,
+   pat_complete_model: term_entry list,
+   pat_incomplete_model: term_entry list,
    skolem_model: term_entry list};
 
 val anonymousN = "anonymous";
@@ -54,9 +57,13 @@ fun str_of_typ_entry ctxt (T, ts) =
 fun str_of_term_entry ctxt (tm, value) =
   "val " ^ Syntax.string_of_term ctxt tm ^ " := " ^ Syntax.string_of_term ctxt value ^ ".";
 
-fun str_of_isa_model ctxt {type_model, free_model, const_model, skolem_model} =
-  map (str_of_typ_entry ctxt) type_model @ "" :: map (str_of_term_entry ctxt) free_model @ "" ::
-  map (str_of_term_entry ctxt) const_model @ "" :: map (str_of_term_entry ctxt) skolem_model
+fun str_of_isa_model ctxt
+    {type_model, free_model, pat_complete_model, pat_incomplete_model, skolem_model} =
+  map (str_of_typ_entry ctxt) type_model @ "" ::
+  map (str_of_term_entry ctxt) free_model @ "" ::
+  map (str_of_term_entry ctxt) pat_complete_model @ "" ::
+  map (str_of_term_entry ctxt) pat_incomplete_model @ "" ::
+  map (str_of_term_entry ctxt) skolem_model
   |> cat_lines;
 
 fun typ_of_nun ctxt =
@@ -173,13 +180,15 @@ fun isa_typ_entry_of_nun ctxt atomss (ty, atoms) =
 fun isa_term_entry_of_nun ctxt atomss (tm, value) =
   (term_of_nun ctxt atomss tm, term_of_nun ctxt atomss value);
 
-fun isa_model_of_nun ctxt atomss {type_model, const_model, skolem_model} =
+fun isa_model_of_nun ctxt pat_completes atomss {type_model, const_model, skolem_model} =
   let
-    val const_model' = map (isa_term_entry_of_nun ctxt atomss) const_model;
-    val (free_model, const_model'') = List.partition (is_Free o fst) const_model';
+    val free_and_const_model = map (isa_term_entry_of_nun ctxt atomss) const_model;
+    val (free_model, (pat_complete_model, pat_incomplete_model)) =
+      List.partition (is_Free o fst) free_and_const_model
+      ||> List.partition (member (op aconv) pat_completes o fst);
   in
     {type_model = map (isa_typ_entry_of_nun ctxt atomss) type_model, free_model = free_model,
-     const_model = const_model'',
+     pat_complete_model = pat_complete_model, pat_incomplete_model = pat_incomplete_model,
      skolem_model = map (isa_term_entry_of_nun ctxt atomss) skolem_model}
   end;
 

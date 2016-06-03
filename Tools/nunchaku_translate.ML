@@ -143,6 +143,9 @@ fun nun_co_data_spec_of_isa ctxt {typ, ctrs} =
 fun nun_const_spec_of_isa ctxt {const, props} =
   {const = tm_of_isa ctxt const, props = map (tm_of_isa ctxt) props};
 
+fun nun_rec_spec_of_isa ctxt {const, props, ...} =
+  {const = tm_of_isa ctxt const, props = map (tm_of_isa ctxt) props};
+
 fun nun_consts_spec_of_isa ctxt {consts, props} =
   {consts = map (tm_of_isa ctxt) consts, props = map (tm_of_isa ctxt) props};
 
@@ -160,7 +163,7 @@ fun nun_problem_of_isa ctxt {commandss, sound, complete} =
         (if wf then curry NPred true
          else if fp = BNF_Util.Least_FP then curry NPred false
          else NCopred) (map (nun_const_spec_of_isa ctxt) specs)
-      | IRec specs => NRec (map (nun_const_spec_of_isa ctxt) specs)
+      | IRec specs => NRec (map (nun_rec_spec_of_isa ctxt) specs)
       | ISpec spec => NSpec (nun_consts_spec_of_isa ctxt spec)
       | IAxiom prop => NAxiom (tm_of_isa ctxt prop)
       | IGoal prop => NGoal (tm_of_isa ctxt prop)

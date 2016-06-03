@@ -27,7 +27,6 @@ val default_default_params =
    ("max_genuine", "1"),
    ("max_potential", "1"),
    ("overlord", "false"),
-   ("show_consts", "smart"),
    ("specialize", "true"),
    ("spy", "false"),
    ("timeout", "30"),
@@ -38,7 +37,6 @@ val negated_params =
   [("dont_whack", "whack"),
    ("dont_specialize", "specialize"),
    ("dont_spy", "spy"),
-   ("hide_consts", "show_consts"),
    ("no_assms", "assms"),
    ("no_debug", "debug"),
    ("no_overlord", "overlord"),
@@ -109,7 +107,6 @@ fun extract_params ctxt mode default_params override_params =
       | NONE => default_value);
 
     val lookup_bool = the o general_lookup_bool false (SOME false);
-    val lookup_bool_option = general_lookup_bool true NONE;
 
     fun lookup_int name =
       (case lookup name of
@@ -178,13 +175,6 @@ fun extract_params ctxt mode default_params override_params =
     val timeout = lookup_time "timeout";
     val wf_timeout = lookup_time "wf_timeout";
     val multithread = mode = Normal andalso lookup_bool "multithread";
-    val show_consts =
-      if debug then
-        SOME true
-      else
-        (case lookup_bool_option "show_consts" of
-          NONE => if Config.get ctxt show_consts then SOME true else NONE
-        | bo => bo);
     val evals = these (lookup_term_list_option_polymorphic "eval");
     val atomss = lookup_strings_assigns read_type_polymorphic "atoms";
     val max_potential = if mode = Normal then Int.max (0, lookup_int "max_potential") else 0;
@@ -199,8 +189,8 @@ fun extract_params ctxt mode default_params override_params =
       {wfs = wfs, whacks = whacks, cards = cards, monos = monos};
 
     val output_format_params =
-      {verbose = verbose, debug = debug, show_consts = show_consts, max_potential = max_potential,
-       max_genuine = max_genuine, evals = evals, atomss = atomss};
+      {verbose = verbose, debug = debug, max_potential = max_potential, max_genuine = max_genuine,
+       evals = evals, atomss = atomss};
 
     val optimization_params =
       {specialize = specialize, multithread = multithread};

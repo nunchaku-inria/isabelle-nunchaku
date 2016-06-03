@@ -24,6 +24,11 @@ sig
     {const: term,
      props: term list}
 
+  type isa_rec_spec =
+    {const: term,
+     props: term list,
+     pat_complete: bool}
+
   type isa_consts_spec =
     {consts: term list,
      props: term list}
@@ -35,7 +40,7 @@ sig
   | ICoData of BNF_Util.fp_kind * isa_co_data_spec list
   | IVal of term
   | ICoPred of BNF_Util.fp_kind * bool * isa_const_spec list
-  | IRec of isa_const_spec list
+  | IRec of isa_rec_spec list
   | ISpec of isa_consts_spec
   | IAxiom of term
   | IGoal of term
@@ -56,6 +61,7 @@ sig
   val isa_problem_of_subgoal: Proof.context -> bool -> ((string * typ) option * bool option) list ->
     (term option * bool) list -> (typ option * (int option * int option)) list -> bool ->
     Time.time -> term list -> term list -> term -> term list * isa_problem
+  val pat_completes_of_isa_problem: isa_problem -> term list
   val str_of_isa_problem: Proof.context -> isa_problem -> string
 end;
 
@@ -79,6 +85,11 @@ type isa_const_spec =
   {const: term,
    props: term list};
 
+type isa_rec_spec =
+  {const: term,
+   props: term list,
+   pat_complete: bool};
+
 type isa_consts_spec =
   {consts: term list,
    props: term list};
@@ -90,7 +101,7 @@ datatype isa_command =
 | ICoData of BNF_Util.fp_kind * isa_co_data_spec list
 | IVal of term
 | ICoPred of BNF_Util.fp_kind * bool * isa_const_spec list
-| IRec of isa_const_spec list
+| IRec of isa_rec_spec list
 | ISpec of isa_consts_spec
 | IAxiom of term
 | IGoal of term
@@ -775,6 +786,40 @@ fun is_wellfounded_inductive_predicate ctxt wfs debug wf_timeout const intros =
       | NO_TRIPLE () => false)
   end;
 
+datatype lhs_pat =
+  Only_Vars
+| Prim_Pattern of string
+| Any_Pattern;
+
+fun is_likely_pat_complete ctxt props =
+  let
+    fun lhs_pat_of t =
+      (case t of
+        Const (@{const_name HOL.eq}, _) $ u $ _ =>
+        (case filter_out is_Var (snd (strip_comb u)) of
+          [] => Only_Vars
+        | [v] =>
+          (case strip_comb v of
+            (cst as Const (_, T), args) =>
+            (case body_type T of
+              Type (T_name, _) =>
+              if can (Ctr_Sugar.dest_ctr ctxt T_name) cst andalso forall is_Var args then
+                Prim_Pattern T_name
+              else
+                Any_Pattern
+            | _ => Any_Pattern)
+          | _ => Any_Pattern)
+        | _ => Any_Pattern)
+      | _ => Any_Pattern);
+  in
+    (case map lhs_pat_of props of
+      [] => false
+    | pats as Prim_Pattern T_name :: _ =>
+      forall (can (fn Prim_Pattern _ => ())) pats andalso
+      length pats = length (#ctrs (the (Ctr_Sugar.ctr_sugar_of ctxt T_name)))
+    | pats => forall (curry (op =) Only_Vars) pats)
+  end;
+
 (* Prevents divergence in case of cyclic or infinite axiom dependencies. *)
 val axioms_max_depth = 255
 
@@ -903,7 +948,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs whacks cards debug wf_timeout evals0
                          (case definition_of thy x of
                            SOME eq0 =>
                            let val eq = preprocess_prop false ctxt whacks eq0 in
-                             ([eq], [IRec [{const = t, props = [eq]}]])
+                             ([eq], [IRec [{const = t, props = [eq], pat_complete = true}]])
                            end
                          | NONE => (props, [ISpec {consts = consts, props = props}]));
 
@@ -914,7 +959,9 @@ fun isa_problem_of_subgoal ctxt falsify wfs whacks cards debug wf_timeout evals0
                            (case partition_props consts props of
                              SOME propss =>
                              (props,
-                              [IRec (map2 (fn const => fn props => {const = const, props = props})
+                              [IRec (map2 (fn const => fn props =>
+                                   {const = const, props = props,
+                                    pat_complete = is_likely_pat_complete ctxt props})
                                  consts propss)])
                            | NONE => def_or_spec ())
                          else if member (op =) [Spec_Rules.Inductive, Spec_Rules.Co_Inductive]
@@ -943,7 +990,7 @@ fun isa_problem_of_subgoal ctxt falsify wfs whacks cards debug wf_timeout evals0
                      (case definition_of thy x of
                        SOME eq0 =>
                        let val eq = preprocess_prop false ctxt whacks eq0 in
-                         (seens, IRec [{const = t, props = [eq]}] :: problem)
+                         (seens, IRec [{const = t, props = [eq], pat_complete = true}] :: problem)
                          |> consider_term (depth + 1) eq
                        end
                      | NONE => (seens, IVal t :: problem))))
@@ -989,6 +1036,16 @@ fun isa_problem_of_subgoal ctxt falsify wfs whacks cards debug wf_timeout evals0
     (poly_axioms, {commandss = commandss, sound = true, complete = complete})
   end;
 
+fun add_pat_complete_of_command cmd =
+  (case cmd of
+    ICoPred (_, _, specs) => union (op =) (map #const specs)
+  | IRec specs =>
+    union (op =) (map_filter (try (fn {const, pat_complete = true, ...} => const)) specs)
+  | _ => I);
+
+fun pat_completes_of_isa_problem {commandss, ...} =
+  fold (fold add_pat_complete_of_command) commandss [];
+
 fun str_of_isa_term_with_type ctxt t =
   Syntax.string_of_term ctxt t ^ " : " ^ Syntax.string_of_typ ctxt (fastype_of t);
 
@@ -1010,6 +1067,10 @@ fun str_of_isa_const_spec ctxt {const, props} =
   str_of_isa_term_with_type ctxt const ^ " :=\n  " ^
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
 
+fun str_of_isa_rec_spec ctxt {const, props, pat_complete} =
+  str_of_isa_term_with_type ctxt const ^ (if pat_complete then " [pat_complete]" else "") ^
+  " :=\n " ^ space_implode ";\n " (map (Syntax.string_of_term ctxt) props);
+
 fun str_of_isa_consts_spec ctxt {consts, props} =
   space_implode " and\n     " (map (str_of_isa_term_with_type ctxt) consts) ^ " :=\n  " ^
   space_implode ";\n  " (map (Syntax.string_of_term ctxt) props);
@@ -1030,8 +1091,7 @@ fun str_of_isa_command ctxt (ITVal (T, cards)) =
   | str_of_isa_command ctxt (ICoPred (fp, wf, specs)) =
     BNF_Util.case_fp fp "pred" "copred" ^ " " ^ (if wf then "[wf] " else "") ^
     str_of_and_list (str_of_isa_const_spec ctxt) specs
-  | str_of_isa_command ctxt (IRec specs) =
-    "rec " ^ str_of_and_list (str_of_isa_const_spec ctxt) specs
+  | str_of_isa_command ctxt (IRec specs) = "rec " ^ str_of_and_list (str_of_isa_rec_spec ctxt) specs
   | str_of_isa_command ctxt (ISpec spec) = "spec " ^ str_of_isa_consts_spec ctxt spec
   | str_of_isa_command ctxt (IAxiom prop) = "axiom " ^ Syntax.string_of_term ctxt prop
   | str_of_isa_command ctxt (IGoal prop) = "goal " ^ Syntax.string_of_term ctxt prop

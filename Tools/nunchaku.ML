@@ -27,7 +27,6 @@ sig
   type output_format_params =
     {verbose: bool,
      debug: bool,
-     show_consts: bool option,
      max_potential: int,
      max_genuine: int,
      evals: term list,
@@ -90,7 +89,6 @@ type scope_of_search_params =
 type output_format_params =
   {verbose: bool,
    debug: bool,
-   show_consts: bool option,
    max_potential: int,
    max_genuine: int,
    evals: term list,
@@ -142,7 +140,7 @@ val timeout_slack = seconds 1.0;
 fun run_chaku_on_prop state
     ({mode_of_operation_params = {falsify, assms, spy, overlord, expect},
       scope_of_search_params = {wfs, whacks, cards, monos},
-      output_format_params = {verbose, debug, show_consts, evals, atomss, ...},
+      output_format_params = {verbose, debug, evals, atomss, ...},
       optimization_params = {specialize, ...},
       timeout_params = {timeout, wf_timeout}})
     mode i all_assms subgoal =
@@ -194,7 +192,9 @@ fun run_chaku_on_prop state
                 val ugly_nun_model = ugly_nun_model pool nice_nun_model;
                 val _ = print_d (fn () => "*** Ugly Nunchaku model ***\n" ^
                   str_of_nun_model ugly_nun_model);
-                val isa_model = isa_model_of_nun ctxt atomss ugly_nun_model;
+
+                val pat_completes = pat_completes_of_isa_problem isa_problem;
+                val isa_model = isa_model_of_nun ctxt pat_completes atomss ugly_nun_model;
                 val _ = print_d (fn () => "*** Isabelle model ***\n" ^
                   str_of_isa_model ctxt isa_model);
               in
@@ -204,8 +204,7 @@ fun run_chaku_on_prop state
             fun isa_model_opt output =
               if debug then SOME (get_isa_model_opt output) else try get_isa_model_opt output;
 
-            val model_str = isa_model_opt
-              #> pretty_of_isa_model_opt ctxt show_consts #> Pretty.string_of;
+            val model_str = isa_model_opt #> pretty_of_isa_model_opt ctxt #> Pretty.string_of;
 
             fun unsat_means_theorem () =
               null whacks andalso null cards andalso null monos;
