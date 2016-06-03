@@ -111,17 +111,17 @@ val multi_ids =
   [nun_arrow, nun_assign, nun_conj, nun_disj, nun_implies, nun_unparsable, nun_irrelevant];
 
 val nun_anon_fun_prefix_exploded = String.explode nun_anon_fun_prefix;
-val [nun_atom_char] = String.explode nun_atom;
+val [nun_dollar_char] = String.explode nun_dollar;
 
 fun next_token [] = (End_of_Stream, [])
   | next_token (c :: cs) =
     if Char.isSpace c then
       next_token cs
-    else if c = nun_atom_char then
+    else if c = nun_dollar_char then
       let val n = find_index (not o is_alnum_etc_char) cs in
         (if n = ~1 then (cs, []) else chop n cs)
         |>> (String.implode
-          #> (if is_prefix (op =) (tl nun_anon_fun_prefix_exploded) cs then ident_of_str #> Ident
+          #> (if is_prefix (op =) nun_anon_fun_prefix_exploded cs then ident_of_str #> Ident
             else atom_of_str))
       end
     else if is_alnum_etc_char c then

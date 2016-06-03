@@ -72,7 +72,6 @@ sig
   val nun_arrow: string
   val nun_assign: string
   val nun_at: string
-  val nun_atom: string
   val nun_axiom: string
   val nun_bar: string
   val nun_choice: string
@@ -85,6 +84,7 @@ sig
   val nun_copy: string
   val nun_data: string
   val nun_disj: string
+  val nun_dollar: string
   val nun_dot: string
   val nun_dummy: string
   val nun_else: string
@@ -239,7 +239,6 @@ val nun_anon_fun_prefix = "anon_fun_";
 val nun_arrow = "->";
 val nun_assign = ":=";
 val nun_at = "@";
-val nun_atom = "$";
 val nun_axiom = "axiom";
 val nun_bar = "|";
 val nun_choice = "choice";
@@ -252,6 +251,7 @@ val nun_copred = "copred";
 val nun_copy = "copy";
 val nun_data = "data";
 val nun_disj = "||";
+val nun_dollar = "$";
 val nun_dot = ".";
 val nun_dummy = "_";
 val nun_else = "else";
@@ -627,7 +627,7 @@ val (str_of_tmty, str_of_tm) =
       let val ty = ty_of tm in
         str_of (SOME ty) tm ^ " " ^ nun_colon ^ " " ^ str_of_ty ty
       end
-    and str_of _ (NAtom (j, _)) = nun_atom ^ string_of_int j
+    and str_of _ (NAtom (j, _)) = nun_dollar ^ string_of_int j
       | str_of _ (NConst (id, [], _)) = str_of_ident id
       | str_of (SOME ty0) (NConst (id, tys, ty)) =
         if ty = ty0 then str_of_ident id else str_of_at_const id tys
