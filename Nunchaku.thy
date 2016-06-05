@@ -25,6 +25,11 @@ ML_file "Tools/nunchaku_tool.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+
+(* FIXME: whack with "unreachable" is not a good idea *)
+lemma "rev xs = xs \<or> xs = ys"
+nunchaku[satisfy, whack rev, debug]
+
 hide_const (open) The_unsafe unreachable rmember
 
 end

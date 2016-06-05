@@ -49,6 +49,8 @@ Somewhere:
 
 Middleware:
 
+  * specialize "val" not just "rec"!! (e.g. in a locale)
+
   * better cvc4 kill (find out what's wrong in cvc4, also for Sledgehammer)
   * "eval"
   * detect selectors/discriminator specifications ("rec" or "spec") and
