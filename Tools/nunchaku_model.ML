@@ -55,6 +55,7 @@ type nun_model =
 
 val nun_SAT = str_of_ident "SAT";
 
+val nabss = Library.foldr NAbs;
 val napps = Library.foldl NApp;
 
 fun str_of_ty_entry (ty, tms) =
@@ -196,15 +197,22 @@ val parse_choice_or_unique =
   (parse_tok (Ident nun_choice) || parse_tok (Ident nun_unique)
    || parse_tok (Ident nun_unique_unsafe))
   -- parse_ty_arg
-  >> (fn (Ident id, ty) =>
-    NConst (id, [ty], NType (nun_arrow, [NType (nun_arrow, [ty, nun_prop_ty]), ty])));
+  >> (fn (Ident id, ty) => NConst (id, [ty], mk_nun_arrows_ty ([ty, nun_prop_ty], ty)));
 
 fun parse_tm toks =
-  (parse_id nun_lambda |-- Scan.repeat parse_arg --| parse_sym nun_dot -- parse_tm
-     >> Library.foldr NAbs
+  (parse_id nun_lambda |-- Scan.repeat parse_arg --| parse_sym nun_dot -- parse_tm >> nabss
+  || parse_id nun_mu |-- parse_arg --| parse_sym nun_dot -- parse_tm
+     >> (fn (var, body) =>
+       let val ty = safe_ty_of body in
+         NApp (NConst (nun_mu, [ty], mk_nun_arrow_ty (mk_nun_arrow_ty (ty, ty), ty)),
+           NAbs (var, body))
+       end)
    || parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else
        -- parse_tm
-     >> (fn ((cond, th), el) => napps (NConst (nun_if, [], safe_ty_of th), [cond, th, el]))
+     >> (fn ((cond, th), el) =>
+       let val ty = safe_ty_of th in
+         napps (NConst (nun_if, [ty], mk_nun_arrows_ty ([nun_prop_ty, ty, ty], ty)), [cond, th, el])
+       end)
    || parse_implies) toks
 and parse_implies toks =
   (parse_disj -- Scan.option (parse_sym nun_implies -- parse_implies)

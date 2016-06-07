@@ -143,6 +143,8 @@ sig
 
   val nun_dummy_ty: ty
   val nun_prop_ty: ty
+  val mk_nun_arrow_ty: ty * ty -> ty
+  val mk_nun_arrows_ty: ty list * ty -> ty
 
   val ty_of: tm -> ty
   val safe_ty_of: tm -> ty
@@ -377,6 +379,9 @@ fun index_name s 0 = s
 val nun_dummy_ty = NType (nun_dummy, []);
 val nun_prop_ty = NType (nun_prop, []);
 
+fun mk_nun_arrow_ty (dom, ran) = NType (nun_arrow, [dom, ran]);
+val mk_nun_arrows_ty = Library.foldr mk_nun_arrow_ty;
+
 fun domain_ty (NType (_, [ty, _])) = ty
   | domain_ty ty = ty;
 
@@ -388,7 +393,7 @@ fun domain_tys 0 _ = []
 
 fun ty_of (NAtom (_, ty)) = ty
   | ty_of (NConst (_, _, ty)) = ty
-  | ty_of (NAbs (var, body)) = NType (nun_arrow, [ty_of var, ty_of body])
+  | ty_of (NAbs (var, body)) = mk_nun_arrow_ty (ty_of var, ty_of body)
   | ty_of (NMatch (_, (_, _, body1) :: _)) = ty_of body1
   | ty_of (NApp (const, _)) = range_ty (ty_of const);
 
@@ -615,7 +620,7 @@ val (str_of_tmty, str_of_tm) =
     fun str_of_app ty_opt const arg =
       let
         val ty_opt' =
-          try (Option.map (fn ty => NType (nun_arrow, [ty_of arg, ty]))) ty_opt
+          try (Option.map (fn ty => mk_nun_arrow_ty (ty_of arg, ty))) ty_opt
           |> the_default NONE;
       in
         (str_of ty_opt' const |> (case const of NAbs _ => nun_parens | _ => I)) ^

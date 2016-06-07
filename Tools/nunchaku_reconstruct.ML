@@ -203,7 +203,21 @@ fun term_of_nun ctxt atomss =
         let val T = typ_of (safe_ty_of var) in
           Abs (one_letter_of (base_of_typ T), T, term_of (var :: bounds) body)
         end
-      | term_of bounds (NApp (func, arg)) = term_of bounds func $ term_of bounds arg
+      | term_of bounds (NApp (func, arg)) =
+        let
+          fun same () = term_of bounds func $ term_of bounds arg;
+        in
+          (case (func, arg) of
+            (NConst (id, _, _), NAbs _) =>
+            if id = nun_mu then
+              let val Abs (s, T, body) = term_of bounds arg in
+                Const (@{const_name The}, (T --> HOLogic.boolT) --> T)
+                $ Abs (s, T, HOLogic.eq_const T $ Bound 0 $ body)
+              end
+            else
+              same ()
+          | _ => same ())
+        end
       | term_of _ (NMatch _) = raise Fail "unexpected match";
   in
     term_of []

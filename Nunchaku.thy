@@ -25,10 +25,18 @@ ML_file "Tools/nunchaku_tool.ML"
 ML_file "Tools/nunchaku.ML"
 ML_file "Tools/nunchaku_commands.ML"
 
+codatatype 'a llist = LNil | LCons 'a "'a llist"
 
+(*
+lemma "xs = LCons a ys \<Longrightarrow> ys = LCons b xs \<Longrightarrow> xs = ys"
+nunchaku[overlord, debug]
+*)
+
+(*
 (* FIXME: whack with "unreachable" is not a good idea *)
 lemma "rev xs = xs \<or> xs = ys"
 nunchaku[satisfy, whack rev, debug]
+*)
 
 hide_const (open) The_unsafe unreachable rmember
 
