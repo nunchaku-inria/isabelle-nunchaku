@@ -70,6 +70,7 @@ sig
   val nun_and: string
   val nun_anon_fun_prefix: string
   val nun_arrow: string
+  val nun_asserting: string
   val nun_assign: string
   val nun_at: string
   val nun_axiom: string
@@ -141,10 +142,12 @@ sig
   val str_of_nun_tfree: ident -> string
   val str_of_nun_var: ident -> string
 
-  val nun_dummy_ty: ty
-  val nun_prop_ty: ty
-  val mk_nun_arrow_ty: ty * ty -> ty
-  val mk_nun_arrows_ty: ty list * ty -> ty
+  val dummy_ty: ty
+  val prop_ty: ty
+  val mk_arrow_ty: ty * ty -> ty
+  val mk_arrows_ty: ty list * ty -> ty
+  val nabss: tm list * tm -> tm
+  val napps: tm * tm list -> tm
 
   val ty_of: tm -> ty
   val safe_ty_of: tm -> ty
@@ -240,6 +243,7 @@ val nun_abstract = "abstract";
 val nun_and = "and";
 val nun_anon_fun_prefix = "anon_fun_";
 val nun_arrow = "->";
+val nun_asserting = "asserting";
 val nun_assign = ":=";
 val nun_at = "@";
 val nun_axiom = "axiom";
@@ -311,7 +315,8 @@ val is_nun_const_quantifier = member (op =) [nun_forall, nun_exists];
 val is_nun_const_connective = member (op =) [nun_conj, nun_disj, nun_implies];
 
 val nun_builtin_arity =
-  [(nun_conj, 2),
+  [(nun_asserting, 2),
+   (nun_conj, 2),
    (nun_disj, 2),
    (nun_equals, 2),
    (nun_exists, 1),
@@ -376,11 +381,14 @@ fun index_name s 0 = s
       String.substring (s, 0, m) ^ string_of_int j ^ String.substring (s, m, n - m)
     end;
 
-val nun_dummy_ty = NType (nun_dummy, []);
-val nun_prop_ty = NType (nun_prop, []);
+val dummy_ty = NType (nun_dummy, []);
+val prop_ty = NType (nun_prop, []);
 
-fun mk_nun_arrow_ty (dom, ran) = NType (nun_arrow, [dom, ran]);
-val mk_nun_arrows_ty = Library.foldr mk_nun_arrow_ty;
+fun mk_arrow_ty (dom, ran) = NType (nun_arrow, [dom, ran]);
+val mk_arrows_ty = Library.foldr mk_arrow_ty;
+
+val nabss = Library.foldr NAbs;
+val napps = Library.foldl NApp;
 
 fun domain_ty (NType (_, [ty, _])) = ty
   | domain_ty ty = ty;
@@ -393,11 +401,11 @@ fun domain_tys 0 _ = []
 
 fun ty_of (NAtom (_, ty)) = ty
   | ty_of (NConst (_, _, ty)) = ty
-  | ty_of (NAbs (var, body)) = mk_nun_arrow_ty (ty_of var, ty_of body)
+  | ty_of (NAbs (var, body)) = mk_arrow_ty (ty_of var, ty_of body)
   | ty_of (NMatch (_, (_, _, body1) :: _)) = ty_of body1
   | ty_of (NApp (const, _)) = range_ty (ty_of const);
 
-val safe_ty_of = try ty_of #> the_default nun_dummy_ty;
+val safe_ty_of = try ty_of #> the_default dummy_ty;
 
 fun strip_nun_binders binder (app as NApp (NConst (id, _, _), NAbs (var, body))) =
     if id = binder then
@@ -620,7 +628,7 @@ val (str_of_tmty, str_of_tm) =
     fun str_of_app ty_opt const arg =
       let
         val ty_opt' =
-          try (Option.map (fn ty => mk_nun_arrow_ty (ty_of arg, ty))) ty_opt
+          try (Option.map (fn ty => mk_arrow_ty (ty_of arg, ty))) ty_opt
           |> the_default NONE;
       in
         (str_of ty_opt' const |> (case const of NAbs _ => nun_parens | _ => I)) ^
@@ -650,7 +658,10 @@ val (str_of_tmty, str_of_tm) =
       | str_of ty_opt (app as NApp (func, argN)) =
         (case (func, argN) of
           (NApp (oper as NConst (id, _, _), arg1), arg2) =>
-          if id = nun_equals then
+          if id = nun_asserting then
+            str_of ty_opt arg1 ^ " " ^ nun_asserting ^ " " ^ str_of (SOME prop_ty) arg2
+            |> nun_parens
+          else if id = nun_equals then
             (str_of NONE arg1 |> not (is_triv_head arg1) ? nun_parens) ^ " " ^ id ^ " " ^
             (str_of (try ty_of arg2) arg2 |> not (is_triv_head arg2) ? nun_parens)
           else if is_nun_const_connective id then

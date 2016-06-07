@@ -48,7 +48,7 @@ val strip_nun_comb =
 fun ty_of_isa (Type (s, Ts)) =
     let val tys = map ty_of_isa Ts in
       (case s of
-        @{type_name bool} => nun_prop_ty
+        @{type_name bool} => prop_ty
       | @{type_name fun} => NType (nun_arrow, tys)
       | _ =>
         let
@@ -61,7 +61,7 @@ fun ty_of_isa (Type (s, Ts)) =
   | ty_of_isa (TFree (s, _)) = NType (nun_tfree_of_str (flip_quote s), [])
   | ty_of_isa (TVar _) = raise Fail "unexpected TVar";
 
-fun tm_of_isa ctxt t =
+fun gen_tm_of_isa in_prop ctxt t =
   let
     val thy = Proof_Context.theory_of ctxt;
 
@@ -97,26 +97,32 @@ fun tm_of_isa ctxt t =
             |> abs_tms vars
           end
         | NONE =>
-          let
-            val id =
-              (case s of
-                @{const_name All} => nun_forall
-              | @{const_name conj} => nun_conj
-              | @{const_name disj} => nun_disj
-              | @{const_name HOL.eq} => nun_equals
-              | @{const_name Eps} => nun_choice
-              | @{const_name Ex} => nun_exists
-              | @{const_name False} => nun_false
-              | @{const_name If} => nun_if
-              | @{const_name implies} => nun_implies
-              | @{const_name Not} => nun_not
-              | @{const_name The} => nun_unique
-              | @{const_name The_unsafe} => nun_unique_unsafe
-              | @{const_name True} => nun_true
-              | _ => id_of_const x);
-          in
-            NConst (id, [], ty_of_isa T)
-          end)
+          if s = @{const_name unreachable} andalso in_prop then
+            let val ty = ty_of_isa T in
+              napps (NConst (nun_asserting, [ty], mk_arrows_ty ([ty, prop_ty], ty)),
+                [NConst (id_of_const x, [], ty), NConst (nun_false, [], prop_ty)])
+            end
+          else
+            let
+              val id =
+                (case s of
+                  @{const_name All} => nun_forall
+                | @{const_name conj} => nun_conj
+                | @{const_name disj} => nun_disj
+                | @{const_name HOL.eq} => nun_equals
+                | @{const_name Eps} => nun_choice
+                | @{const_name Ex} => nun_exists
+                | @{const_name False} => nun_false
+                | @{const_name If} => nun_if
+                | @{const_name implies} => nun_implies
+                | @{const_name Not} => nun_not
+                | @{const_name The} => nun_unique
+                | @{const_name The_unsafe} => nun_unique_unsafe
+                | @{const_name True} => nun_true
+                | _ => id_of_const x);
+            in
+              NConst (id, [], ty_of_isa T)
+            end)
       | tm_of _ (Free (s, T)) = NConst (nun_free_of_str s, [], ty_of_isa T)
       | tm_of _ (Var ((s, _), T)) = NConst (nun_var_of_str s, [], ty_of_isa T)
       | tm_of bounds (Abs (s, T, t)) =
@@ -135,6 +141,9 @@ fun tm_of_isa ctxt t =
     |> eta_expand_builtin_tm
   end;
 
+val tm_of_isa = gen_tm_of_isa false;
+val prop_of_isa = gen_tm_of_isa true;
+
 fun nun_type_spec_of_isa ctxt {abs_typ, rep_typ, wrt, abs, rep} =
   {abs_ty = ty_of_isa abs_typ, rep_ty = ty_of_isa rep_typ, wrt = tm_of_isa ctxt wrt,
    abs = tm_of_isa ctxt abs, rep = tm_of_isa ctxt rep};
@@ -146,13 +155,13 @@ fun nun_co_data_spec_of_isa ctxt {typ, ctrs} =
   {ty = ty_of_isa typ, ctrs = map (nun_ctr_of_isa ctxt) ctrs};
 
 fun nun_const_spec_of_isa ctxt {const, props} =
-  {const = tm_of_isa ctxt const, props = map (tm_of_isa ctxt) props};
+  {const = tm_of_isa ctxt const, props = map (prop_of_isa ctxt) props};
 
 fun nun_rec_spec_of_isa ctxt {const, props, ...} =
-  {const = tm_of_isa ctxt const, props = map (tm_of_isa ctxt) props};
+  {const = tm_of_isa ctxt const, props = map (prop_of_isa ctxt) props};
 
 fun nun_consts_spec_of_isa ctxt {consts, props} =
-  {consts = map (tm_of_isa ctxt) consts, props = map (tm_of_isa ctxt) props};
+  {consts = map (tm_of_isa ctxt) consts, props = map (prop_of_isa ctxt) props};
 
 fun nun_problem_of_isa ctxt {commandss, sound, complete} =
   let
@@ -170,8 +179,8 @@ fun nun_problem_of_isa ctxt {commandss, sound, complete} =
          else NCopred) (map (nun_const_spec_of_isa ctxt) specs)
       | IRec specs => NRec (map (nun_rec_spec_of_isa ctxt) specs)
       | ISpec spec => NSpec (nun_consts_spec_of_isa ctxt spec)
-      | IAxiom prop => NAxiom (tm_of_isa ctxt prop)
-      | IGoal prop => NGoal (tm_of_isa ctxt prop)
+      | IAxiom prop => NAxiom (prop_of_isa ctxt prop)
+      | IGoal prop => NGoal (prop_of_isa ctxt prop)
       | IEval t => NEval (tm_of_isa ctxt t));
   in
     {commandss = map (map cmd_of) commandss, sound = sound, complete = complete}

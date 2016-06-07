@@ -39,6 +39,9 @@ fun pretty_of_isa_model_opt _ NONE =
     let
       val ctxt = ctxt0 |> Config.put show_question_marks false;
 
+      val pat_incomplete_model' = pat_incomplete_model
+        |> filter_out (can (fn Const (@{const_name unreachable}, _) => ()) o fst);
+
       fun pretty_of_typ_entry (T, atoms) =
         Pretty.block (Pretty.breaks [Syntax.pretty_typ ctxt T, Pretty.str "=",
            Pretty.enum "," "{" "}" (map (Syntax.pretty_term ctxt) atoms)]);
@@ -74,7 +77,7 @@ fun pretty_of_isa_model_opt _ NONE =
            chunks_of_entries sorting_str_of_term pretty_of_term_entry "" free_model) @
         chunks_of_entries sorting_str_of_term pretty_of_term_entry "Skolem constant" skolem_model @
         chunks_of_entries sorting_str_of_term pretty_of_term_entry "Underspecified constant"
-          pat_incomplete_model @
+          pat_incomplete_model' @
         (if Config.get ctxt show_consts then
            chunks_of_entries sorting_str_of_term pretty_of_term_entry "Fully specified constant"
              pat_complete_model

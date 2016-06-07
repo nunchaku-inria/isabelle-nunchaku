@@ -55,9 +55,6 @@ type nun_model =
 
 val nun_SAT = str_of_ident "SAT";
 
-val nabss = Library.foldr NAbs;
-val napps = Library.foldl NApp;
-
 fun str_of_ty_entry (ty, tms) =
   "type " ^ str_of_ty ty ^ " := {" ^ commas (map str_of_tm tms) ^ "}.";
 
@@ -197,47 +194,46 @@ val parse_choice_or_unique =
   (parse_tok (Ident nun_choice) || parse_tok (Ident nun_unique)
    || parse_tok (Ident nun_unique_unsafe))
   -- parse_ty_arg
-  >> (fn (Ident id, ty) => NConst (id, [ty], mk_nun_arrows_ty ([ty, nun_prop_ty], ty)));
+  >> (fn (Ident id, ty) => NConst (id, [ty], mk_arrows_ty ([ty, prop_ty], ty)));
 
 fun parse_tm toks =
   (parse_id nun_lambda |-- Scan.repeat parse_arg --| parse_sym nun_dot -- parse_tm >> nabss
   || parse_id nun_mu |-- parse_arg --| parse_sym nun_dot -- parse_tm
      >> (fn (var, body) =>
        let val ty = safe_ty_of body in
-         NApp (NConst (nun_mu, [ty], mk_nun_arrow_ty (mk_nun_arrow_ty (ty, ty), ty)),
-           NAbs (var, body))
+         NApp (NConst (nun_mu, [ty], mk_arrow_ty (mk_arrow_ty (ty, ty), ty)), NAbs (var, body))
        end)
    || parse_id nun_if |-- parse_tm --| parse_id nun_then -- parse_tm --| parse_id nun_else
        -- parse_tm
      >> (fn ((cond, th), el) =>
        let val ty = safe_ty_of th in
-         napps (NConst (nun_if, [ty], mk_nun_arrows_ty ([nun_prop_ty, ty, ty], ty)), [cond, th, el])
+         napps (NConst (nun_if, [ty], mk_arrows_ty ([prop_ty, ty, ty], ty)), [cond, th, el])
        end)
    || parse_implies) toks
 and parse_implies toks =
   (parse_disj -- Scan.option (parse_sym nun_implies -- parse_implies)
    >> (fn (tm, NONE) => tm
-     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
+     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], dummy_ty), [lhs, rhs]))) toks
 and parse_disj toks =
   (parse_conj -- Scan.option (parse_sym nun_disj -- parse_disj)
    >> (fn (tm, NONE) => tm
-     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
+     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], dummy_ty), [lhs, rhs]))) toks
 and parse_conj toks =
   (parse_equals -- Scan.option (parse_sym nun_conj -- parse_conj)
    >> (fn (tm, NONE) => tm
-     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
+     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], dummy_ty), [lhs, rhs]))) toks
 and parse_equals toks =
   (parse_comb -- Scan.option (parse_sym nun_equals -- parse_comb)
    >> (fn (tm, NONE) => tm
-     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], nun_dummy_ty), [lhs, rhs]))) toks
+     | (lhs, SOME (Symbol id, rhs)) => napps (NConst (id, [], dummy_ty), [lhs, rhs]))) toks
 and parse_comb toks =
   (parse_arg -- Scan.repeat (Scan.unless parse_confusing_id parse_arg) >> napps) toks
 and parse_arg toks =
   (parse_choice_or_unique
-   || parse_ident >> (fn id => NConst (id, [], nun_dummy_ty))
+   || parse_ident >> (fn id => NConst (id, [], dummy_ty))
    || parse_sym nun_irrelevant
       |-- Scan.option (parse_sym nun_lparen |-- parse_tm --| parse_sym nun_rparen) (* FIXME *)
-     >> (fn _ => NConst (nun_irrelevant, [], nun_dummy_ty))
+     >> (fn _ => NConst (nun_irrelevant, [], dummy_ty))
    || parse_sym nun_unparsable |-- parse_ty >> (fn ty => NConst (nun_unparsable, [], ty))
    || parse_sym nun_lparen |-- parse_tm -- Scan.option (parse_sym nun_colon |-- parse_ty)
       --| parse_sym nun_rparen
@@ -246,7 +242,7 @@ and parse_arg toks =
    || parse_atom >> (fn (id, j) => NAtom (j, NType (id, [])))) toks;
 
 val parse_witness_name =
-  parse_ident >> (fn id => NConst (hd (space_explode "/" id), [], nun_dummy_ty));
+  parse_ident >> (fn id => NConst (hd (space_explode "/" id), [], dummy_ty));
 
 val parse_witness =
   parse_id nun__witness_of |-- parse_sym nun_lparen |-- (parse_id nun_forall || parse_id nun_exists)
