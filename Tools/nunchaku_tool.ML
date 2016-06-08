@@ -85,7 +85,7 @@ fun uncached_solve_nun_problem ({overlord, specialize, timeout, ...} : tool_para
       let
         val bash_cmd =
           "\"$" ^ nunchaku_env_var ^ "\" \
-          \--no-color " ^
+          \--skolems-in-model --no-color " ^
           (if specialize then "" else "--no-specialize ") ^
           "--timeout " ^ string_of_int (Time.toSeconds timeout) ^ " " ^
           File.bash_path prob_path;
