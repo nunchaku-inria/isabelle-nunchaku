@@ -793,17 +793,20 @@ datatype lhs_pat =
 
 fun is_likely_pat_complete ctxt props =
   let
+    val is_Var_or_Bound = is_Var orf is_Bound;
+
     fun lhs_pat_of t =
       (case t of
-        Const (@{const_name HOL.eq}, _) $ u $ _ =>
-        (case filter_out is_Var (snd (strip_comb u)) of
+        Const (@{const_name All}, _) $ Abs (_, _, t) => lhs_pat_of t
+      | Const (@{const_name HOL.eq}, _) $ u $ _ =>
+        (case filter_out is_Var_or_Bound (snd (strip_comb u)) of
           [] => Only_Vars
         | [v] =>
           (case strip_comb v of
             (cst as Const (_, T), args) =>
             (case body_type T of
               Type (T_name, _) =>
-              if can (Ctr_Sugar.dest_ctr ctxt T_name) cst andalso forall is_Var args then
+              if can (Ctr_Sugar.dest_ctr ctxt T_name) cst andalso forall is_Var_or_Bound args then
                 Prim_Pattern T_name
               else
                 Any_Pattern
