@@ -1,5 +1,12 @@
 Isabelle frontend:
 
+  * TODO:
+    * FIX SETS, e.g.
+        typedef x = "{0, 1::nat}"
+          sorry
+        lemma "(y::x set) = x"
+          nunchaku[overlord, debug]
+
   * show anonymous functions on a per-need basis
 
   * find out why some "triple_lookup" have swap
